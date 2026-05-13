@@ -3,7 +3,6 @@ import { NextFunction, Response } from 'express';
 import { Attachment, AuthenticatedRequest } from './types';
 import * as bcrypt from 'bcrypt';
 import { v4 as uuidv4 } from 'uuid';
-import sharp from 'sharp';
 
 export async function hashPassword(rawPassword: string) {
   const salt = await bcrypt.genSalt();
@@ -25,5 +24,7 @@ export function isAuthorized(
 
 export const generateUUIDV4 = () => uuidv4();
 
-export const compressImage = (attachment: Attachment) =>
-  sharp(attachment.buffer).resize(300).jpeg().toBuffer();
+export const compressImage = async (attachment: Attachment) => {
+  const sharp = (await import('sharp')).default;
+  return sharp(attachment.buffer).resize(300).jpeg().toBuffer();
+};
