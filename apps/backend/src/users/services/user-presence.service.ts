@@ -3,9 +3,9 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Services } from '../../utils/constants';
 import { User, UserPresence } from '../../utils/typeorm';
-import { UpdateStatusMessageParams } from '../../utils/types';
-import { IUserService } from '../interfaces/user';
-import { IUserPresenceService } from '../interfaces/user-presence';
+import type { UpdateStatusMessageParams } from '../../utils/types';
+import type { IUserService } from '../interfaces/user';
+import type { IUserPresenceService } from '../interfaces/user-presence';
 
 @Injectable()
 export class UserPresenceService implements IUserPresenceService {

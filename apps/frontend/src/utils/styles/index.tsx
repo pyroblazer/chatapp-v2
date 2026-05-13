@@ -20,7 +20,7 @@ export const InputField = styled.input`
   outline: none;
   border: none;
   background-color: inherit;
-  color: #fff;
+  color: ${({ theme }) => theme.text.primary};
   font-size: 18px;
   font-weight: 500;
   width: 100%;
@@ -33,7 +33,7 @@ export const InputField = styled.input`
 `;
 
 export const InputContainer = styled.div<InputContainerProps>`
-  background-color: ${(prop) => prop.backgroundColor || '#131313'};
+  background-color: ${(prop) => prop.backgroundColor || prop.theme.input.backgroundColor};
   padding: 12px 16px;
   border-radius: 10px;
   width: 100%;
@@ -56,7 +56,7 @@ export const InputContainerHeader = styled.div`
 
 export const InputLabel = styled.label`
   display: block;
-  color: #8f8f8f;
+  color: ${({ theme }) => theme.text.secondary};
   font-size: 14px;
   margin: 4px 0;
 `;
@@ -74,7 +74,7 @@ export const Button = styled.button`
   font-family: 'Inter';
   font-size: 16px;
   background-color: #2b09ff;
-  color: #fff;
+  color: ${({ theme }) => theme.text.primary};
   border-radius: 10px;
   padding: 25px 0;
   font-weight: 500;
@@ -94,7 +94,7 @@ export const Button = styled.button`
 `;
 
 export const Page = styled.div<PageProps>`
-  background-color: #1a1a1a;
+  background-color: ${({ theme }) => theme.page.backgroundColor};
   height: 100%;
   width: 100%;
   display: ${(props) => props.display};
@@ -155,7 +155,6 @@ export const ConversationSidebarItemDetails = styled.div`
   & .conversationLastMessage {
     font-size: 15px;
     font-weight: 500;
-    color: #868686;
     color: ${({ theme }) =>
       theme.conversationSidebar.conversationItem.title.lastMessageColor};
   }
@@ -180,7 +179,7 @@ type ModalProps = Partial<{
 
 export const ModalContainerStyle = styled.div<ModalProps>`
   position: relative;
-  background-color: #121212;
+  background-color: ${({ theme }) => theme.background.secondary};
   width: 650px;
   box-sizing: border-box;
   border-radius: 10px;
@@ -211,7 +210,7 @@ export const TextField = styled.textarea`
   outline: none;
   border: none;
   background-color: inherit;
-  color: #fff;
+  color: ${({ theme }) => theme.text.primary};
   font-size: 18px;
   width: 100%;
   box-sizing: border-box;
@@ -251,12 +250,12 @@ export const MessagePanelBody = styled.div`
   flex: 1 1 auto;
   overflow-y: auto;
   min-height: 0;
-  height: calc(100% - 600px);
 `;
 
 export const ConversationCallContainer = styled.div`
-  height: 600px;
-  background-color: #0e0e0e;
+  flex: 0 0 auto;
+  max-height: 400px;
+  background-color: ${({ theme }) => theme.messagePanel.backgroundColor};
   flex: 1 1 auto;
   display: flex;
   justify-content: space-between;
@@ -288,7 +287,7 @@ export const VideoContainerActionButtons = styled.div`
     display: flex;
     align-items: center;
     justify-content: center;
-    background-color: #222222;
+    background-color: ${({ theme }) => theme.conversationSidebar.conversationItem.hover.backgroundColor};
     font-size: 32px;
     padding: 18px;
     border-radius: 50%;
@@ -338,7 +337,7 @@ export const MessageInput = styled.input`
   background-color: inherit;
   outline: none;
   border: none;
-  color: #454545;
+  color: ${({ theme }) => theme.text.secondary};
   font-family: 'Inter';
   box-sizing: border-box;
   font-size: 18px;
@@ -372,7 +371,7 @@ export const MessageItemHeaderContainer = styled.div`
   align-items: center;
   gap: 12px;
   .time {
-    color: #6d6d6d;
+    color: ${({ theme }) => theme.text.secondary};
     font-size: 14px;
     font-weight: bold;
   }
@@ -394,7 +393,7 @@ export const ContextMenu = styled.ul<ContextMenuProps>`
   box-sizing: border-box;
   position: fixed;
   width: 220px;
-  background-color: #1a1a1a;
+  background-color: ${({ theme }) => theme.conversationSidebar.conversationItem.selected};
   ${(props) => css`
     top: ${props.top}px;
     left: ${props.left}px;
@@ -416,7 +415,7 @@ export const ContextMenuItem = styled.li`
   margin: 6px 0;
   &:hover {
     cursor: pointer;
-    background-color: #1f1f1f;
+    background-color: ${({ theme }) => theme.conversationSidebar.conversationItem.hover.backgroundColor};
   }
 `;
 
@@ -432,8 +431,8 @@ export const MessageTypingStatus = styled.div`
 export const EditMessageInputField = styled.input`
   outline: none;
   border: none;
-  background-color: #222;
-  color: #bababa;
+  background-color: ${({ theme }) => theme.input.backgroundColor};
+  color: ${({ theme }) => theme.text.primary};
   font-family: 'Inter';
   box-sizing: border-box;
   font-size: 15px;
@@ -455,7 +454,7 @@ export const ConversationSelectedStyle = styled.div`
   display: flex;
   gap: 20px;
   padding: 20px 32px;
-  background-color: #0f0f0f;
+  background-color: ${({ theme }) => theme.conversationSidebar.conversationItem.selected};
   border-bottom: 1px solid #4343435f;
   box-sizing: border-box;
 `;
@@ -465,12 +464,12 @@ export const ConversationSelectedItem = styled.div<ConversationSelectedProps>`
   border-radius: 10px;
   font-size: 15px;
   font-weight: 500;
-  background-color: #212121;
-  color: #f0f0f0;
+  background-color: ${({ theme }) => theme.input.backgroundColor};
+  color: ${({ theme }) => theme.text.primary};
   ${(props) =>
     props.selected &&
     css`
-      background-color: #444444;
+      background-color: ${props.theme.conversationSidebar.conversationItem.hover.backgroundColor};
     `};
 `;
 export const UserAvatar = styled.img`
@@ -509,7 +508,7 @@ export const ConversationSidebarStyles = styled.div`
   height: 100%;
   margin-left: 90px;
   width: ${SIDEBAR_WIDTH}px;
-  background-color: #111111;
+  background-color: ${({ theme }) => theme.conversationSidebar.backgroundColor};
   border-right: 1px solid #5454543d;
   overflow-y: scroll;
   &::-webkit-scrollbar {
@@ -540,14 +539,14 @@ export const ConversationTabItemStyle = styled.section<ConversationSelectedProps
   user-select: none;
   font-size: 12px;
   font-weight: 500;
-  background-color: #1f1f1f;
+  background-color: ${({ theme }) => theme.conversationSidebar.conversationItem.selected};
   text-transform: uppercase;
   padding: 8px 18px;
   border-radius: 5px;
-  ${({ selected }) =>
+  ${({ selected, theme }) =>
     selected &&
     css`
-      background-color: #383838;
+      background-color: ${theme.conversationSidebar.conversationItem.hover.backgroundColor};
     `};
 `;
 
@@ -570,14 +569,14 @@ export const SidebarContainerItemContent = styled.div`
   & .lastMessage {
     display: block;
     font-size: 16px;
-    color: #797979;
+    color: ${({ theme }) => theme.text.secondary};
     font-weight: 500;
   }
 `;
 
 export const RecipientResultContainerStyle = styled.div`
   position: absolute;
-  background-color: #161616;
+  background-color: ${({ theme }) => theme.background.tertiary};
   right: 0;
   left: 0;
   margin: 4px 24px;
@@ -592,7 +591,7 @@ export const RecipientScrollableItemContainer = styled.div`
 `;
 
 export const RecipientBottomSection = styled.div`
-  border-top: 1px solid #fff;
+  border-top: 1px solid #49494925;
   margin: 4px 24px;
   display: flex;
   justify-content: flex-end;
@@ -606,7 +605,7 @@ export const RecipientResultItem = styled.div`
   box-sizing: border-box;
   &:hover {
     cursor: pointer;
-    background-color: #0c0c0c;
+    background-color: ${({ theme }) => theme.background.primary};
   }
 `;
 
@@ -624,7 +623,7 @@ export const SelectedRecipientPillStyle = styled.div`
   }
   & .icon {
     margin-left: 10px;
-    color: #656565;
+    color: ${({ theme }) => theme.text.secondary};
     cursor: pointer;
     transition: 300ms color ease;
     :hover {
@@ -731,7 +730,7 @@ export const UserSidebarItemStyle = styled.div<SidebarItemProps>`
   justify-content: center;
   padding: 20px 18px;
   box-sizing: border-box;
-  background-color: ${({ active }) => active && '#1e1e1e'};
+  background-color: ${({ active, theme }) => active && theme.conversationSidebar.conversationItem.selected};
   position: relative;
 `;
 
@@ -750,7 +749,7 @@ export const IconBadge = styled.div`
 `;
 
 export const ConversationCreateButton = styled.div`
-  background-color: #1a1a1a;
+  background-color: ${({ theme }) => theme.page.backgroundColor};
   padding: 10px;
   box-sizing: border-box;
 `;
@@ -816,7 +815,7 @@ export const GroupRecipientSidebarItem = styled.div<GroupRecipientSidebarItemPro
   & .status {
     font-size: 12px;
     font-weight: 500;
-    color: #929292;
+    color: ${({ theme }) => theme.text.secondary};
   }
   opacity: ${({ online }) => !online && 0.2};
 `;
@@ -840,7 +839,7 @@ export const TestContextMenu = styled.div<ContextMenuProps>`
   `}
 
   width: 200px;
-  background-color: #000;
+  background-color: ${({ theme }) => theme.background.primary};
 `;
 
 export const CharacterLimit = styled.span<CharacterLimitProps>`
@@ -849,8 +848,8 @@ export const CharacterLimit = styled.span<CharacterLimitProps>`
   right: 36px;
   font-size: 14px;
   font-weight: 500;
-  color: ${({ atMaxLength }) =>
-    atMaxLength ? '#ff0000' : 'rgb(129, 129, 129)'};
+  color: ${({ atMaxLength, theme }) =>
+    atMaxLength ? '#ff0000' : theme.text.secondary};
 `;
 
 export const MessageAttachmentContainerStyle = styled.div`
@@ -862,10 +861,10 @@ export const MessageAttachmentContainerStyle = styled.div`
     height: 6px;
   }
   &::-webkit-scrollbar-track {
-    background-color: #101010;
+    background-color: ${({ theme }) => theme.messagePanel.inputContainer.backgroundColor};
   }
   &::-webkit-scrollbar-thumb {
-    background-color: #1c1c1c;
+    background-color: ${({ theme }) => theme.background.tertiary};
     border-radius: 5px;
   }
 `;
@@ -876,7 +875,7 @@ export const MessageAttachmentStyle = styled.div`
   position: relative;
   max-height: 300px;
   height: 300px;
-  background-color: #161616;
+  background-color: ${({ theme }) => theme.background.tertiary};
   margin: 10px 0;
   border-radius: 10px;
   display: flex;
@@ -889,7 +888,7 @@ export const SystemMessageContainer = styled.div`
   width: 80%;
   margin: 8px 0;
   box-sizing: border-box;
-  background-color: #1c1c1c;
+  background-color: ${({ theme }) => theme.background.tertiary};
   padding: 12px 16px;
   border-radius: 8px;
   display: flex;
@@ -910,7 +909,7 @@ export const SystemMessageContainer = styled.div`
     font-size: 14px;
     font-style: italic;
     padding-left: 28px;
-    color: #656565;
+    color: ${({ theme }) => theme.text.secondary};
   }
 `;
 
@@ -920,8 +919,8 @@ export const CallReceiveDialogContainer = styled.div`
   left: 50%;
   transform: translate(-50%, -50%);
   width: 250px;
-  background-color: #1f1f1f;
-  color: #fff;
+  background-color: ${({ theme }) => theme.conversationSidebar.conversationItem.selected};
+  color: ${({ theme }) => theme.text.primary};
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -941,7 +940,7 @@ export const CallReceiveDialogContainer = styled.div`
     & div {
       height: 50px;
       width: 50px;
-      background-color: #151515;
+      background-color: ${({ theme }) => theme.background.primary};
       border-radius: 50%;
       display: flex;
       align-items: center;

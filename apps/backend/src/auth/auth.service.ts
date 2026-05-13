@@ -3,11 +3,11 @@ import { JwtService } from '@nestjs/jwt';
 import { InjectRepository } from '@nestjs/typeorm';
 import { compareHash, hashPassword } from '../utils/helpers';
 import { Services } from '../utils/constants';
-import { IUserService } from '../users/interfaces/user';
-import { IAuthService, IJwtPayload } from './auth';
+import type { IUserService } from '../users/interfaces/user';
+import type { IAuthService, IJwtPayload } from './auth';
 import { Repository } from 'typeorm';
 import { RefreshToken } from '../utils/typeorm/entities/RefreshToken';
-import { User } from '../utils/typeorm';
+import type { User } from '../utils/typeorm';
 import * as crypto from 'crypto';
 
 @Injectable()

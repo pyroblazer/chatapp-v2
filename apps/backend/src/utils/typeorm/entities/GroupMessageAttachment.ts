@@ -1,12 +1,12 @@
 import { Entity, ManyToOne, PrimaryGeneratedColumn } from 'typeorm';
-import { GroupMessage } from './GroupMessage';
+import type { GroupMessage } from './GroupMessage';
 
 @Entity({ name: 'group_message_attachments' })
 export class GroupMessageAttachment {
   @PrimaryGeneratedColumn('uuid')
   key: string;
 
-  @ManyToOne(() => GroupMessage, (message) => message.attachments, {
+  @ManyToOne(() => require('./GroupMessage').GroupMessage, (message: any) => message.attachments, {
     onDelete: 'CASCADE',
   })
   message: GroupMessage;

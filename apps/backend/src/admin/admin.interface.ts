@@ -1,5 +1,5 @@
-import { Report } from './report.entity';
-import { User } from '../utils/typeorm';
+import type { Report } from './report.entity';
+import type { User } from '../utils/typeorm';
 
 export interface IAdminService {
   listUsers(page?: number, limit?: number): Promise<[User[], number]>;

@@ -13,7 +13,8 @@ import {
 } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { AuthUser } from '../utils/decorators';
-import { CreateBotParams, BotService } from './bot.service';
+import type { CreateBotParams } from './bot.service';
+import { BotService } from './bot.service';
 
 @Controller('bots')
 export class BotController {

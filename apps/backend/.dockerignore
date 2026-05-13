@@ -8,6 +8,7 @@ coverage
 .git
 .gitignore
 README.md
+yarn.lock
 test
 tests
 *.spec.ts

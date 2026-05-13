@@ -19,9 +19,9 @@ import { EditMessageDto } from '../../messages/dtos/EditMessage.dto';
 import { EmptyMessageException } from '../../messages/exceptions/EmptyMessage';
 import { Routes, ServerEvents, Services } from '../../utils/constants';
 import { AuthUser } from '../../utils/decorators';
-import { User } from '../../utils/typeorm';
-import { Attachment } from '../../utils/types';
-import { IGroupMessageService } from '../interfaces/group-messages';
+import type { User } from '../../utils/typeorm';
+import type { Attachment } from '../../utils/types';
+import type { IGroupMessageService } from '../interfaces/group-messages';
 
 @Controller(Routes.GROUP_MESSAGES)
 export class GroupMessageController {

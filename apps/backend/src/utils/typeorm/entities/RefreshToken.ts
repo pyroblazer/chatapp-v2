@@ -6,7 +6,7 @@ import {
   ManyToOne,
   PrimaryGeneratedColumn,
 } from 'typeorm';
-import { User } from './User';
+import type { User } from './User';
 
 @Entity({ name: 'refresh_tokens' })
 export class RefreshToken {
@@ -19,7 +19,7 @@ export class RefreshToken {
   @Column({ name: 'user_id' })
   userId: string;
 
-  @ManyToOne(() => User, { onDelete: 'CASCADE' })
+  @ManyToOne(() => require('./User').User, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'user_id' })
   user: User;
 

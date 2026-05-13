@@ -15,9 +15,9 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { AdminGuard } from './guards/admin.guard';
 import { Routes, Services } from '../utils/constants';
 import { AuthUser } from '../utils/decorators';
-import { User } from '../utils/typeorm';
-import { IAdminService } from './admin.interface';
-import { IAuditService } from '../audit/audit.interface';
+import type { User } from '../utils/typeorm';
+import type { IAdminService } from './admin.interface';
+import type { IAuditService } from '../audit/audit.interface';
 
 @Controller(Routes.ADMIN)
 @UseGuards(JwtAuthGuard, AdminGuard)

@@ -1,4 +1,4 @@
-import {
+import type {
   Conversation,
   Friend,
   FriendRequest,
@@ -9,7 +9,7 @@ import {
   MessageAttachment,
   User,
 } from './typeorm';
-import { Request } from 'express';
+import type { Request } from 'express';
 
 export type CreateUserDetails = {
   username: string;

@@ -1,5 +1,5 @@
-import { User } from '../../utils/typeorm';
-import {
+import type { User } from '../../utils/typeorm';
+import type {
   CreateUserDetails,
   FindUserOptions,
   FindUserParams,

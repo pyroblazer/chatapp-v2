@@ -8,11 +8,11 @@ import {
   OneToOne,
   PrimaryGeneratedColumn,
 } from 'typeorm';
-import { Group } from './Group';
-import { Message } from './Message';
-import { Peer } from './Peer';
-import { Profile } from './Profile';
-import { UserPresence } from './UserPresence';
+import type { Group } from './Group';
+import type { Message } from './Message';
+import type { Peer } from './Peer';
+import type { Profile } from './Profile';
+import type { UserPresence } from './UserPresence';
 
 @Entity({ name: 'users' })
 export class User {
@@ -35,27 +35,27 @@ export class User {
   @Exclude()
   password: string;
 
-  @Column({ default: 'USER' })
+  @Column('varchar', { default: 'USER' })
   role: 'USER' | 'MODERATOR' | 'ADMIN';
 
   @Column({ default: true })
   active: boolean;
 
-  @OneToMany(() => Message, (message) => message.author)
+  @OneToMany(() => require('./Message').Message, (message: any) => message.author)
   messages: Message[];
 
-  @ManyToMany(() => Group, (group) => group.users)
+  @ManyToMany(() => require('./Group').Group, (group: any) => group.users)
   groups: Group[];
 
-  @OneToOne(() => Profile, { cascade: ['insert', 'update'] })
+  @OneToOne(() => require('./Profile').Profile, { cascade: ['insert', 'update'] })
   @JoinColumn()
   profile: Profile;
 
-  @OneToOne(() => UserPresence, { cascade: ['insert', 'update'] })
+  @OneToOne(() => require('./UserPresence').UserPresence, { cascade: ['insert', 'update'] })
   @JoinColumn()
   presence: UserPresence;
 
-  @OneToOne(() => Peer, (peer) => peer.user, {
+  @OneToOne(() => require('./Peer').Peer, (peer: any) => peer.user, {
     cascade: ['insert', 'remove', 'update'],
   })
   @JoinColumn()

@@ -3,7 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { User, Message, GroupMessage } from '../utils/typeorm';
 import { Report } from './report.entity';
-import { IAdminService } from './admin.interface';
+import type { IAdminService } from './admin.interface';
 
 @Injectable()
 export class AdminService implements IAdminService {

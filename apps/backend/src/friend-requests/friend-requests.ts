@@ -1,5 +1,5 @@
-import { FriendRequest } from '../utils/typeorm';
-import {
+import type { FriendRequest } from '../utils/typeorm';
+import type {
   AcceptFriendRequestResponse,
   CancelFriendRequestParams,
   CreateFriendParams,

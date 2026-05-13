@@ -1,11 +1,11 @@
 import { Entity, OneToOne, PrimaryGeneratedColumn } from 'typeorm';
-import { User } from './User';
+import type { User } from './User';
 
 @Entity()
 export class Peer {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @OneToOne(() => User, (user) => user.peer)
+  @OneToOne(() => require('./User').User, (user: any) => user.peer)
   user: User;
 }

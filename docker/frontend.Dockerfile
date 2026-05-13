@@ -1,24 +1,23 @@
 # --- Development stage ---
-FROM node:18.20-alpine AS development
+FROM oven/bun:1 AS development
 WORKDIR /app
-COPY package.json yarn.lock* ./
-RUN if [ -f yarn.lock ]; then yarn install --frozen-lockfile; else yarn install; fi
+COPY package.json bun.lock ./
+RUN bun install --frozen-lockfile
 COPY . .
 EXPOSE 3000
-CMD ["yarn", "start:dev"]
+CMD ["bun", "run", "start:dev"]
 
 # --- Build stage ---
-FROM node:18.20-alpine AS build
+FROM oven/bun:1 AS build
 WORKDIR /app
-COPY package.json yarn.lock* ./
-RUN if [ -f yarn.lock ]; then yarn install --frozen-lockfile; else yarn install; fi
+COPY package.json bun.lock ./
+RUN bun install --frozen-lockfile
 COPY . .
-RUN yarn build
+RUN bun run build
 
 # --- Production stage (serve static files with nginx) ---
 FROM nginx:1.27-alpine AS production
 COPY --from=build /app/dist /usr/share/nginx/html
-# SPA fallback config — the main nginx reverse proxy handles /api and /socket.io routing
 RUN printf 'server {\n\
     listen 80;\n\
     server_name _;\n\

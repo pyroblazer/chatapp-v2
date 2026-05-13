@@ -7,7 +7,7 @@ export const SettingsSidebarStyle = styled.aside`
   flex-direction: column;
   height: 100%;
   width: 300px;
-  background-color: #111111;
+  background-color: ${({ theme }) => theme.conversationSidebar.backgroundColor};
   flex: 0 0 auto;
 `;
 
@@ -33,7 +33,7 @@ export const SettingsSidebarItemStyle = styled.div<SettingsSidebarItemProps>`
     user-select: none;
     padding: 14px;
     border-radius: 8px;
-    background-color: ${({ isActive }) => isActive && '#070707'};
+    background-color: ${({ isActive, theme }) => isActive && theme.background.primary};
     & span {
       font-weight: 500;
     }
@@ -70,7 +70,7 @@ export const UserAvatarContainer = styled.div<{ url?: string }>`
     display: flex;
     justify-content: center;
     align-items: center;
-    color: #b5b5b5;
+    color: ${({ theme }) => theme.text.primary};
     font-size: 15px;
     font-weight: 500;
     opacity: 0;
@@ -109,7 +109,7 @@ export const SettingsProfileBanner = styled.div<UserBannerProps>`
     display: flex;
     justify-content: center;
     align-items: center;
-    color: #b5b5b5;
+    color: ${({ theme }) => theme.text.primary};
     font-size: 20px;
     font-weight: 500;
     opacity: 0;
@@ -149,7 +149,7 @@ export const ProfileSection = styled.div`
 `;
 
 export const ProfileAboutSection = styled.div`
-  background-color: #111111;
+  background-color: ${({ theme }) => theme.conversationSidebar.backgroundColor};
   width: 500px;
   padding: 32px;
   box-sizing: border-box;
@@ -170,7 +170,7 @@ export const ProfileDescriptionField = styled.textarea`
   background-color: inherit;
   outline: none;
   border: none;
-  color: #ffffff;
+  color: ${({ theme }) => theme.text.primary};
   font-family: 'Inter';
   box-sizing: border-box;
   font-size: 15px;
@@ -186,18 +186,18 @@ export const ProfileDescriptionField = styled.textarea`
   }
 
   &:disabled {
-    color: #484848;
+    color: ${({ theme }) => theme.text.secondary};
   }
 `;
 
 export const ProfileEditActionBar = styled.div`
-  background-color: #0e0e0e;
+  background-color: ${({ theme }) => theme.messagePanel.inputContainer.backgroundColor};
   width: 750px;
   display: flex;
   padding: 14px 24px;
   justify-content: space-between;
   align-items: center;
-  color: #fff;
+  color: ${({ theme }) => theme.text.primary};
   position: fixed;
   overflow: hidden;
   bottom: 0;

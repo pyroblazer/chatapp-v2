@@ -1,5 +1,5 @@
-import { User } from '../../utils/typeorm';
-import { UpdateUserProfileParams } from '../../utils/types';
+import type { User } from '../../utils/typeorm';
+import type { UpdateUserProfileParams } from '../../utils/types';
 
 export interface IUserProfile {
   createProfile();

@@ -1,10 +1,10 @@
 import { HttpException, HttpStatus, Inject, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { IUserService } from '../../users/interfaces/user';
+import type { IUserService } from '../../users/interfaces/user';
 import { Services } from '../../utils/constants';
-import { Group } from '../../utils/typeorm';
-import {
+import type { Group } from '../../utils/typeorm';
+import type {
   AddGroupRecipientParams,
   CheckUserGroupParams,
   LeaveGroupParams,
@@ -13,8 +13,8 @@ import {
 import { GroupNotFoundException } from '../exceptions/GroupNotFound';
 import { GroupParticipantNotFound } from '../exceptions/GroupParticipantNotFound';
 import { NotGroupOwnerException } from '../exceptions/NotGroupOwner';
-import { IGroupService } from '../interfaces/group';
-import { IGroupRecipientService } from '../interfaces/group-recipient';
+import type { IGroupService } from '../interfaces/group';
+import type { IGroupRecipientService } from '../interfaces/group-recipient';
 
 @Injectable()
 export class GroupRecipientService implements IGroupRecipientService {

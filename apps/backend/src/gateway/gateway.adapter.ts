@@ -1,5 +1,5 @@
 import { IoAdapter } from '@nestjs/platform-socket.io';
-import { AuthenticatedSocket } from '../utils/interfaces';
+import type { AuthenticatedSocket } from '../utils/interfaces';
 import * as jwt from 'jsonwebtoken';
 import { createAdapter } from '@socket.io/redis-adapter';
 import Redis from 'ioredis';

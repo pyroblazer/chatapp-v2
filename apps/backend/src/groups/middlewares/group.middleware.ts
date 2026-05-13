@@ -1,10 +1,10 @@
 import { Inject, Injectable, NestMiddleware } from '@nestjs/common';
 import { NextFunction, Response } from 'express';
 import { Services } from '../../utils/constants';
-import { AuthenticatedRequest } from '../../utils/types';
+import type { AuthenticatedRequest } from '../../utils/types';
 import { GroupNotFoundException } from '../exceptions/GroupNotFound';
 import { InvalidGroupException } from '../exceptions/InvalidGroup';
-import { IGroupService } from '../interfaces/group';
+import type { IGroupService } from '../interfaces/group';
 
 @Injectable()
 export class GroupMiddleware implements NestMiddleware {

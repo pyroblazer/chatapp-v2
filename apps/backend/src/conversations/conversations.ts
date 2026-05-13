@@ -1,5 +1,5 @@
-import { Conversation, User } from '../utils/typeorm';
-import {
+import type { Conversation, User } from '../utils/typeorm';
+import type {
   AccessParams,
   CreateConversationParams,
   GetConversationMessagesParams,

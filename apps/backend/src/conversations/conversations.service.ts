@@ -2,9 +2,9 @@ import { HttpException, HttpStatus, Inject, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { FriendNotFoundException } from '../friends/exceptions/FriendNotFound';
-import { IFriendsService } from '../friends/friends';
+import type { IFriendsService } from '../friends/friends';
 import { UserNotFoundException } from '../users/exceptions/UserNotFound';
-import { IUserService } from '../users/interfaces/user';
+import type { IUserService } from '../users/interfaces/user';
 import { Services } from '../utils/constants';
 import { Conversation, Message, User } from '../utils/typeorm';
 import {
@@ -13,7 +13,7 @@ import {
   GetConversationMessagesParams,
   UpdateConversationParams,
 } from '../utils/types';
-import { IConversationsService } from './conversations';
+import type { IConversationsService } from './conversations';
 import { ConversationExistsException } from './exceptions/ConversationExists';
 import { ConversationNotFoundException } from './exceptions/ConversationNotFound';
 import { CreateConversationException } from './exceptions/CreateConversation';

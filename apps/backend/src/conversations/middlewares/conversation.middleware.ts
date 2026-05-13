@@ -7,8 +7,8 @@ import {
 } from '@nestjs/common';
 import { NextFunction, Response } from 'express';
 import { Services } from '../../utils/constants';
-import { AuthenticatedRequest } from '../../utils/types';
-import { IConversationsService } from '../conversations';
+import type { AuthenticatedRequest } from '../../utils/types';
+import type { IConversationsService } from '../conversations';
 import { ConversationNotFoundException } from '../exceptions/ConversationNotFound';
 import { InvalidConversationIdException } from '../exceptions/InvalidConversationId';
 

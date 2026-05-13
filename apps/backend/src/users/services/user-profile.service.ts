@@ -1,12 +1,12 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { IImageStorageService } from '../../image-storage/image-storage';
+import type { IImageStorageService } from '../../image-storage/image-storage';
 import { Services } from '../../utils/constants';
 import { generateUUIDV4 } from '../../utils/helpers';
 import { Profile, User } from '../../utils/typeorm';
-import { UpdateUserProfileParams } from '../../utils/types';
-import { IUserProfile } from '../interfaces/user-profile';
+import type { UpdateUserProfileParams } from '../../utils/types';
+import type { IUserProfile } from '../interfaces/user-profile';
 
 @Injectable()
 export class UserProfileService implements IUserProfile {

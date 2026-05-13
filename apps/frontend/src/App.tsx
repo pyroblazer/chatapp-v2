@@ -1,9 +1,10 @@
 import { PropsWithChildren, lazy, Suspense, useState } from 'react';
-import { Route, Routes } from 'react-router-dom';
+import { Navigate, Route, Routes } from 'react-router-dom';
 import { Socket } from 'socket.io-client';
 import { AuthenticatedRoute } from './components/AuthenticatedRoute';
 import { AuthContext } from './utils/context/AuthContext';
 import { socket, SocketContext } from './utils/context/SocketContext';
+import { logoutUser } from './utils/api';
 import { User } from './utils/types';
 import { Provider as ReduxProvider } from 'react-redux';
 import { store } from './store';
@@ -89,10 +90,16 @@ function AppWithProviders({
   children,
   user,
   setUser,
+  socket,
 }: PropsWithChildren & Props) {
+  const handleLogout = async () => {
+    try { await logoutUser(); } catch {}
+    socket.disconnect();
+    setUser(undefined);
+  };
   return (
     <ReduxProvider store={store}>
-      <AuthContext.Provider value={{ user, updateAuthUser: setUser }}>
+      <AuthContext.Provider value={{ user, updateAuthUser: setUser, logout: handleLogout }}>
         <SocketContext.Provider value={socket}>
           {children}
         </SocketContext.Provider>
@@ -108,7 +115,7 @@ const LoadingFallback = () => (
       alignItems: 'center',
       justifyContent: 'center',
       height: '100vh',
-      backgroundColor: '#1a1a2e',
+      backgroundColor: '#1a1a1a',
       color: '#fff',
       fontFamily: 'sans-serif',
     }}
@@ -154,6 +161,7 @@ function App() {
               <Route path="calls" element={<CallsPage />}>
                 <Route path="current" element={<CurrentCallPage />} />
               </Route>
+              <Route path="*" element={<Navigate to="/conversations" replace />} />
             </Route>
           </Routes>
         </Suspense>

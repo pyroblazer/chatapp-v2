@@ -1,16 +1,16 @@
 import { Column, Entity, ManyToOne, OneToMany } from 'typeorm';
 import { BaseMessage } from './BaseMessage';
-import { Conversation } from './Conversation';
-import { MessageAttachment } from './MessageAttachment';
-import { MessageReaction } from './MessageReaction';
-import { ReadReceipt } from './ReadReceipt';
+import type { Conversation } from './Conversation';
+import type { MessageAttachment } from './MessageAttachment';
+import type { MessageReaction } from './MessageReaction';
+import type { ReadReceipt } from './ReadReceipt';
 
 @Entity({ name: 'messages' })
 export class Message extends BaseMessage {
-  @ManyToOne(() => Conversation, (conversation) => conversation.messages)
+  @ManyToOne(() => require('./Conversation').Conversation, (conversation: any) => conversation.messages)
   conversation: Conversation;
 
-  @OneToMany(() => MessageAttachment, (attachment) => attachment.message)
+  @OneToMany(() => require('./MessageAttachment').MessageAttachment, (attachment: any) => attachment.message)
   attachments: MessageAttachment[];
 
   @Column({ name: 'parent_message_id', nullable: true })
@@ -19,15 +19,15 @@ export class Message extends BaseMessage {
   @ManyToOne(() => Message, { nullable: true })
   parentMessage: Message;
 
-  @OneToMany(() => Message, (message) => message.parentMessage)
+  @OneToMany(() => Message, (message: any) => message.parentMessage)
   replies: Message[];
 
   @Column({ name: 'thread_reply_count', default: 0 })
   threadReplyCount: number;
 
-  @OneToMany(() => MessageReaction, (reaction) => reaction.message)
+  @OneToMany(() => require('./MessageReaction').MessageReaction, (reaction: any) => reaction.message)
   reactions: MessageReaction[];
 
-  @OneToMany(() => ReadReceipt, (receipt) => receipt.message)
+  @OneToMany(() => require('./ReadReceipt').ReadReceipt, (receipt: any) => receipt.message)
   readReceipts: ReadReceipt[];
 }

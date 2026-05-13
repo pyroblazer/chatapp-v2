@@ -3,8 +3,8 @@ import { SkipThrottle } from '@nestjs/throttler';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { Routes, Services } from '../utils/constants';
 import { AuthUser } from '../utils/decorators';
-import { User } from '../utils/typeorm';
-import { ISearchService } from './search.interface';
+import type { User } from '../utils/typeorm';
+import type { ISearchService } from './search.interface';
 
 @Controller(Routes.SEARCH)
 @UseGuards(JwtAuthGuard)

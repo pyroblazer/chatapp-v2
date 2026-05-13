@@ -8,3 +8,4 @@ dist
 .git
 .gitignore
 README.md
+yarn.lock

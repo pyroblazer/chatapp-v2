@@ -6,9 +6,6 @@ on:
   pull_request:
     branches: [main]
 
-env:
-  NODE_VERSION: '18'
-
 jobs:
   backend-lint:
     name: Backend Lint
@@ -18,16 +15,12 @@ jobs:
         working-directory: apps/backend
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: yarn
-          cache-dependency-path: apps/backend/yarn.lock
-      - run: yarn install --frozen-lockfile
-      - run: yarn lint
+      - uses: oven-sh/setup-bun@v2
+      - run: bun install --frozen-lockfile
+      - run: bun run lint
 
   backend-test:
-    name: Backend Tests
+    name: Backend Tests (${{ matrix.test-group }})
     runs-on: ubuntu-latest
     needs: backend-lint
     strategy:
@@ -72,13 +65,9 @@ jobs:
       ENVIRONMENT: test
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: yarn
-          cache-dependency-path: apps/backend/yarn.lock
-      - run: yarn install --frozen-lockfile
-      - run: yarn test --ci --maxWorkers=2 --testPathPattern="${{ matrix.test-group }}"
+      - uses: oven-sh/setup-bun@v2
+      - run: bun install --frozen-lockfile
+      - run: bun run test -- --ci --maxWorkers=2 --testPathPattern="${{ matrix.test-group }}"
 
   backend-build:
     name: Backend Build
@@ -89,13 +78,9 @@ jobs:
         working-directory: apps/backend
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: yarn
-          cache-dependency-path: apps/backend/yarn.lock
-      - run: yarn install --frozen-lockfile
-      - run: yarn build
+      - uses: oven-sh/setup-bun@v2
+      - run: bun install --frozen-lockfile
+      - run: bun run build
 
   frontend-lint:
     name: Frontend Lint
@@ -105,16 +90,12 @@ jobs:
         working-directory: apps/frontend
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: yarn
-          cache-dependency-path: apps/frontend/yarn.lock
-      - run: yarn install --frozen-lockfile
-      - run: yarn lint 2>/dev/null || true
+      - uses: oven-sh/setup-bun@v2
+      - run: bun install --frozen-lockfile
+      - run: bun run lint
 
-  frontend-build:
-    name: Frontend Build
+  frontend-test:
+    name: Frontend Tests
     runs-on: ubuntu-latest
     needs: frontend-lint
     defaults:
@@ -122,13 +103,22 @@ jobs:
         working-directory: apps/frontend
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: yarn
-          cache-dependency-path: apps/frontend/yarn.lock
-      - run: yarn install --frozen-lockfile
-      - run: yarn build
+      - uses: oven-sh/setup-bun@v2
+      - run: bun install --frozen-lockfile
+      - run: bun run test
+
+  frontend-build:
+    name: Frontend Build
+    runs-on: ubuntu-latest
+    needs: [frontend-lint, frontend-test]
+    defaults:
+      run:
+        working-directory: apps/frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+      - run: bun install --frozen-lockfile
+      - run: bun run build
 
   e2e-tests:
     name: E2E Tests
@@ -136,15 +126,18 @@ jobs:
     needs: [backend-build, frontend-build]
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_VERSION }}
+      - uses: oven-sh/setup-bun@v2
       - name: Install Playwright
-        run: npx playwright install --with-deps
-      - name: Start services
-        run: docker compose up -d postgres redis
+        run: bunx playwright install --with-deps
+      - name: Start Docker services
+        run: docker compose up --build -d
+      - name: Wait for services
+        run: |
+          timeout 120 bash -c 'until curl -sf http://localhost:80/api/health > /dev/null; do sleep 5; done'
+      - name: Seed database
+        run: docker compose run --rm backend-seed
       - name: Run E2E tests
-        run: npx playwright test --workers=2
+        run: bunx playwright test --workers=2
       - name: Upload artifacts
         if: failure()
         uses: actions/upload-artifact@v4
@@ -152,6 +145,9 @@ jobs:
           name: playwright-report
           path: playwright-report/
           retention-days: 7
+      - name: Tear down
+        if: always()
+        run: docker compose down -v
 
   docker-build:
     name: Docker Build Check

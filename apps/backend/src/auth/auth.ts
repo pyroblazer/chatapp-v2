@@ -1,4 +1,4 @@
-import { User } from '../utils/typeorm';
+import type { User } from '../utils/typeorm';
 
 export interface IAuthService {
   validateUser(username: string, password: string): Promise<User | null>;

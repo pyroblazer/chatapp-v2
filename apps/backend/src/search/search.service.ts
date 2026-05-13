@@ -8,7 +8,7 @@ import {
   Group,
   Conversation,
 } from '../utils/typeorm';
-import { ISearchService } from './search.interface';
+import type { ISearchService } from './search.interface';
 
 @Injectable()
 export class SearchService implements ISearchService {

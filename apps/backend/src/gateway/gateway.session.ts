@@ -1,5 +1,5 @@
 import { Injectable, Logger, Optional } from '@nestjs/common';
-import { AuthenticatedSocket } from '../utils/interfaces';
+import type { AuthenticatedSocket } from '../utils/interfaces';
 import { RedisService } from '../redis/redis.service';
 
 export interface IGatewaySessionManager {

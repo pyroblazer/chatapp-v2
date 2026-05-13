@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { AuditLog } from './audit-log.entity';
-import { IAuditService } from './audit.interface';
+import type { IAuditService } from './audit.interface';
 
 @Injectable()
 export class AuditService implements IAuditService {

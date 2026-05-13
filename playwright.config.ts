@@ -8,7 +8,7 @@ export default defineConfig({
   workers: process.env.CI ? 2 : '50%',
   reporter: 'html',
   use: {
-    baseURL: process.env.BASE_URL || 'http://localhost:3000',
+    baseURL: process.env.BASE_URL || 'http://localhost:80',
     trace: 'on-first-retry',
   },
   projects: [
@@ -18,9 +18,11 @@ export default defineConfig({
     },
   ],
   webServer: {
-    command: 'docker compose up',
-    url: 'http://localhost:3000',
-    reuseExistingServer: !process.env.CI,
-    timeout: 120000,
+    command: process.env.CI
+      ? 'docker compose up --build -d'
+      : 'echo "Using existing server"',
+    url: 'http://localhost:80',
+    reuseExistingServer: true,
+    timeout: 180000,
   },
 });

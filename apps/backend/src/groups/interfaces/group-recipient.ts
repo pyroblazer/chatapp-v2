@@ -1,5 +1,5 @@
-import { Group } from '../../utils/typeorm';
-import {
+import type { Group } from '../../utils/typeorm';
+import type {
   AddGroupRecipientParams,
   AddGroupUserResponse,
   CheckUserGroupParams,

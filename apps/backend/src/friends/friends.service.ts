@@ -2,10 +2,10 @@ import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Friend } from '../utils/typeorm';
-import { DeleteFriendRequestParams } from '../utils/types';
+import type { DeleteFriendRequestParams } from '../utils/types';
 import { DeleteFriendException } from './exceptions/DeleteFriend';
 import { FriendNotFoundException } from './exceptions/FriendNotFound';
-import { IFriendsService } from './friends';
+import type { IFriendsService } from './friends';
 
 @Injectable()
 export class FriendsService implements IFriendsService {

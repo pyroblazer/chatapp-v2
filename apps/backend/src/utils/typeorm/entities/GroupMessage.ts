@@ -1,15 +1,15 @@
 import { Column, Entity, ManyToOne, OneToMany } from 'typeorm';
 import { BaseMessage } from './BaseMessage';
-import { Group } from './Group';
-import { GroupMessageAttachment } from './GroupMessageAttachment';
-import { GroupMessageReaction } from './GroupMessageReaction';
+import type { Group } from './Group';
+import type { GroupMessageAttachment } from './GroupMessageAttachment';
+import type { GroupMessageReaction } from './GroupMessageReaction';
 
 @Entity({ name: 'group_messages' })
 export class GroupMessage extends BaseMessage {
-  @ManyToOne(() => Group, (group) => group.messages)
+  @ManyToOne(() => require('./Group').Group, (group: any) => group.messages)
   group: Group;
 
-  @OneToMany(() => GroupMessageAttachment, (attachment) => attachment.message)
+  @OneToMany(() => require('./GroupMessageAttachment').GroupMessageAttachment, (attachment: any) => attachment.message)
   attachments: GroupMessageAttachment[];
 
   @Column({ name: 'parent_message_id', nullable: true })
@@ -18,12 +18,12 @@ export class GroupMessage extends BaseMessage {
   @ManyToOne(() => GroupMessage, { nullable: true })
   parentMessage: GroupMessage;
 
-  @OneToMany(() => GroupMessage, (message) => message.parentMessage)
+  @OneToMany(() => GroupMessage, (message: any) => message.parentMessage)
   replies: GroupMessage[];
 
   @Column({ name: 'thread_reply_count', default: 0 })
   threadReplyCount: number;
 
-  @OneToMany(() => GroupMessageReaction, (reaction) => reaction.message)
+  @OneToMany(() => require('./GroupMessageReaction').GroupMessageReaction, (reaction: any) => reaction.message)
   reactions: GroupMessageReaction[];
 }

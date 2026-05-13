@@ -2,7 +2,7 @@ import { HttpException, HttpStatus, Inject, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { instanceToPlain } from 'class-transformer';
 import { Repository } from 'typeorm';
-import { IGroupService } from '../interfaces/group';
+import type { IGroupService } from '../interfaces/group';
 import { Services } from '../../utils/constants';
 import { Group, GroupMessage } from '../../utils/typeorm';
 import {
@@ -10,8 +10,8 @@ import {
   DeleteGroupMessageParams,
   EditGroupMessageParams,
 } from '../../utils/types';
-import { IGroupMessageService } from '../interfaces/group-messages';
-import { IMessageAttachmentsService } from '../../message-attachments/message-attachments';
+import type { IGroupMessageService } from '../interfaces/group-messages';
+import type { IMessageAttachmentsService } from '../../message-attachments/message-attachments';
 
 @Injectable()
 export class GroupMessageService implements IGroupMessageService {

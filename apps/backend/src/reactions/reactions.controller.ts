@@ -14,8 +14,8 @@ import { SkipThrottle } from '@nestjs/throttler';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { Routes, ServerEvents, Services } from '../utils/constants';
 import { AuthUser } from '../utils/decorators';
-import { User } from '../utils/typeorm';
-import { IReactionsService } from './reactions.interface';
+import type { User } from '../utils/typeorm';
+import type { IReactionsService } from './reactions.interface';
 
 @Controller()
 @UseGuards(JwtAuthGuard)

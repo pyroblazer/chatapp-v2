@@ -6,8 +6,8 @@ import {
   Column,
   Unique,
 } from 'typeorm';
-import { User } from './User';
-import { Message } from './Message';
+import type { User } from './User';
+import type { Message } from './Message';
 
 @Entity({ name: 'message_reactions' })
 @Unique('UQ_MESSAGE_USER_EMOJI', ['messageId', 'userId', 'emoji'])
@@ -24,10 +24,10 @@ export class MessageReaction {
   @Column({ length: 10 })
   emoji: string;
 
-  @ManyToOne(() => Message, { onDelete: 'CASCADE' })
+  @ManyToOne(() => require('./Message').Message, { onDelete: 'CASCADE' })
   message: Message;
 
-  @ManyToOne(() => User, { onDelete: 'CASCADE' })
+  @ManyToOne(() => require('./User').User, { onDelete: 'CASCADE' })
   user: User;
 
   @CreateDateColumn({ name: 'created_at' })

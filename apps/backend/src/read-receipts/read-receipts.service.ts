@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Message, ReadReceipt } from '../utils/typeorm';
-import { IReadReceiptsService } from './read-receipts.interface';
+import type { IReadReceiptsService } from './read-receipts.interface';
 
 @Injectable()
 export class ReadReceiptsService implements IReadReceiptsService {

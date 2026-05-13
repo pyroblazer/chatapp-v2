@@ -9,10 +9,10 @@ import {
 import { FileFieldsInterceptor } from '@nestjs/platform-express';
 import { Routes, Services, UserProfileFileFields } from '../../utils/constants';
 import { AuthUser } from '../../utils/decorators';
-import { User } from '../../utils/typeorm';
-import { UpdateUserProfileParams, UserProfileFiles } from '../../utils/types';
+import type { User } from '../../utils/typeorm';
+import type { UpdateUserProfileParams, UserProfileFiles } from '../../utils/types';
 import { UpdateUserProfileDto } from '../dtos/UpdateUserProfile.dto';
-import { IUserProfile } from '../interfaces/user-profile';
+import type { IUserProfile } from '../interfaces/user-profile';
 
 @Controller(Routes.USERS_PROFILES)
 export class UserProfilesController {

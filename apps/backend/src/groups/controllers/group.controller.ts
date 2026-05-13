@@ -15,12 +15,12 @@ import { FileInterceptor } from '@nestjs/platform-express';
 import { SkipThrottle } from '@nestjs/throttler';
 import { Routes, Services } from '../../utils/constants';
 import { AuthUser } from '../../utils/decorators';
-import { User } from '../../utils/typeorm';
-import { Attachment } from '../../utils/types';
+import type { User } from '../../utils/typeorm';
+import type { Attachment } from '../../utils/types';
 import { CreateGroupDto } from '../dtos/CreateGroup.dto';
 import { TransferOwnerDto } from '../dtos/TransferOwner.dto';
 import { UpdateGroupDetailsDto } from '../dtos/UpdateGroupDetails.dto';
-import { IGroupService } from '../interfaces/group';
+import type { IGroupService } from '../interfaces/group';
 
 @SkipThrottle()
 @Controller(Routes.GROUPS)

@@ -10,8 +10,8 @@ import {
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
-import { GroupMessage } from './GroupMessage';
-import { User } from './User';
+import type { GroupMessage } from './GroupMessage';
+import type { User } from './User';
 
 @Entity({ name: 'groups' })
 export class Group {
@@ -21,19 +21,19 @@ export class Group {
   @Column({ nullable: true })
   title: string;
 
-  @ManyToMany(() => User, (user) => user.groups)
+  @ManyToMany(() => require('./User').User, (user: any) => user.groups)
   @JoinTable()
   users: User[];
 
-  @OneToOne(() => User, { createForeignKeyConstraints: false })
+  @OneToOne(() => require('./User').User, { createForeignKeyConstraints: false })
   @JoinColumn()
   creator: User;
 
-  @OneToOne(() => User, { createForeignKeyConstraints: false })
+  @OneToOne(() => require('./User').User, { createForeignKeyConstraints: false })
   @JoinColumn()
   owner: User;
 
-  @OneToMany(() => GroupMessage, (message) => message.group, {
+  @OneToMany(() => require('./GroupMessage').GroupMessage, (message: any) => message.group, {
     cascade: ['insert', 'remove', 'update'],
   })
   messages: GroupMessage[];
@@ -41,7 +41,7 @@ export class Group {
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
 
-  @OneToOne(() => GroupMessage)
+  @OneToOne(() => require('./GroupMessage').GroupMessage)
   @JoinColumn({ name: 'last_message_sent' })
   lastMessageSent: GroupMessage;
 

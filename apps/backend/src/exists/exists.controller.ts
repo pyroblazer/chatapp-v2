@@ -8,12 +8,12 @@ import {
   ParseIntPipe,
 } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
-import { IConversationsService } from '../conversations/conversations';
+import type { IConversationsService } from '../conversations/conversations';
 import { ConversationNotFoundException } from '../conversations/exceptions/ConversationNotFound';
-import { IUserService } from '../users/interfaces/user';
+import type { IUserService } from '../users/interfaces/user';
 import { Routes, Services } from '../utils/constants';
 import { AuthUser } from '../utils/decorators';
-import { User } from '../utils/typeorm';
+import type { User } from '../utils/typeorm';
 
 @Controller(Routes.EXISTS)
 export class ExistsController {

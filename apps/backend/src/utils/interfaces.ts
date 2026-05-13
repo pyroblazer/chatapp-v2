@@ -1,5 +1,5 @@
-import { User } from './typeorm';
-import { Socket } from 'socket.io';
+import type { User } from './typeorm';
+import type { Socket } from 'socket.io';
 
 export interface AuthenticatedSocket extends Socket {
   user?: User;

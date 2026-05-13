@@ -1,5 +1,5 @@
-import { GroupMessage } from '../../utils/typeorm';
-import {
+import type { GroupMessage } from '../../utils/typeorm';
+import type {
   CreateGroupMessageParams,
   DeleteGroupMessageParams,
   EditGroupMessageParams,

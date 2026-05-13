@@ -1,4 +1,4 @@
-import { MessageReaction, GroupMessageReaction } from '../utils/typeorm';
+import type { MessageReaction, GroupMessageReaction } from '../utils/typeorm';
 
 export interface IReactionsService {
   addReaction(

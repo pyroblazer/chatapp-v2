@@ -6,25 +6,25 @@ import {
   OneToOne,
   PrimaryGeneratedColumn,
 } from 'typeorm';
-import { FriendRequestStatus } from '../../types';
-import { User } from './User';
+import type { User } from './User';
+import type { FriendRequestStatus } from '../../types';
 
 @Entity({ name: 'friend_requests' })
 export class FriendRequest {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @OneToOne(() => User, { createForeignKeyConstraints: false })
+  @OneToOne(() => require('./User').User, { createForeignKeyConstraints: false })
   @JoinColumn()
   sender: User;
 
-  @OneToOne(() => User, { createForeignKeyConstraints: false })
+  @OneToOne(() => require('./User').User, { createForeignKeyConstraints: false })
   @JoinColumn()
   receiver: User;
 
   @CreateDateColumn()
   createdAt: Date;
 
-  @Column()
+  @Column('varchar')
   status: FriendRequestStatus;
 }

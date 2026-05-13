@@ -1,5 +1,5 @@
-import { Message } from '../utils/typeorm';
-import {
+import type { Message } from '../utils/typeorm';
+import type {
   CreateMessageParams,
   CreateMessageResponse,
   DeleteMessageParams,

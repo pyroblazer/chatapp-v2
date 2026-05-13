@@ -5,7 +5,7 @@ import {
 } from '../styleTypes';
 
 export const FriendsPageStyle = styled.div`
-  background-color: #101010;
+  background-color: ${({ theme }) => theme.messagePanel.inputContainer.backgroundColor};
   height: 100%;
   width: 100%;
 `;
@@ -95,7 +95,7 @@ export const FriendRequestItemContainer = styled.div`
     font-size: 14px;
     font-style: italic;
     font-weight: 600;
-    color: #626262;
+    color: ${({ theme }) => theme.text.secondary};
   }
 
   & .icons {
@@ -114,14 +114,14 @@ export const FriendRequestItemIcon = styled.div<FriendRequestItemIconProps>`
   justify-content: center;
   align-items: center;
   box-sizing: border-box;
-  background-color: #171717;
+  background-color: ${({ theme }) => theme.background.primary};
   border-radius: 50%;
   padding: 10px;
-  color: #fff;
+  color: ${({ theme }) => theme.text.primary};
   cursor: pointer;
   font-size: 24px;
   &:hover {
-    background-color: #161616;
+    background-color: ${({ theme }) => theme.background.tertiary};
     color: ${({ isAccept }) => (isAccept ? '#00ff04' : '#ff3a3a')};
   }
 `;

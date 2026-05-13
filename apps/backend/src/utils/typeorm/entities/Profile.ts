@@ -1,5 +1,5 @@
 import { Column, Entity, OneToOne, PrimaryGeneratedColumn } from 'typeorm';
-import { User } from './User';
+import type { User } from './User';
 
 @Entity({ name: 'profiles' })
 export class Profile {
@@ -15,6 +15,6 @@ export class Profile {
   @Column({ nullable: true })
   banner: string;
 
-  @OneToOne(() => User)
+  @OneToOne(() => require('./User').User)
   user: User;
 }

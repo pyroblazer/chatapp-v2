@@ -11,6 +11,9 @@ apps/frontend/build/
 !.env.example
 !.env.docker
 
+# Claude Code
+CLAUDE.md
+
 # IDE
 .idea/
 .vscode/

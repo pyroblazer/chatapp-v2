@@ -12,8 +12,8 @@ import { SkipThrottle } from '@nestjs/throttler';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { Routes, Services } from '../utils/constants';
 import { AuthUser } from '../utils/decorators';
-import { User } from '../utils/typeorm';
-import { IConversationsService } from './conversations';
+import type { User } from '../utils/typeorm';
+import type { IConversationsService } from './conversations';
 import { CreateConversationDto } from './dtos/CreateConversation.dto';
 
 @SkipThrottle()

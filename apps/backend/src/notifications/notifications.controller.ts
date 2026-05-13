@@ -11,8 +11,8 @@ import { SkipThrottle } from '@nestjs/throttler';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { Routes, Services } from '../utils/constants';
 import { AuthUser } from '../utils/decorators';
-import { User } from '../utils/typeorm';
-import { INotificationsService } from './notifications.interface';
+import type { User } from '../utils/typeorm';
+import type { INotificationsService } from './notifications.interface';
 
 @Controller(Routes.NOTIFICATIONS)
 @UseGuards(JwtAuthGuard)

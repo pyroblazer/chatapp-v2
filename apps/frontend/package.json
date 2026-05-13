@@ -35,7 +35,9 @@
     "start:dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "test": "vitest"
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage"
   },
   "browserslist": {
     "production": [
@@ -53,6 +55,8 @@
     "@types/axios": "^0.14.0",
     "@types/styled-components": "^5.1.26",
     "@vitejs/plugin-react": "^4.3.4",
-    "vite": "^6.2.0"
+    "jsdom": "^29.1.1",
+    "vite": "^6.2.0",
+    "vitest": "^4.1.6"
   }
 }

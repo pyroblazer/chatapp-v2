@@ -11,8 +11,8 @@ import { SkipThrottle } from '@nestjs/throttler';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { Routes, ServerEvents, Services } from '../utils/constants';
 import { AuthUser } from '../utils/decorators';
-import { User } from '../utils/typeorm';
-import { IReadReceiptsService } from './read-receipts.interface';
+import type { User } from '../utils/typeorm';
+import type { IReadReceiptsService } from './read-receipts.interface';
 
 @Controller(Routes.READ_RECEIPTS)
 @UseGuards(JwtAuthGuard)

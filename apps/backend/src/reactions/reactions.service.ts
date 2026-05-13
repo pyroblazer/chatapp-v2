@@ -5,7 +5,7 @@ import {
   MessageReaction,
   GroupMessageReaction,
 } from '../utils/typeorm';
-import { IReactionsService } from './reactions.interface';
+import type { IReactionsService } from './reactions.interface';
 
 @Injectable()
 export class ReactionsService implements IReactionsService {

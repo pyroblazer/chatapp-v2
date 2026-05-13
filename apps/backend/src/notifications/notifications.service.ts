@@ -3,7 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { Repository } from 'typeorm';
 import { Notification } from './notification.entity';
-import { INotificationsService } from './notifications.interface';
+import type { INotificationsService } from './notifications.interface';
 
 @Injectable()
 export class NotificationsService implements INotificationsService {

@@ -10,8 +10,8 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 import { SkipThrottle } from '@nestjs/throttler';
 import { Routes, ServerEvents, Services } from '../utils/constants';
 import { AuthUser } from '../utils/decorators';
-import { User } from '../utils/typeorm';
-import { IFriendsService } from './friends';
+import type { User } from '../utils/typeorm';
+import type { IFriendsService } from './friends';
 
 @SkipThrottle()
 @Controller(Routes.FRIENDS)

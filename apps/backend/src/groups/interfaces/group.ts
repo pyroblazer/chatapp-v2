@@ -1,5 +1,5 @@
-import { Group, User } from '../../utils/typeorm';
-import {
+import type { Group, User } from '../../utils/typeorm';
+import type {
   AccessParams,
   CreateGroupParams,
   FetchGroupsParams,

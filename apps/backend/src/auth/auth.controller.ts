@@ -11,10 +11,10 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { instanceToPlain } from 'class-transformer';
-import { Request, Response } from 'express';
-import { IUserService } from '../users/interfaces/user';
+import type { Request, Response } from 'express';
+import type { IUserService } from '../users/interfaces/user';
 import { Routes, Services } from '../utils/constants';
-import { IAuthService } from './auth';
+import type { IAuthService } from './auth';
 import { CreateUserDto } from './dtos/CreateUser.dto';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { AuthUser } from '../utils/decorators';

@@ -10,19 +10,19 @@ import {
   OnGatewayDisconnect,
 } from '@nestjs/websockets';
 import { Server, Socket } from 'socket.io';
-import { IConversationsService } from '../conversations/conversations';
-import { IFriendsService } from '../friends/friends';
-import { IGroupService } from '../groups/interfaces/group';
+import type { IConversationsService } from '../conversations/conversations';
+import type { IFriendsService } from '../friends/friends';
+import type { IGroupService } from '../groups/interfaces/group';
 import { ServerEvents, Services, WebsocketEvents } from '../utils/constants';
-import { AuthenticatedSocket } from '../utils/interfaces';
-import {
+import type { AuthenticatedSocket } from '../utils/interfaces';
+import type {
   Conversation,
   Group,
   GroupMessage,
   Message,
   User,
 } from '../utils/typeorm';
-import {
+import type {
   AddGroupUserResponse,
   CallAcceptedPayload,
   CallHangUpPayload,
@@ -32,7 +32,7 @@ import {
   VoiceCallPayload,
 } from '../utils/types';
 import { CreateCallDto } from './dtos/CreateCallDto';
-import { IGatewaySessionManager } from './gateway.session';
+import type { IGatewaySessionManager } from './gateway.session';
 
 @WebSocketGateway({
   cors: {

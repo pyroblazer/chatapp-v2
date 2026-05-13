@@ -1,9 +1,9 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { IImageStorageService } from '../../image-storage/image-storage';
+import type { IImageStorageService } from '../../image-storage/image-storage';
 import { UserNotFoundException } from '../../users/exceptions/UserNotFound';
-import { IUserService } from '../../users/interfaces/user';
+import type { IUserService } from '../../users/interfaces/user';
 import { Services } from '../../utils/constants';
 import { generateUUIDV4 } from '../../utils/helpers';
 import { Group, User } from '../../utils/typeorm';
@@ -17,7 +17,7 @@ import {
 } from '../../utils/types';
 import { GroupNotFoundException } from '../exceptions/GroupNotFound';
 import { GroupOwnerTransferException } from '../exceptions/GroupOwnerTransfer';
-import { IGroupService } from '../interfaces/group';
+import type { IGroupService } from '../interfaces/group';
 
 @Injectable()
 export class GroupService implements IGroupService {

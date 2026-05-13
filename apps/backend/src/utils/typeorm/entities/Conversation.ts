@@ -8,8 +8,8 @@ import {
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
-import { Message } from './Message';
-import { User } from './User';
+import type { Message } from './Message';
+import type { User } from './User';
 
 @Entity({ name: 'conversations' })
 @Index(['creator.id', 'recipient.id'], { unique: true })
@@ -17,15 +17,15 @@ export class Conversation {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @OneToOne(() => User, { createForeignKeyConstraints: false })
+  @OneToOne(() => require('./User').User, { createForeignKeyConstraints: false })
   @JoinColumn()
   creator: User;
 
-  @OneToOne(() => User, { createForeignKeyConstraints: false })
+  @OneToOne(() => require('./User').User, { createForeignKeyConstraints: false })
   @JoinColumn()
   recipient: User;
 
-  @OneToMany(() => Message, (message) => message.conversation, {
+  @OneToMany(() => require('./Message').Message, (message: any) => message.conversation, {
     cascade: ['insert', 'remove', 'update'],
   })
   messages: Message[];
@@ -33,7 +33,7 @@ export class Conversation {
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
 
-  @OneToOne(() => Message)
+  @OneToOne(() => require('./Message').Message)
   @JoinColumn({ name: 'last_message_sent' })
   lastMessageSent: Message;
 

@@ -5,7 +5,6 @@ import {
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
-import { User } from './User';
 
 export abstract class BaseMessage {
   @PrimaryGeneratedColumn('uuid')
@@ -20,6 +19,6 @@ export abstract class BaseMessage {
   @UpdateDateColumn({ name: 'updated_at' })
   updatedAt: Date;
 
-  @ManyToOne(() => User, (user) => user.messages)
-  author: User;
+  @ManyToOne(() => require('./User').User, (user: any) => user.messages)
+  author: any;
 }

@@ -16,12 +16,12 @@ import { FileFieldsInterceptor } from '@nestjs/platform-express';
 import { SkipThrottle, Throttle } from '@nestjs/throttler';
 import { Routes, ServerEvents, Services } from '../utils/constants';
 import { AuthUser } from '../utils/decorators';
-import { Attachment } from '../utils/types';
-import { User } from '../utils/typeorm';
+import type { Attachment } from '../utils/types';
+import type { User } from '../utils/typeorm';
 import { CreateMessageDto } from './dtos/CreateMessage.dto';
 import { EditMessageDto } from './dtos/EditMessage.dto';
 import { EmptyMessageException } from './exceptions/EmptyMessage';
-import { IMessageService } from './message';
+import type { IMessageService } from './message';
 
 @Controller(Routes.MESSAGES)
 export class MessageController {

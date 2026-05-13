@@ -1,12 +1,12 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { Services } from '../utils/constants';
-import { IImageStorageService } from './image-storage';
-import {
+import type { IImageStorageService } from './image-storage';
+import type {
   UploadGroupMessageAttachmentParams,
   UploadImageParams,
   UploadMessageAttachmentParams,
 } from '../utils/types';
-import { GroupMessageAttachment, MessageAttachment } from '../utils/typeorm';
+import type { GroupMessageAttachment, MessageAttachment } from '../utils/typeorm';
 import { StorageService } from '../storage/storage.service';
 
 @Injectable()

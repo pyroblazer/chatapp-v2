@@ -5,7 +5,7 @@ import { AppModule } from './app.module';
 import { WebsocketAdapter } from './gateway/gateway.adapter';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
-import * as cookieParser from 'cookie-parser';
+import cookieParser from 'cookie-parser';
 
 const logger = new Logger('Bootstrap');
 

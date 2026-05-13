@@ -2,13 +2,13 @@ import { Inject, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { FriendAlreadyExists } from '../friends/exceptions/FriendAlreadyExists';
-import { IFriendsService } from '../friends/friends';
+import type { IFriendsService } from '../friends/friends';
 import { UserNotFoundException } from '../users/exceptions/UserNotFound';
-import { IUserService } from '../users/interfaces/user';
+import type { IUserService } from '../users/interfaces/user';
 import { Services } from '../utils/constants';
 import { FriendRequest } from '../utils/typeorm';
 import { Friend } from '../utils/typeorm/entities/Friend';
-import {
+import type {
   CancelFriendRequestParams,
   CreateFriendParams,
   FriendRequestParams,
@@ -17,7 +17,7 @@ import { FriendRequestException } from './exceptions/FriendRequest';
 import { FriendRequestAcceptedException } from './exceptions/FriendRequestAccepted';
 import { FriendRequestNotFoundException } from './exceptions/FriendRequestNotFound';
 import { FriendRequestPending } from './exceptions/FriendRequestPending';
-import { IFriendRequestService } from './friend-requests';
+import type { IFriendRequestService } from './friend-requests';
 
 @Injectable()
 export class FriendRequestService implements IFriendRequestService {

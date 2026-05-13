@@ -5,7 +5,8 @@ import { Repository } from 'typeorm';
 import { Bot } from './entities/bot.entity';
 import { BotConversation } from './entities/bot-conversation.entity';
 import { AIMessage } from './entities/ai-message.entity';
-import { AiService, ChatMessage } from './ai/ai.service';
+import type { ChatMessage } from './ai/ai.service';
+import { AiService } from './ai/ai.service';
 
 export interface CreateBotParams {
   name: string;
