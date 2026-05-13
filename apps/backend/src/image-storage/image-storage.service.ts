@@ -6,7 +6,10 @@ import type {
   UploadImageParams,
   UploadMessageAttachmentParams,
 } from '../utils/types';
-import type { GroupMessageAttachment, MessageAttachment } from '../utils/typeorm';
+import type {
+  GroupMessageAttachment,
+  MessageAttachment,
+} from '../utils/typeorm';
 import { StorageService } from '../storage/storage.service';
 
 @Injectable()
@@ -21,12 +24,9 @@ export class ImageStorageService implements IImageStorageService {
   }
 
   async upload(params: UploadImageParams) {
-    await this.storageService.uploadFile(
-      this.bucket,
-      params.key,
-      params.file,
-      { 'Content-Type': params.file.mimetype },
-    );
+    await this.storageService.uploadFile(this.bucket, params.key, params.file, {
+      'Content-Type': params.file.mimetype,
+    });
     // Return a presigned URL instead of public-read ACL
     return this.storageService.getPresignedUrl(this.bucket, params.key);
   }

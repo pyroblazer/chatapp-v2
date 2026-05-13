@@ -46,7 +46,10 @@ if (process.env.ENVIRONMENT === 'PRODUCTION') envFilePath = '.env.production';
     TypeOrmModule.forRoot({
       type: 'postgres',
       host: process.env.DATABASE_HOST || process.env.MYSQL_DB_HOST,
-      port: parseInt(process.env.DATABASE_PORT || process.env.MYSQL_DB_PORT || '5432', 10),
+      port: parseInt(
+        process.env.DATABASE_PORT || process.env.MYSQL_DB_PORT || '5432',
+        10,
+      ),
       username: process.env.DATABASE_USERNAME || process.env.MYSQL_DB_USERNAME,
       password: process.env.DATABASE_PASSWORD || process.env.MYSQL_DB_PASSWORD,
       database: process.env.DATABASE_NAME || process.env.MYSQL_DB_NAME,

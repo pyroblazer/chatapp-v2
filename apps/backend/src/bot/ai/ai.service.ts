@@ -8,7 +8,8 @@ export interface ChatMessage {
 @Injectable()
 export class AiService {
   private readonly logger = new Logger(AiService.name);
-  private readonly ollamaHost = process.env.OLLAMA_HOST || 'http://localhost:11434';
+  private readonly ollamaHost =
+    process.env.OLLAMA_HOST || 'http://localhost:11434';
 
   async generateResponse(
     model: string,
@@ -26,7 +27,9 @@ export class AiService {
     });
 
     if (!response.ok) {
-      throw new Error(`Ollama API error: ${response.status} ${response.statusText}`);
+      throw new Error(
+        `Ollama API error: ${response.status} ${response.statusText}`,
+      );
     }
 
     const data = await response.json();
@@ -78,7 +81,7 @@ export class AiService {
     return Math.ceil(text.length / 4);
   }
 
-  buildContext(messages: ChatMessage[], maxTokens: number = 3072): ChatMessage[] {
+  buildContext(messages: ChatMessage[], maxTokens = 3072): ChatMessage[] {
     let totalTokens = 0;
     const result: ChatMessage[] = [];
 

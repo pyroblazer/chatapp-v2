@@ -100,12 +100,7 @@ export class ReactionsController {
     @Param('messageId') messageId: string,
     @Query('emoji') emoji: string,
   ) {
-    await this.reactionsService.removeReaction(
-      messageId,
-      user.id,
-      emoji,
-      true,
-    );
+    await this.reactionsService.removeReaction(messageId, user.id, emoji, true);
     this.eventEmitter.emit(ServerEvents.REACTION_REMOVED, {
       messageId,
       userId: user.id,

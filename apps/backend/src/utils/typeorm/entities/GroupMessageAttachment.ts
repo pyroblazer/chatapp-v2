@@ -6,8 +6,12 @@ export class GroupMessageAttachment {
   @PrimaryGeneratedColumn('uuid')
   key: string;
 
-  @ManyToOne(() => require('./GroupMessage').GroupMessage, (message: any) => message.attachments, {
-    onDelete: 'CASCADE',
-  })
+  @ManyToOne(
+    () => require('./GroupMessage').GroupMessage,
+    (message: any) => message.attachments,
+    {
+      onDelete: 'CASCADE',
+    },
+  )
   message: GroupMessage;
 }

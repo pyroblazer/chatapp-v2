@@ -28,7 +28,10 @@ export async function seedSuperuser() {
   const profile = profileRepo.create({ about: 'System Administrator' });
   await profileRepo.save(profile);
 
-  const presence = presenceRepo.create({ statusMessage: 'Available', showOffline: false });
+  const presence = presenceRepo.create({
+    statusMessage: 'Available',
+    showOffline: false,
+  });
   await presenceRepo.save(presence);
 
   const user = userRepo.create({

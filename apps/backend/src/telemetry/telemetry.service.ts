@@ -22,7 +22,9 @@ interface HistogramEntry {
   labels: MetricLabels;
 }
 
-const DEFAULT_HISTOGRAM_BUCKETS = [0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2.5, 5, 10];
+const DEFAULT_HISTOGRAM_BUCKETS = [
+  0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2.5, 5, 10,
+];
 
 function serializeLabels(labels: MetricLabels): string {
   const keys = Object.keys(labels).sort();
@@ -59,7 +61,11 @@ export class TelemetryService {
     this.gauges.set(name, entries);
   }
 
-  observeHistogram(name: string, value: number, labels: MetricLabels = {}): void {
+  observeHistogram(
+    name: string,
+    value: number,
+    labels: MetricLabels = {},
+  ): void {
     const entries = this.histograms.get(name) || [];
     const existing = this.findHistogramEntry(entries, labels);
     if (existing) {
@@ -115,10 +121,16 @@ export class TelemetryService {
         for (let i = 0; i < entry.buckets.length; i++) {
           cumulative += entry.counts[i];
           lines.push(
-            `${name}_bucket{le="${entry.buckets[i]}"${labelStr ? ',' + labelStr.slice(1, -1) : ''}} ${cumulative}`,
+            `${name}_bucket{le="${entry.buckets[i]}"${
+              labelStr ? ',' + labelStr.slice(1, -1) : ''
+            }} ${cumulative}`,
           );
         }
-        lines.push(`${name}_bucket{le="+Inf"${labelStr ? ',' + labelStr.slice(1, -1) : ''}} ${entry.count}`);
+        lines.push(
+          `${name}_bucket{le="+Inf"${
+            labelStr ? ',' + labelStr.slice(1, -1) : ''
+          }} ${entry.count}`,
+        );
         lines.push(`${name}_sum${labelStr} ${entry.sum}`);
         lines.push(`${name}_count${labelStr} ${entry.count}`);
       }
@@ -134,7 +146,10 @@ export class TelemetryService {
     return entries.find((e) => this.labelsMatch(e.labels, labels));
   }
 
-  private findHistogramEntry(entries: HistogramEntry[], labels: MetricLabels): HistogramEntry | undefined {
+  private findHistogramEntry(
+    entries: HistogramEntry[],
+    labels: MetricLabels,
+  ): HistogramEntry | undefined {
     return entries.find((e) => this.labelsMatch(e.labels, labels));
   }
 

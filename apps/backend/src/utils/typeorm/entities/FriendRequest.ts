@@ -14,11 +14,15 @@ export class FriendRequest {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @OneToOne(() => require('./User').User, { createForeignKeyConstraints: false })
+  @OneToOne(() => require('./User').User, {
+    createForeignKeyConstraints: false,
+  })
   @JoinColumn()
   sender: User;
 
-  @OneToOne(() => require('./User').User, { createForeignKeyConstraints: false })
+  @OneToOne(() => require('./User').User, {
+    createForeignKeyConstraints: false,
+  })
   @JoinColumn()
   receiver: User;
 

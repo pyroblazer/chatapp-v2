@@ -50,6 +50,6 @@ export class ConversationsController {
 
   @Get(':id')
   async getConversationById(@Param('id') id: number) {
-    return this.conversationsService.findById(id);
+    return this.conversationsService.findById(id as any);
   }
 }

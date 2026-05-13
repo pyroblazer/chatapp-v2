@@ -1,4 +1,7 @@
-import type { GroupMessageAttachment, MessageAttachment } from '../utils/typeorm';
+import type {
+  GroupMessageAttachment,
+  MessageAttachment,
+} from '../utils/typeorm';
 import type {
   UploadGroupMessageAttachmentParams,
   UploadImageParams,

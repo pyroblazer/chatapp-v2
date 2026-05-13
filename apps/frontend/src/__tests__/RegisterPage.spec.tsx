@@ -6,16 +6,22 @@ import {
 } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { BrowserRouter as Router } from 'react-router-dom';
+import { ThemeProvider } from 'styled-components';
 import '@testing-library/jest-dom';
 import { RegisterPage } from '../pages/RegisterPage';
+import { DarkTheme } from '../utils/themes';
+import { vi } from 'vitest';
+
+const renderWithTheme = (ui: React.ReactElement) =>
+  render(<ThemeProvider theme={DarkTheme}>{ui}</ThemeProvider>);
 
 describe('RegisterPage', () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   it('should render form field', () => {
-    const view = render(
+    const view = renderWithTheme(
       <Router>
         <RegisterPage />
       </Router>
@@ -24,7 +30,7 @@ describe('RegisterPage', () => {
   });
 
   it('should display all errors when submitting with all empty fields', async () => {
-    render(
+    renderWithTheme(
       <Router>
         <RegisterPage />
       </Router>
@@ -46,7 +52,7 @@ describe('RegisterPage', () => {
   });
 
   it('should submit empty username field then remove error after typing and leaving focus', async () => {
-    render(
+    renderWithTheme(
       <Router>
         <RegisterPage />
       </Router>

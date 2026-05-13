@@ -24,7 +24,9 @@ export class GroupMessageReaction {
   @Column({ length: 10 })
   emoji: string;
 
-  @ManyToOne(() => require('./GroupMessage').GroupMessage, { onDelete: 'CASCADE' })
+  @ManyToOne(() => require('./GroupMessage').GroupMessage, {
+    onDelete: 'CASCADE',
+  })
   message: GroupMessage;
 
   @ManyToOne(() => require('./User').User, { onDelete: 'CASCADE' })

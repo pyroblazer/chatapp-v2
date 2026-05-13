@@ -1,4 +1,10 @@
-import { HttpException, HttpStatus, Inject, Injectable, Logger } from '@nestjs/common';
+import {
+  HttpException,
+  HttpStatus,
+  Inject,
+  Injectable,
+  Logger,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { Repository } from 'typeorm';
@@ -45,7 +51,11 @@ export class BotService {
     return bot;
   }
 
-  async updateBot(id: string, userId: string, params: Partial<CreateBotParams>): Promise<Bot> {
+  async updateBot(
+    id: string,
+    userId: string,
+    params: Partial<CreateBotParams>,
+  ): Promise<Bot> {
     const bot = await this.getBotById(id);
     if (bot.createdBy !== userId) {
       throw new HttpException('Not authorized', HttpStatus.FORBIDDEN);
@@ -62,13 +72,23 @@ export class BotService {
     await this.botRepo.remove(bot);
   }
 
-  async startConversation(userId: string, botId: string): Promise<BotConversation> {
+  async startConversation(
+    userId: string,
+    botId: string,
+  ): Promise<BotConversation> {
     const bot = await this.getBotById(botId);
-    const conversation = this.conversationRepo.create({ userId, botId: bot.id });
+    const conversation = this.conversationRepo.create({
+      userId,
+      botId: bot.id,
+    });
     return this.conversationRepo.save(conversation);
   }
 
-  async sendMessage(conversationId: string, userId: string, content: string): Promise<AIMessage> {
+  async sendMessage(
+    conversationId: string,
+    userId: string,
+    content: string,
+  ): Promise<AIMessage> {
     const conversation = await this.conversationRepo.findOne({
       where: { id: conversationId, userId },
     });
@@ -92,7 +112,10 @@ export class BotService {
     return userMessage;
   }
 
-  private async generateAiResponse(conversationId: string, botId: string): Promise<void> {
+  private async generateAiResponse(
+    conversationId: string,
+    botId: string,
+  ): Promise<void> {
     const bot = await this.getBotById(botId);
     const messages = await this.messageRepo.find({
       where: { conversationId },
@@ -131,7 +154,10 @@ export class BotService {
     });
   }
 
-  async getConversationMessages(conversationId: string, userId: string): Promise<AIMessage[]> {
+  async getConversationMessages(
+    conversationId: string,
+    userId: string,
+  ): Promise<AIMessage[]> {
     const conversation = await this.conversationRepo.findOne({
       where: { id: conversationId, userId },
     });

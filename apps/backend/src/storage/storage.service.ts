@@ -33,8 +33,14 @@ export class StorageService {
   constructor() {
     const endPoint = process.env.MINIO_ENDPOINT || 'localhost';
     const port = parseInt(process.env.MINIO_PORT || '9000', 10);
-    const accessKey = process.env.MINIO_ACCESS_KEY || process.env.MINIO_ROOT_USER || 'minioadmin';
-    const secretKey = process.env.MINIO_SECRET_KEY || process.env.MINIO_ROOT_PASSWORD || 'minioadmin';
+    const accessKey =
+      process.env.MINIO_ACCESS_KEY ||
+      process.env.MINIO_ROOT_USER ||
+      'minioadmin';
+    const secretKey =
+      process.env.MINIO_SECRET_KEY ||
+      process.env.MINIO_ROOT_PASSWORD ||
+      'minioadmin';
     const useSSL = process.env.MINIO_USE_SSL === 'true';
 
     this.minioClient = new Minio.Client({
@@ -54,7 +60,10 @@ export class StorageService {
   /**
    * Validate file before upload.
    */
-  private validateFile(file: Buffer | Express.Multer.File, mimeType?: string): void {
+  private validateFile(
+    file: Buffer | Express.Multer.File,
+    mimeType?: string,
+  ): void {
     const size = Buffer.isBuffer(file) ? file.length : file.size;
     const type = mimeType || (file as Express.Multer.File).mimetype;
 
@@ -79,7 +88,8 @@ export class StorageService {
     metadata?: FileMetadata,
   ): Promise<void> {
     const buffer = Buffer.isBuffer(file) ? file : file.buffer;
-    const mimeType = metadata?.['Content-Type'] || (file as Express.Multer.File).mimetype;
+    const mimeType =
+      metadata?.['Content-Type'] || (file as Express.Multer.File).mimetype;
     const size = buffer.length;
 
     this.validateFile(file, mimeType);
@@ -137,7 +147,7 @@ export class StorageService {
   async getPresignedUrl(
     bucket: string,
     key: string,
-    expirySeconds: number = 3600,
+    expirySeconds = 3600,
   ): Promise<string> {
     const url = await this.minioClient.presignedUrl(
       'GET',
@@ -172,7 +182,9 @@ export class StorageService {
         dataStream.on('data', (chunk: Buffer) => chunks.push(chunk));
         dataStream.on('end', () => resolve(Buffer.concat(chunks)));
         dataStream.on('error', (err: Error) => {
-          this.logger.error(`Error downloading file ${bucket}/${key}: ${err.message}`);
+          this.logger.error(
+            `Error downloading file ${bucket}/${key}: ${err.message}`,
+          );
           reject(err);
         });
       });

@@ -53,10 +53,7 @@ export class NotificationsService implements INotificationsService {
   }
 
   async markAllAsRead(userId: string): Promise<void> {
-    await this.notificationRepo.update(
-      { userId, read: false },
-      { read: true },
-    );
+    await this.notificationRepo.update({ userId, read: false }, { read: true });
   }
 
   async getUnreadCount(userId: string): Promise<number> {

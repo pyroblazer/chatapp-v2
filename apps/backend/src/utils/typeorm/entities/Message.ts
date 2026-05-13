@@ -7,10 +7,16 @@ import type { ReadReceipt } from './ReadReceipt';
 
 @Entity({ name: 'messages' })
 export class Message extends BaseMessage {
-  @ManyToOne(() => require('./Conversation').Conversation, (conversation: any) => conversation.messages)
+  @ManyToOne(
+    () => require('./Conversation').Conversation,
+    (conversation: any) => conversation.messages,
+  )
   conversation: Conversation;
 
-  @OneToMany(() => require('./MessageAttachment').MessageAttachment, (attachment: any) => attachment.message)
+  @OneToMany(
+    () => require('./MessageAttachment').MessageAttachment,
+    (attachment: any) => attachment.message,
+  )
   attachments: MessageAttachment[];
 
   @Column({ name: 'parent_message_id', nullable: true })
@@ -25,9 +31,15 @@ export class Message extends BaseMessage {
   @Column({ name: 'thread_reply_count', default: 0 })
   threadReplyCount: number;
 
-  @OneToMany(() => require('./MessageReaction').MessageReaction, (reaction: any) => reaction.message)
+  @OneToMany(
+    () => require('./MessageReaction').MessageReaction,
+    (reaction: any) => reaction.message,
+  )
   reactions: MessageReaction[];
 
-  @OneToMany(() => require('./ReadReceipt').ReadReceipt, (receipt: any) => receipt.message)
+  @OneToMany(
+    () => require('./ReadReceipt').ReadReceipt,
+    (receipt: any) => receipt.message,
+  )
   readReceipts: ReadReceipt[];
 }

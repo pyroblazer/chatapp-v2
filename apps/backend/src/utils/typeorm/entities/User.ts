@@ -41,17 +41,24 @@ export class User {
   @Column({ default: true })
   active: boolean;
 
-  @OneToMany(() => require('./Message').Message, (message: any) => message.author)
+  @OneToMany(
+    () => require('./Message').Message,
+    (message: any) => message.author,
+  )
   messages: Message[];
 
   @ManyToMany(() => require('./Group').Group, (group: any) => group.users)
   groups: Group[];
 
-  @OneToOne(() => require('./Profile').Profile, { cascade: ['insert', 'update'] })
+  @OneToOne(() => require('./Profile').Profile, {
+    cascade: ['insert', 'update'],
+  })
   @JoinColumn()
   profile: Profile;
 
-  @OneToOne(() => require('./UserPresence').UserPresence, { cascade: ['insert', 'update'] })
+  @OneToOne(() => require('./UserPresence').UserPresence, {
+    cascade: ['insert', 'update'],
+  })
   @JoinColumn()
   presence: UserPresence;
 

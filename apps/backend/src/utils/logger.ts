@@ -17,7 +17,10 @@ export class AppLogger extends Logger {
   log(message: unknown, metadata?: unknown, context?: string): void;
   log(message: unknown, metadataOrContext?: unknown, context?: string): void {
     if (this.isProduction()) {
-      const { meta, ctx } = this.resolveMetadataAndContext(metadataOrContext, context);
+      const { meta, ctx } = this.resolveMetadataAndContext(
+        metadataOrContext,
+        context,
+      );
       this.writeJson('info', ctx, String(message), meta);
     } else {
       super.log(message, metadataOrContext as string);
@@ -28,7 +31,10 @@ export class AppLogger extends Logger {
   error(message: unknown, metadata?: unknown, context?: string): void;
   error(message: unknown, metadataOrTrace?: unknown, context?: string): void {
     if (this.isProduction()) {
-      const { meta, ctx } = this.resolveMetadataAndContext(metadataOrTrace, context);
+      const { meta, ctx } = this.resolveMetadataAndContext(
+        metadataOrTrace,
+        context,
+      );
       this.writeJson('error', ctx, String(message), meta);
     } else {
       super.error(message, metadataOrTrace as string, context);
@@ -39,7 +45,10 @@ export class AppLogger extends Logger {
   warn(message: unknown, metadata?: unknown, context?: string): void;
   warn(message: unknown, metadataOrContext?: unknown, context?: string): void {
     if (this.isProduction()) {
-      const { meta, ctx } = this.resolveMetadataAndContext(metadataOrContext, context);
+      const { meta, ctx } = this.resolveMetadataAndContext(
+        metadataOrContext,
+        context,
+      );
       this.writeJson('warn', ctx, String(message), meta);
     } else {
       super.warn(message, metadataOrContext as string);
@@ -50,7 +59,10 @@ export class AppLogger extends Logger {
   debug(message: unknown, metadata?: unknown, context?: string): void;
   debug(message: unknown, metadataOrContext?: unknown, context?: string): void {
     if (this.isProduction()) {
-      const { meta, ctx } = this.resolveMetadataAndContext(metadataOrContext, context);
+      const { meta, ctx } = this.resolveMetadataAndContext(
+        metadataOrContext,
+        context,
+      );
       this.writeJson('debug', ctx, String(message), meta);
     } else {
       super.debug(message, metadataOrContext as string);
@@ -59,16 +71,28 @@ export class AppLogger extends Logger {
 
   verbose(message: unknown, context?: string): void;
   verbose(message: unknown, metadata?: unknown, context?: string): void;
-  verbose(message: unknown, metadataOrContext?: unknown, context?: string): void {
+  verbose(
+    message: unknown,
+    metadataOrContext?: unknown,
+    context?: string,
+  ): void {
     if (this.isProduction()) {
-      const { meta, ctx } = this.resolveMetadataAndContext(metadataOrContext, context);
+      const { meta, ctx } = this.resolveMetadataAndContext(
+        metadataOrContext,
+        context,
+      );
       this.writeJson('verbose', ctx, String(message), meta);
     } else {
       super.verbose(message, metadataOrContext as string);
     }
   }
 
-  private writeJson(level: string, context: string, message: string, metadata?: unknown): void {
+  private writeJson(
+    level: string,
+    context: string,
+    message: string,
+    metadata?: unknown,
+  ): void {
     const entry: JsonLogEntry = {
       timestamp: new Date().toISOString(),
       level,
@@ -88,6 +112,9 @@ export class AppLogger extends Logger {
     if (typeof metadataOrContext === 'string') {
       return { meta: undefined, ctx: context || metadataOrContext };
     }
-    return { meta: metadataOrContext, ctx: context || this.context || 'Application' };
+    return {
+      meta: metadataOrContext,
+      ctx: context || this.context || 'Application',
+    };
   }
 }

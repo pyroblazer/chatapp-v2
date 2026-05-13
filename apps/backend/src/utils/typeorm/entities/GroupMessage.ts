@@ -9,7 +9,10 @@ export class GroupMessage extends BaseMessage {
   @ManyToOne(() => require('./Group').Group, (group: any) => group.messages)
   group: Group;
 
-  @OneToMany(() => require('./GroupMessageAttachment').GroupMessageAttachment, (attachment: any) => attachment.message)
+  @OneToMany(
+    () => require('./GroupMessageAttachment').GroupMessageAttachment,
+    (attachment: any) => attachment.message,
+  )
   attachments: GroupMessageAttachment[];
 
   @Column({ name: 'parent_message_id', nullable: true })
@@ -24,6 +27,9 @@ export class GroupMessage extends BaseMessage {
   @Column({ name: 'thread_reply_count', default: 0 })
   threadReplyCount: number;
 
-  @OneToMany(() => require('./GroupMessageReaction').GroupMessageReaction, (reaction: any) => reaction.message)
+  @OneToMany(
+    () => require('./GroupMessageReaction').GroupMessageReaction,
+    (reaction: any) => reaction.message,
+  )
   reactions: GroupMessageReaction[];
 }

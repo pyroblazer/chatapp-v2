@@ -1,10 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import {
-  MessageReaction,
-  GroupMessageReaction,
-} from '../utils/typeorm';
+import { MessageReaction, GroupMessageReaction } from '../utils/typeorm';
 import type { IReactionsService } from './reactions.interface';
 
 @Injectable()

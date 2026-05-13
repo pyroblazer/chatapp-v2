@@ -25,7 +25,9 @@ export class GatewaySessionManager implements IGatewaySessionManager {
     if (this.redisAvailable) {
       this.logger.log('Redis-based presence tracking enabled');
     } else {
-      this.logger.log('Using in-memory session management (Redis not available)');
+      this.logger.log(
+        'Using in-memory session management (Redis not available)',
+      );
     }
   }
 
@@ -36,18 +38,22 @@ export class GatewaySessionManager implements IGatewaySessionManager {
   setUserSocket(userId: number, socket: AuthenticatedSocket): void {
     this.sessions.set(userId, socket);
     if (this.redisAvailable && this.redisService && socket.user) {
-      this.setUserOnline(String(socket.user.id), socket.id).catch((err: unknown) => {
-        this.logger.warn('Failed to set user online in Redis', err);
-      });
+      this.setUserOnline(String(socket.user.id), socket.id).catch(
+        (err: unknown) => {
+          this.logger.warn('Failed to set user online in Redis', err);
+        },
+      );
     }
   }
 
   removeUserSocket(userId: number): void {
     const socket = this.sessions.get(userId);
     if (this.redisAvailable && this.redisService && socket?.user) {
-      this.setUserOffline(String(socket.user.id), socket.id).catch((err: unknown) => {
-        this.logger.warn('Failed to set user offline in Redis', err);
-      });
+      this.setUserOffline(String(socket.user.id), socket.id).catch(
+        (err: unknown) => {
+          this.logger.warn('Failed to set user offline in Redis', err);
+        },
+      );
     }
     this.sessions.delete(userId);
   }
@@ -69,7 +75,10 @@ export class GatewaySessionManager implements IGatewaySessionManager {
     if (!this.redisAvailable || !this.redisService) return;
     try {
       // Only remove if the stored socketId matches the disconnecting socket
-      const storedSocketId = await this.redisService.hGet(this.PRESENCE_KEY, userId);
+      const storedSocketId = await this.redisService.hGet(
+        this.PRESENCE_KEY,
+        userId,
+      );
       if (storedSocketId === socketId) {
         await this.redisService.hDel(this.PRESENCE_KEY, userId);
       }

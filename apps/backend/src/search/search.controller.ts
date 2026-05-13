@@ -19,9 +19,9 @@ export class SearchController {
   async search(
     @AuthUser() user: User,
     @Query('q') query: string,
-    @Query('type') type: string = 'messages',
-    @Query('limit') limit: string = '20',
-    @Query('offset') offset: string = '0',
+    @Query('type') type = 'messages',
+    @Query('limit') limit = '20',
+    @Query('offset') offset = '0',
   ) {
     const parsedLimit = parseInt(limit, 10) || 20;
     const parsedOffset = parseInt(offset, 10) || 0;

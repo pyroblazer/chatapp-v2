@@ -35,8 +35,14 @@ export class AuthController {
   }
 
   @Post('login')
-  async login(@Body() body: { username: string; password: string }, @Res() res: Response) {
-    const user = await this.authService.validateUser(body.username, body.password);
+  async login(
+    @Body() body: { username: string; password: string },
+    @Res() res: Response,
+  ) {
+    const user = await this.authService.validateUser(
+      body.username,
+      body.password,
+    );
     if (!user) {
       throw new HttpException('Invalid Credentials', HttpStatus.UNAUTHORIZED);
     }
@@ -48,7 +54,10 @@ export class AuthController {
       maxAge: 7 * 24 * 60 * 60 * 1000,
       path: '/api/auth',
     });
-    return res.json({ user: instanceToPlain(user), accessToken: tokens.accessToken });
+    return res.json({
+      user: instanceToPlain(user),
+      accessToken: tokens.accessToken,
+    });
   }
 
   @Post('refresh')
@@ -86,7 +95,10 @@ export class AuthController {
   async logout(@Req() req: Request, @Res() res: Response) {
     const refreshToken = req.cookies?.refresh_token;
     if (refreshToken) {
-      const tokenHash = crypto.createHash('sha256').update(refreshToken).digest('hex');
+      const tokenHash = crypto
+        .createHash('sha256')
+        .update(refreshToken)
+        .digest('hex');
       await this.authService.revokeRefreshToken(tokenHash);
     }
     res.clearCookie('refresh_token', { path: '/api/auth' });

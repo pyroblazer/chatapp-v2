@@ -33,26 +33,31 @@ export class WebsocketAdapter extends IoAdapter {
       );
     }
 
-    server.use(async (socket: AuthenticatedSocket, next: (err?: Error) => void) => {
-      const token =
-        socket.handshake.auth?.token ||
-        socket.handshake.headers?.authorization?.replace('Bearer ', '');
+    server.use(
+      async (socket: AuthenticatedSocket, next: (err?: Error) => void) => {
+        const token =
+          socket.handshake.auth?.token ||
+          socket.handshake.headers?.authorization?.replace('Bearer ', '');
 
-      if (!token) {
-        return next(new Error('Not Authenticated. No token provided'));
-      }
+        if (!token) {
+          return next(new Error('Not Authenticated. No token provided'));
+        }
 
-      try {
-        const payload = jwt.verify(token, process.env.JWT_SECRET || 'dev-secret-change-me') as {
-          sub: string;
-          username: string;
-        };
-        socket.user = { id: payload.sub, username: payload.username } as any;
-        next();
-      } catch {
-        return next(new Error('Invalid or expired token'));
-      }
-    });
+        try {
+          const payload = jwt.verify(
+            token,
+            process.env.JWT_SECRET || 'dev-secret-change-me',
+          ) as {
+            sub: string;
+            username: string;
+          };
+          socket.user = { id: payload.sub, username: payload.username } as any;
+          next();
+        } catch {
+          return next(new Error('Invalid or expired token'));
+        }
+      },
+    );
     return server;
   }
 }

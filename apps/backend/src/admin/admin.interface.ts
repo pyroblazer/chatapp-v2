@@ -5,7 +5,10 @@ export interface IAdminService {
   listUsers(page?: number, limit?: number): Promise<[User[], number]>;
   banUser(userId: string): Promise<void>;
   unbanUser(userId: string): Promise<void>;
-  changeUserRole(userId: string, role: 'USER' | 'MODERATOR' | 'ADMIN'): Promise<void>;
+  changeUserRole(
+    userId: string,
+    role: 'USER' | 'MODERATOR' | 'ADMIN',
+  ): Promise<void>;
   deleteMessageAsAdmin(messageId: string, isGroup: boolean): Promise<void>;
   createReport(
     reporterId: string,

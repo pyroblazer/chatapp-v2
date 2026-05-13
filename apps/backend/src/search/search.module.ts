@@ -13,7 +13,13 @@ import { SearchService } from './search.service';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Message, GroupMessage, User, Group, Conversation]),
+    TypeOrmModule.forFeature([
+      Message,
+      GroupMessage,
+      User,
+      Group,
+      Conversation,
+    ]),
   ],
   controllers: [SearchController],
   providers: [

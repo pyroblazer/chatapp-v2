@@ -87,7 +87,8 @@ export class MessagingGateway
   }
 
   @SubscribeMessage('createMessage')
-  handleCreateMessage(@MessageBody() data: any) {
+  handleCreateMessage(@MessageBody() _data: any) {
+    // handled via event emitter
   }
 
   @SubscribeMessage('onConversationJoin')
@@ -327,10 +328,7 @@ export class MessagingGateway
   }
 
   @OnEvent(ServerEvents.MESSAGE_READ)
-  async handleMessageRead(payload: {
-    conversationId: string;
-    userId: string;
-  }) {
+  async handleMessageRead(payload: { conversationId: string; userId: string }) {
     const conversation = await this.conversationService.findById(
       payload.conversationId,
     );

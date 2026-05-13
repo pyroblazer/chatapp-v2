@@ -48,7 +48,13 @@ export class GroupMessageController {
     @Body() { content, parentMessageId }: CreateMessageDto,
   ) {
     if (!attachments && !content) throw new EmptyMessageException();
-    const params = { groupId: id, author: user, content, attachments, parentMessageId };
+    const params = {
+      groupId: id,
+      author: user,
+      content,
+      attachments,
+      parentMessageId,
+    };
     const response = await this.groupMessageService.createGroupMessage(params);
     this.eventEmitter.emit('group.message.create', response);
     if (parentMessageId) {
@@ -112,7 +118,9 @@ export class GroupMessageController {
     @Param('id', ParseIntPipe) groupId: number,
     @Param('messageId') messageId: string,
   ) {
-    const replies = await this.groupMessageService.getGroupThreadReplies(messageId);
+    const replies = await this.groupMessageService.getGroupThreadReplies(
+      messageId,
+    );
     return { messageId, replies };
   }
 }

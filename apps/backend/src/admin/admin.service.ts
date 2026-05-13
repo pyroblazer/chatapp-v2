@@ -42,7 +42,10 @@ export class AdminService implements IAdminService {
     await this.userRepo.update({ id: userId }, { role });
   }
 
-  async deleteMessageAsAdmin(messageId: string, isGroup: boolean): Promise<void> {
+  async deleteMessageAsAdmin(
+    messageId: string,
+    isGroup: boolean,
+  ): Promise<void> {
     if (isGroup) {
       await this.groupMessageRepo.delete({ id: messageId });
     } else {

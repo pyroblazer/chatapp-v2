@@ -33,7 +33,9 @@ export class AuditProcessor implements OnModuleInit {
 
   async process(event: AuditEvent): Promise<void> {
     this.logger.log(
-      `Audit event: ${event.action} by user ${event.userId || 'system'} on ${event.resource || 'N/A'}`,
+      `Audit event: ${event.action} by user ${event.userId || 'system'} on ${
+        event.resource || 'N/A'
+      }`,
     );
 
     // For now, log the audit event. In Phase 8, this will persist to a

@@ -6,8 +6,12 @@ export class MessageAttachment {
   @PrimaryGeneratedColumn('uuid')
   key: string;
 
-  @ManyToOne(() => require('./Message').Message, (message: any) => message.attachments, {
-    onDelete: 'CASCADE',
-  })
+  @ManyToOne(
+    () => require('./Message').Message,
+    (message: any) => message.attachments,
+    {
+      onDelete: 'CASCADE',
+    },
+  )
   message: Message;
 }

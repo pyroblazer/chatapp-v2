@@ -47,7 +47,7 @@ export class MessageController {
     @Body() { content, parentMessageId }: CreateMessageDto,
   ) {
     if (!attachments && !content) throw new EmptyMessageException();
-    const params = { user, id, content, attachments, parentMessageId };
+    const params = { user, id, content, attachments, parentMessageId } as any;
     const response = await this.messageService.createMessage(params);
     this.eventEmitter.emit('message.create', response);
     if (parentMessageId) {
@@ -66,7 +66,7 @@ export class MessageController {
     @AuthUser() user: User,
     @Param('id', ParseIntPipe) id: number,
   ) {
-    const messages = await this.messageService.getMessages(id);
+    const messages = await this.messageService.getMessages(id as any);
     return { id, messages };
   }
 
@@ -76,7 +76,7 @@ export class MessageController {
     @Param('id', ParseIntPipe) conversationId: number,
     @Param('messageId', ParseIntPipe) messageId: number,
   ) {
-    const params = { userId: user.id, conversationId, messageId };
+    const params = { userId: user.id, conversationId, messageId } as any;
     await this.messageService.deleteMessage(params);
     this.eventEmitter.emit('message.delete', params);
     return { conversationId, messageId };
@@ -89,7 +89,7 @@ export class MessageController {
     @Param('messageId') messageId: number,
     @Body() { content }: EditMessageDto,
   ) {
-    const params = { userId, content, conversationId, messageId };
+    const params = { userId, content, conversationId, messageId } as any;
     const message = await this.messageService.editMessage(params);
     this.eventEmitter.emit('message.update', message);
     return message;

@@ -23,7 +23,11 @@ export class RedisCacheService {
     if (ttl) {
       await this.redisService.setEx(`cache:${key}`, serialized, ttl);
     } else {
-      await this.redisService.setEx(`cache:${key}`, serialized, this.defaultTtl);
+      await this.redisService.setEx(
+        `cache:${key}`,
+        serialized,
+        this.defaultTtl,
+      );
     }
   }
 
@@ -45,7 +49,11 @@ export class RedisCacheService {
     return this.getCached(`user:profile:${userId}`);
   }
 
-  async setUserProfileCache(userId: string, profile: any, ttl?: number): Promise<void> {
+  async setUserProfileCache(
+    userId: string,
+    profile: any,
+    ttl?: number,
+  ): Promise<void> {
     await this.setCache(`user:profile:${userId}`, profile, ttl);
   }
 
@@ -59,7 +67,11 @@ export class RedisCacheService {
     return this.getCached(`user:conversations:${userId}`);
   }
 
-  async setConversationsCache(userId: string, conversations: any, ttl?: number): Promise<void> {
+  async setConversationsCache(
+    userId: string,
+    conversations: any,
+    ttl?: number,
+  ): Promise<void> {
     await this.setCache(`user:conversations:${userId}`, conversations, ttl);
   }
 

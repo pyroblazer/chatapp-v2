@@ -71,12 +71,14 @@ export class AdminController {
   }
 
   @Delete('messages/:id')
-  async deleteMessage(
-    @AuthUser() user: User,
-    @Param('id') messageId: string,
-  ) {
+  async deleteMessage(@AuthUser() user: User, @Param('id') messageId: string) {
     await this.adminService.deleteMessageAsAdmin(messageId, false);
-    this.auditService.logAction(user.id, 'DELETE_MESSAGE', 'Message', messageId);
+    this.auditService.logAction(
+      user.id,
+      'DELETE_MESSAGE',
+      'Message',
+      messageId,
+    );
     return { success: true };
   }
 

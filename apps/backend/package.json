@@ -39,6 +39,7 @@
     "@nestjs/throttler": "^3.0.0",
     "@nestjs/typeorm": "^9.0.1",
     "@nestjs/websockets": "^9.0.11",
+    "@socket.io/redis-adapter": "^8.3.0",
     "amqplib": "^0.10.0",
     "bcrypt": "^5.0.1",
     "class-transformer": "^0.5.1",
@@ -46,7 +47,6 @@
     "cookie": "^0.5.0",
     "cookie-parser": "^1.4.6",
     "ioredis": "^5.4.2",
-    "@socket.io/redis-adapter": "^8.3.0",
     "jsonwebtoken": "^9.0.0",
     "minio": "^8.0.0",
     "passport": "^0.6.0",
@@ -65,6 +65,7 @@
     "@nestjs/testing": "^9.0.0",
     "@swc/cli": "^0.8.1",
     "@swc/core": "^1.15.33",
+    "@swc/jest": "^0.2.39",
     "@types/amqplib": "^0.10.0",
     "@types/bcrypt": "^5.0.0",
     "@types/cookie": "^0.5.1",
@@ -101,7 +102,7 @@
     "rootDir": "src",
     "testRegex": ".*\\.spec\\.ts$",
     "transform": {
-      "^.+\\.(t|j)s$": "ts-jest"
+      "^.+\\.(t|j)s$": "@swc/jest"
     },
     "collectCoverageFrom": [
       "**/*.(t|j)s"

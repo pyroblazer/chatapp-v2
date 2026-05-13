@@ -31,7 +31,9 @@ export class RabbitMQService implements OnModuleDestroy {
 
   private getConnectionString(): string {
     const { host, port, username, password, vhost } = this.options;
-    return `amqp://${username}:${password}@${host}:${port}/${encodeURIComponent(vhost)}`;
+    return `amqp://${username}:${password}@${host}:${port}/${encodeURIComponent(
+      vhost,
+    )}`;
   }
 
   private async connect(): Promise<void> {
@@ -41,7 +43,9 @@ export class RabbitMQService implements OnModuleDestroy {
 
       this.connection.on('close', () => {
         if (!this.isShuttingDown) {
-          this.logger.warn('RabbitMQ connection closed. Attempting reconnect...');
+          this.logger.warn(
+            'RabbitMQ connection closed. Attempting reconnect...',
+          );
           this.attemptReconnect();
         }
       });
@@ -174,44 +178,47 @@ export class RabbitMQService implements OnModuleDestroy {
     const channel = await this.ensureChannel();
     await this.assertQueue(queue);
 
-    const { consumerTag } = await channel.consume(queue, async (msg: ConsumeMessage | null) => {
-      if (!msg) return;
+    const { consumerTag } = await channel.consume(
+      queue,
+      async (msg: ConsumeMessage | null) => {
+        if (!msg) return;
 
-      const retryCount = this.getRetryCount(msg);
-      const maxRetries = 3;
+        const retryCount = this.getRetryCount(msg);
+        const maxRetries = 3;
 
-      try {
-        const content = JSON.parse(msg.content.toString());
-        this.logger.debug(
-          `Processing message from ${queue} (retry: ${retryCount})`,
-        );
-        await handler(content);
-        channel.ack(msg);
-      } catch (error) {
-        this.logger.error(
-          `Error processing message from ${queue}: ${error.message}`,
-        );
-
-        if (retryCount < maxRetries) {
-          // Reject and requeue with incremented retry count
-          channel.ack(msg);
-          const headers = msg.properties.headers || {};
-          headers['x-retry-count'] = retryCount + 1;
-          const buffer = Buffer.from(msg.content.toString());
-          channel.sendToQueue(queue, buffer, {
-            persistent: true,
-            contentType: 'application/json',
-            headers,
-          });
-        } else {
-          // Max retries exceeded, reject to DLQ
-          this.logger.warn(
-            `Message from ${queue} exceeded max retries (${maxRetries}), sending to DLQ`,
+        try {
+          const content = JSON.parse(msg.content.toString());
+          this.logger.debug(
+            `Processing message from ${queue} (retry: ${retryCount})`,
           );
-          channel.nack(msg, false, false);
+          await handler(content);
+          channel.ack(msg);
+        } catch (error) {
+          this.logger.error(
+            `Error processing message from ${queue}: ${error.message}`,
+          );
+
+          if (retryCount < maxRetries) {
+            // Reject and requeue with incremented retry count
+            channel.ack(msg);
+            const headers = msg.properties.headers || {};
+            headers['x-retry-count'] = retryCount + 1;
+            const buffer = Buffer.from(msg.content.toString());
+            channel.sendToQueue(queue, buffer, {
+              persistent: true,
+              contentType: 'application/json',
+              headers,
+            });
+          } else {
+            // Max retries exceeded, reject to DLQ
+            this.logger.warn(
+              `Message from ${queue} exceeded max retries (${maxRetries}), sending to DLQ`,
+            );
+            channel.nack(msg, false, false);
+          }
         }
-      }
-    });
+      },
+    );
 
     this.consumers.set(queue, consumerTag);
     this.logger.log(`Consumer registered for queue: ${queue}`);

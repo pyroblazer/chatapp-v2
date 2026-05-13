@@ -38,7 +38,10 @@ export class AuthService implements IAuthService {
       expiresIn: '7d',
     });
 
-    const tokenHash = crypto.createHash('sha256').update(refreshToken).digest('hex');
+    const tokenHash = crypto
+      .createHash('sha256')
+      .update(refreshToken)
+      .digest('hex');
     const expiresAt = new Date();
     expiresAt.setDate(expiresAt.getDate() + 7);
 
@@ -59,14 +62,20 @@ export class AuthService implements IAuthService {
         secret: process.env.JWT_REFRESH_SECRET,
       });
 
-      const tokenHash = crypto.createHash('sha256').update(refreshToken).digest('hex');
+      const tokenHash = crypto
+        .createHash('sha256')
+        .update(refreshToken)
+        .digest('hex');
       const storedToken = await this.refreshTokenRepo.findOne({
         where: { tokenHash, revoked: false },
       });
 
       if (!storedToken || storedToken.expiresAt < new Date()) return null;
 
-      await this.refreshTokenRepo.update({ id: storedToken.id }, { revoked: true });
+      await this.refreshTokenRepo.update(
+        { id: storedToken.id },
+        { revoked: true },
+      );
 
       const user = await this.userService.findUser({ id: payload.sub });
       if (!user) return null;
@@ -78,9 +87,6 @@ export class AuthService implements IAuthService {
   }
 
   async revokeRefreshToken(tokenHash: string) {
-    await this.refreshTokenRepo.update(
-      { tokenHash },
-      { revoked: true },
-    );
+    await this.refreshTokenRepo.update({ tokenHash }, { revoked: true });
   }
 }

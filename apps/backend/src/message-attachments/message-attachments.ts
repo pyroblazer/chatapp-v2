@@ -1,4 +1,7 @@
-import type { GroupMessageAttachment, MessageAttachment } from '../utils/typeorm';
+import type {
+  GroupMessageAttachment,
+  MessageAttachment,
+} from '../utils/typeorm';
 import type { Attachment } from '../utils/types';
 
 export interface IMessageAttachmentsService {

@@ -48,7 +48,10 @@ export class FileUploadProcessor implements OnModuleInit {
     }
 
     // Download the original file from storage
-    const fileBuffer = await this.storageService.getFile(bucket, `original/${fileKey}`);
+    const fileBuffer = await this.storageService.getFile(
+      bucket,
+      `original/${fileKey}`,
+    );
     if (!fileBuffer) {
       throw new Error(`Original file not found: original/${fileKey}`);
     }
@@ -60,9 +63,14 @@ export class FileUploadProcessor implements OnModuleInit {
       .toBuffer();
 
     // Upload thumbnail to storage
-    await this.storageService.uploadFile(bucket, `thumbnails/${fileKey}`, thumbnailBuffer, {
-      'Content-Type': 'image/jpeg',
-    });
+    await this.storageService.uploadFile(
+      bucket,
+      `thumbnails/${fileKey}`,
+      thumbnailBuffer,
+      {
+        'Content-Type': 'image/jpeg',
+      },
+    );
 
     this.logger.log(`Thumbnail generated for: ${fileKey}`);
   }

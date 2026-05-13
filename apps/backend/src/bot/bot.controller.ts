@@ -22,7 +22,10 @@ export class BotController {
 
   @Post()
   @UseGuards(JwtAuthGuard)
-  async createBot(@AuthUser() user: { id: string }, @Body() body: CreateBotParams) {
+  async createBot(
+    @AuthUser() user: { id: string },
+    @Body() body: CreateBotParams,
+  ) {
     return this.botService.createBot(user.id, body);
   }
 

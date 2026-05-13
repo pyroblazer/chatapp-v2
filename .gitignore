@@ -39,3 +39,6 @@ docker-data/
 
 # Vercel
 .vercel
+
+# npm lock files (project uses bun)
+package-lock.json

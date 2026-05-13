@@ -75,7 +75,7 @@ export class MessageService implements IMessageService {
   getMessages(conversationId: number): Promise<Message[]> {
     return this.messageRepository.find({
       relations: ['author', 'attachments', 'author.profile'],
-      where: { conversation: { id: conversationId } },
+      where: { conversation: { id: conversationId as any } },
       order: { createdAt: 'DESC' },
     });
   }

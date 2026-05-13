@@ -25,17 +25,25 @@ export class Group {
   @JoinTable()
   users: User[];
 
-  @OneToOne(() => require('./User').User, { createForeignKeyConstraints: false })
+  @OneToOne(() => require('./User').User, {
+    createForeignKeyConstraints: false,
+  })
   @JoinColumn()
   creator: User;
 
-  @OneToOne(() => require('./User').User, { createForeignKeyConstraints: false })
+  @OneToOne(() => require('./User').User, {
+    createForeignKeyConstraints: false,
+  })
   @JoinColumn()
   owner: User;
 
-  @OneToMany(() => require('./GroupMessage').GroupMessage, (message: any) => message.group, {
-    cascade: ['insert', 'remove', 'update'],
-  })
+  @OneToMany(
+    () => require('./GroupMessage').GroupMessage,
+    (message: any) => message.group,
+    {
+      cascade: ['insert', 'remove', 'update'],
+    },
+  )
   messages: GroupMessage[];
 
   @CreateDateColumn({ name: 'created_at' })
