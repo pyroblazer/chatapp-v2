@@ -1,0 +1,21 @@
+{
+  "name": "chatapp",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "docker:up": "docker compose down --remove-orphans && docker compose up --build",
+    "docker:up:d": "docker compose down --remove-orphans && docker compose up --build -d",
+    "docker:up:dev": "docker compose down --remove-orphans && docker compose -f docker-compose.yml -f docker-compose.override.yml up --build",
+    "docker:up:dev:d": "docker compose down --remove-orphans && docker compose -f docker-compose.yml -f docker-compose.override.yml up --build -d",
+    "docker:up:monitoring": "docker compose down --remove-orphans && docker compose -f docker-compose.yml -f docker-compose.monitoring.yml up --build",
+    "docker:up:monitoring:d": "docker compose down --remove-orphans && docker compose -f docker-compose.yml -f docker-compose.monitoring.yml up --build -d",
+    "docker:down": "docker compose down --remove-orphans",
+    "docker:down:volumes": "docker compose down --remove-orphans --volumes",
+    "docker:logs": "docker compose logs -f",
+    "docker:logs:backend": "docker compose logs -f backend",
+    "docker:logs:frontend": "docker compose logs -f frontend",
+    "docker:ps": "docker compose ps",
+    "docker:build": "docker compose build",
+    "docker:build:no-cache": "docker compose build --no-cache"
+  }
+}

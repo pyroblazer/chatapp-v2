@@ -1,0 +1,29 @@
+services:
+  backend:
+    build:
+      context: ./apps/backend
+      dockerfile: ../../docker/backend.Dockerfile
+      target: development
+    volumes:
+      - backend_uploads:/app/uploads
+      - ./docker/backend-entrypoint.sh:/usr/local/bin/docker-entrypoint.sh:ro
+      - ./apps/backend/src:/app/src
+      - ./apps/backend/test:/app/test
+    environment:
+      - NODE_ENV=development
+      - PORT=3001
+    command: yarn start:dev
+
+  frontend:
+    build:
+      context: ./apps/frontend
+      dockerfile: ../../docker/frontend.Dockerfile
+      target: development
+    ports:
+      - "${FRONTEND_PORT:-3000}:3000"
+    volumes:
+      - ./apps/frontend/src:/app/src
+      - ./apps/frontend/public:/app/public
+    environment:
+      - NODE_ENV=development
+    command: yarn start:dev

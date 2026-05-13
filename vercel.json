@@ -1,0 +1,5 @@
+{
+  "buildCommand": "cd apps/frontend && yarn build",
+  "outputDirectory": "apps/frontend/build",
+  "framework": "create-react-app"
+}
