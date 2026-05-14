@@ -2080,3 +2080,153 @@ A complete right-to-be-forgotten workflow would need to:
 
 ---
 
+## 13. Troubleshooting Guide
+
+### 13.1 Docker Issues
+
+**Backend won't start:**
+```bash
+# Check if all infrastructure services are healthy
+docker compose ps
+
+# Expected: postgres, redis, rabbitmq, minio all show "healthy"
+# If any show "starting", wait or check logs:
+docker compose logs postgres
+docker compose logs redis
+```
+
+**Port already in use:**
+```bash
+# Change the port in .env.docker
+NGINX_HTTP_PORT=8080
+BACKEND_PORT=3002
+
+# Then restart
+npm run docker:down
+npm run docker:up:d
+```
+
+**Frontend shows blank page:**
+- Verify the backend is running: `curl http://localhost/api/health`
+- Check that `VITE_API_URL` and `VITE_WEBSOCKET_URL` in `.env.docker` point to the correct backend
+- Clear browser cache and hard-refresh
+
+**Reset everything:**
+```bash
+npm run docker:down:volumes
+npm run docker:up:d
+```
+
+### 13.2 Redis Connection Failures
+
+**Symptoms:** Backend logs show Redis connection errors, WebSocket events not broadcasting, token blacklisting not working.
+
+**Diagnosis:**
+```bash
+# Check Redis health
+docker compose exec redis redis-cli ping
+# Expected: PONG
+
+# Check Redis connectivity from backend
+docker compose exec backend bun -e "const r = new (require('ioredis'))({host:'redis',port:6379}); r.ping().then(console.log).catch(console.error)"
+```
+
+**Common causes:**
+- Redis container not started or not healthy
+- Wrong `REDIS_HOST` or `REDIS_PORT` in environment
+- Memory pressure causing Redis to refuse connections
+
+**Resolution:**
+```bash
+docker compose restart redis
+# Wait for health check to pass, then restart backend
+docker compose restart backend
+```
+
+### 13.3 WebSocket Failures
+
+**Symptoms:** Messages not appearing in real-time, presence not updating, typing indicators not working.
+
+**Diagnosis:**
+```bash
+# Check backend health
+curl http://localhost/api/health
+
+# Check NGINX WebSocket proxy
+# Look for "Connection: upgrade" headers
+curl -v -H "Upgrade: websocket" -H "Connection: Upgrade" http://localhost/socket.io/
+```
+
+**Common causes:**
+- NGINX not proxying WebSocket upgrade headers (verify `nginx.conf` has the upgrade headers)
+- Redis adapter not connecting (check backend logs for "Failed to apply Redis adapter")
+- Access token expired (client must reconnect with fresh token)
+
+### 13.4 Queue Backlog Issues
+
+**Symptoms:** Notifications not delivered, audit logs not recorded, file uploads not processed.
+
+**Diagnosis:**
+```bash
+# Check RabbitMQ management UI
+# Open http://localhost:15672 (default: chatapp/chatapp_secret)
+
+# Check queue depths in the management UI
+# Look for: file-upload, notification, audit queues
+# If any show growing message counts without consumption, consumers are stuck
+```
+
+**Common causes:**
+- Backend consumer crashed (restart backend)
+- Dead-letter queue full (check `.dlq` queues)
+- RabbitMQ disk or memory alarm (check management UI overview)
+
+**Resolution:**
+```bash
+docker compose restart backend
+# If queues are stuck, purge and restart:
+# Use RabbitMQ management UI to purge specific queues
+```
+
+### 13.5 Database Performance Issues
+
+**Symptoms:** Slow API responses, timeouts on message queries.
+
+**Diagnosis:**
+```bash
+# Check PostgreSQL connections
+docker compose exec postgres psql -U chatapp -c "SELECT count(*) FROM pg_stat_activity;"
+
+# Check active queries
+docker compose exec postgres psql -U chatapp -c "SELECT pid, now() - pg_stat_activity.query_start AS duration, query FROM pg_stat_activity WHERE (now() - pg_stat_activity.query_start) > interval '5 seconds';"
+```
+
+**Common causes:**
+- Missing indexes on frequently queried columns (should have indexes on `userId`, `conversationId`, `createdAt`)
+- N+1 queries from TypeORM eager loading (check for excessive JOINs)
+- Connection pool exhaustion (TypeORM default pool size may need increasing)
+
+### 13.6 AI Inference Failures
+
+**Symptoms:** Bot returns 503, no streaming response, timeouts.
+
+**Diagnosis:**
+```bash
+# Check Ollama container
+docker compose logs ollama
+
+# Test Ollama directly
+curl http://localhost:11434/api/tags
+# Should return list of available models
+
+# If no models are pulled:
+docker compose exec ollama ollama pull llama3.2
+```
+
+**Common causes:**
+- No model pulled (first-time setup)
+- Insufficient memory for model loading (llama3.2 requires ~2GB RAM)
+- Ollama container crashed (check `docker compose ps`)
+
+---
+
