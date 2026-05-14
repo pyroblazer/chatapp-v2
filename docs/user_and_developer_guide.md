@@ -1392,3 +1392,175 @@ The application uses NestJS's built-in `Logger`:
 
 ---
 
+## 8. Realtime Architecture Guide
+
+### 8.1 Socket Authentication
+
+WebSocket connections are authenticated at the transport layer during the handshake:
+
+```mermaid
+sequenceDiagram
+    participant Client as Browser Client
+    participant Adapter as WebsocketAdapter
+    participant JWT as JWT Verification
+    participant Gateway as MessagingGateway
+    participant Session as SessionManager
+    participant Redis as Redis Presence
+
+    Client->>Adapter: io.connect(url, { auth: { token } })
+    Adapter->>JWT: Verify access token
+    alt Token valid
+        JWT->>Adapter: Decode { sub, username }
+        Adapter->>Adapter: Attach user to socket
+        Adapter->>Gateway: Connection accepted
+        Gateway->>Session: setUserSocket(userId, socket)
+        Session->>Redis: hSet presence:online userId socketId
+        Gateway->>Client: Connection established
+    else Token invalid or missing
+        JWT->>Client: Error: "Invalid or expired token"
+    end
+```
+
+**Authentication details:**
+- The token can be sent via `socket.handshake.auth.token` or the `Authorization` header
+- JWT verification uses `JWT_SECRET` environment variable
+- The decoded user object (`{ id, username }`) is attached to `socket.user`
+- Connections without a valid token are rejected immediately — no fallback to unauthenticated mode
+
+### 8.2 Redis Adapter for Multi-Instance Scaling
+
+The `WebsocketAdapter` (`gateway.adapter.ts`) configures Socket.IO with a Redis adapter:
+
+```mermaid
+graph TB
+    subgraph "Docker Network"
+        LB[Load Balancer / NGINX]
+        BE1[Backend Instance 1]
+        BE2[Backend Instance 2]
+        R[(Redis)]
+    end
+
+    subgraph Clients
+        C1[Client A connected to Instance 1]
+        C2[Client B connected to Instance 2]
+    end
+
+    C1 -->|Socket.IO| BE1
+    C2 -->|Socket.IO| BE2
+    C1 --> LB
+    C2 --> LB
+
+    BE1 <-->|Pub/Sub| R
+    BE2 <-->|Pub/Sub| R
+```
+
+**How it works:**
+1. Two Redis clients are created — one for publishing, one for subscribing
+2. When a server emits a WebSocket event, the Redis adapter publishes it to a Redis channel
+3. All other backend instances subscribed to that channel receive the event and broadcast to their connected clients
+4. This ensures a message sent from Instance 1 reaches clients connected to Instance 2
+
+**Fallback behavior:** If Redis is unavailable, the adapter falls back to in-memory mode. A warning is logged: `Failed to apply Redis adapter, falling back to in-memory. Multi-instance scaling will not work.` In this mode, events only reach clients connected to the same backend instance.
+
+### 8.3 Session Management
+
+`GatewaySessionManager` (`gateway.session.ts`) tracks active WebSocket connections:
+
+| Method | Purpose |
+|--------|---------|
+| `setUserSocket(userId, socket)` | Register a user's socket connection and update Redis presence |
+| `removeUserSocket(userId)` | Remove a user's socket and clear Redis presence |
+| `getUserSocket(userId)` | Get a specific user's active socket |
+| `getSockets()` | Get all active sessions (in-memory map) |
+| `setUserOnline(userId, socketId)` | Store online status in Redis hash `presence:online` |
+| `setUserOffline(userId, socketId)` | Remove online status (only if socket IDs match — prevents ghost disconnections) |
+| `getOnlineUsers()` | Get all online users from Redis or in-memory fallback |
+| `isUserOnline(userId)` | Check if a specific user is online |
+
+**Multi-device support:** The session map stores one socket per user (latest connection). If a user opens multiple tabs, the latest socket replaces the previous one. The Redis presence hash uses the user ID as key, mapping to the latest socket ID.
+
+**Ghost user prevention:** When a socket disconnects, the session manager only removes the Redis presence entry if the stored `socketId` matches the disconnecting socket. This prevents a stale disconnect from removing the presence of a newer connection from a different tab.
+
+### 8.4 Room-Based Broadcasting
+
+The gateway manages socket rooms for targeted delivery:
+
+- **Conversation rooms:** When a user opens a conversation, their socket joins a room named after the conversation ID
+- **Group rooms:** Similar to conversations, group members' sockets join the group's room
+- **Broadcasting:** Events are emitted to specific rooms using `server.to(roomId).emit(event, payload)`, ensuring only relevant clients receive the event
+
+### 8.5 Presence Tracking
+
+Presence uses a Redis hash (`presence:online`) with fallback to in-memory:
+
+```mermaid
+stateDiagram-v2
+    [*] --> Connecting: Socket.IO handshake
+    Connecting --> Online: JWT verified, socket registered
+    Online --> Away: 5 min idle (client-side)
+    Away --> Online: User activity detected
+    Online --> GracePeriod: Socket disconnects
+    Away --> GracePeriod: Socket disconnects
+    GracePeriod --> Online: Reconnect within grace period
+    GracePeriod --> Offline: Grace period expires
+    Offline --> [*]
+```
+
+**Consistency across instances:** Since presence is stored in Redis, all backend instances see the same online user set. The `getOnlineUsers()` method queries the Redis hash, providing consistent results regardless of which instance handles the request.
+
+### 8.6 Event Flow: Message Delivery
+
+```mermaid
+sequenceDiagram
+    participant Sender
+    participant Controller as ConversationsController
+    participant Service as ConversationsService
+    participant DB as PostgreSQL
+    participant EE as EventEmitter2
+    participant GW as MessagingGateway
+    participant Recipient
+
+    Sender->>Controller: POST /api/conversations/:id/messages
+    Controller->>Service: createMessage(content, senderId)
+    Service->>DB: INSERT message
+    Service->>EE: emit(MESSAGE_CREATE, message)
+    EE->>GW: @OnEvent(MESSAGE_CREATE)
+    GW->>GW: Find conversation room
+    GW->>Recipient: socket.emit('onMessage', message)
+    GW->>Sender: socket.emit('onMessage', message)
+    Controller->>Sender: 201 Created { message }
+```
+
+**Key observations:**
+- The HTTP response and WebSocket event are independent delivery channels
+- The sender receives the message both via the HTTP response (for the REST acknowledgment) and via WebSocket (for real-time UI update)
+- The recipient receives the message only via WebSocket
+- If the recipient is offline, the message is persisted in PostgreSQL and delivered when they reconnect and fetch conversation messages
+
+### 8.7 Typing Indicators
+
+Typing indicators are ephemeral WebSocket-only events — they are not persisted:
+
+1. The typing user's client emits `typingStart` or `typingStop` with `{ conversationId }`
+2. The gateway relays the event to the conversation's room
+3. Other participants see "User is typing..." in the UI
+
+**No race condition concerns:** Typing events are purely cosmetic. If events arrive out of order, the worst case is a brief UI flicker.
+
+### 8.8 Reconnection Recovery
+
+When a client disconnects and reconnects:
+
+1. Socket.IO automatically attempts reconnection with exponential backoff
+2. On reconnection, the client re-authenticates with its current access token
+3. The gateway registers the new socket in the session manager
+4. The client fetches missed messages by calling `GET /api/conversations/:id/messages?before=<lastSeenMessageId>`
+5. This REST-based recovery ensures no messages are lost, even if WebSocket events were missed during the disconnect
+
+**Limitations of the current implementation:**
+- There is no explicit message sequencing or gap detection — the client must track the last seen message ID
+- There is no server-side queue of missed events — recovery is entirely client-driven
+- Duplicate messages can occur if the client receives a WebSocket event just before disconnecting and then fetches it again via REST
+
+---
+
