@@ -1946,3 +1946,137 @@ For production deployments, define Service Level Objectives:
 
 ---
 
+## 12. Security & Compliance Guide
+
+### 12.1 JWT Security
+
+The platform uses a dual-token JWT authentication strategy:
+
+| Token | Lifetime | Storage | Secret |
+|-------|----------|---------|--------|
+| Access Token | 15 minutes | Client memory (Redux store) | `JWT_SECRET` |
+| Refresh Token | 7 days | HTTP-only cookie + database (SHA-256 hash) | `JWT_REFRESH_SECRET` |
+
+**Why separate secrets?** Access and refresh tokens use independent signing secrets. If an access token secret is compromised, refresh tokens remain valid, allowing controlled token rotation without full session invalidation.
+
+**Refresh token rotation:** On every refresh, the old token is revoked and a new token pair is issued. This limits the window of opportunity if a refresh token is stolen — the attacker gets at most one use before the legitimate user's next refresh invalidates it.
+
+**Stateless access tokens:** Access tokens are validated by signature only — no database lookup per request. This maximizes performance but means access tokens cannot be individually revoked before their 15-minute expiry. The short lifetime is the primary mitigation.
+
+**Token storage:**
+- Refresh tokens are stored in PostgreSQL as **SHA-256 hashes**, never in plaintext
+- The plaintext refresh token is returned to the client only once (on login/refresh)
+- An HTTP-only cookie transports the refresh token, preventing JavaScript access (XSS protection)
+
+### 12.2 CSRF/XSS Mitigation
+
+| Threat | Mitigation |
+|--------|-----------|
+| **Cross-Site Scripting (XSS)** | Access tokens stored in memory (not localStorage). HTTP-only cookies for refresh tokens. React's built-in JSX escaping prevents reflected XSS. Content-Security-Policy headers recommended for production |
+| **Cross-Site Request Forgery (CSRF)** | API uses Bearer token authentication (not cookie-based for API requests). The refresh cookie is only used for the `/auth/refresh` endpoint. CORS is configured with explicit allowed origins |
+| **Clickjacking** | `X-Frame-Options` and `Content-Security-Policy: frame-ancestors` headers recommended in production NGINX config (not yet configured) |
+
+### 12.3 SQL Injection Prevention
+
+All database queries use TypeORM's query builder with parameterized queries:
+
+```typescript
+// Parameterized — safe from SQL injection
+createQueryBuilder('audit_log')
+  .where('audit_log.userId = :userId', { userId })
+  .andWhere('audit_log.action = :action', { action })
+```
+
+Raw SQL queries are not used anywhere in the codebase. TypeORM's entity manager and repository patterns enforce parameterization.
+
+### 12.4 OWASP Top 10 Mitigation
+
+| OWASP Category | Status | Mitigation |
+|---------------|--------|-----------|
+| A01 - Broken Access Control | Implemented | Role-based guards (`UserRole`), `@UseGuards(AdminGuard)` on admin endpoints, JWT-based authentication |
+| A02 - Cryptographic Failures | Implemented | bcrypt password hashing, HTTPS recommended for production, HTTP-only cookies |
+| A03 - Injection | Implemented | TypeORM parameterized queries, `class-validator` input validation, `ValidationPipe` with `whitelist: true` |
+| A04 - Insecure Design | Partial | Modular architecture with clear boundaries, but some gaps (no family-based refresh token detection) |
+| A05 - Security Misconfiguration | Partial | Default credentials in `.env.docker` (tracked), `synchronize: true` in dev, Swagger enabled in all environments |
+| A06 - Vulnerable Components | Mitigated | Bun runtime for faster security patches, `yarn audit` should be run regularly |
+| A07 - Auth Failures | Implemented | Rate limiting (10 req/10s), bcrypt password hashing, account lockout via ban system |
+| A08 - Software/Data Integrity | Implemented | Refresh token rotation, SHA-256 hashed token storage |
+| A09 - Logging/Monitoring | Implemented | Audit logging for admin actions, Prometheus metrics, Loki log aggregation |
+| A10 - SSRF | Low risk | No user-controlled URL fetching in the current implementation |
+
+### 12.5 Rate Limiting
+
+Global rate limiting via NestJS ThrottlerModule:
+- **Limit:** 10 requests per 10-second window per client IP
+- **Proxy-aware:** Extracts real client IP from `X-Forwarded-For` header (first entry), with fallback to `req.ip`
+- **Trust proxy:** Backend sets `app.set('trust proxy', 'loopback')` to trust the NGINX proxy
+
+**Production recommendation:** Consider per-endpoint rate limiting — stricter for auth endpoints (e.g., 5 req/min for login), more lenient for read endpoints (e.g., 100 req/min for message listing).
+
+### 12.6 Encryption
+
+| Layer | Mechanism |
+|-------|-----------|
+| **In transit** | TLS termination at NGINX (configure SSL certificates for production). Backend-to-service traffic within Docker network is unencrypted (acceptable for single-host deployment) |
+| **At rest** | PostgreSQL supports encryption at rest via TDE (Transparent Data Encryption) or disk-level encryption. MinIO supports server-side encryption. Redis persistence files should be on encrypted volumes |
+| **Passwords** | bcrypt with default cost factor (10 rounds) |
+| **Refresh tokens** | SHA-256 hashed before database storage |
+
+### 12.7 Audit Logging
+
+All admin write operations are automatically logged by the audit processor (RabbitMQ consumer):
+
+| Field | Description |
+|-------|-------------|
+| `userId` | The admin who performed the action |
+| `action` | `CREATE`, `UPDATE`, or `DELETE` |
+| `entity` | Entity type (User, Message, Group, etc.) |
+| `entityId` | UUID/ID of the affected entity |
+| `metadata` | JSONB with additional context (e.g., previous values, reason) |
+| `ipAddress` | Source IP address of the request |
+| `createdAt` | Timestamp |
+
+**Properties:**
+- Append-only — no API to modify or delete audit entries
+- Filterable by userId, action, entity, and date range
+- Paginated (default 20 entries per page)
+- Uses parameterized queries (SQL injection safe)
+
+### 12.8 Compliance
+
+#### GDPR Considerations
+
+| Requirement | Implementation Status |
+|-------------|----------------------|
+| **Right to access** | Users can view their profile via `GET /api/auth/me` |
+| **Right to rectification** | Users can update profile via `PATCH /api/users/profiles` |
+| **Right to erasure** | Not implemented — requires a data deletion workflow that removes user data from PostgreSQL, MinIO, and Redis |
+| **Data portability** | Not implemented — requires an export endpoint returning user data in machine-readable format |
+| **Consent management** | Not implemented — no consent tracking or cookie consent banner |
+| **Data retention** | Notifications auto-deleted after 90 days. No retention policies for messages or audit logs |
+| **Data Processing Agreement** | Not applicable for self-hosted deployment |
+
+#### Right to Be Forgotten (Future Implementation)
+
+A complete right-to-be-forgotten workflow would need to:
+1. Delete or anonymize the user's profile (username, email, avatar, banner)
+2. Delete or anonymize the user's messages (replace content with "[deleted]", preserve for conversation integrity)
+3. Remove the user from friends lists and group memberships
+4. Delete file attachments uploaded by the user
+5. Remove Redis presence and cached data
+6. Retain audit logs with anonymized userId (legal requirement in many jurisdictions)
+
+### 12.9 Secrets Management
+
+**Current state:** Secrets are stored in `.env.docker` and tracked in git with weak default values. This is acceptable for local development but **must not** be used in production.
+
+**Production recommendations:**
+- Use a secrets manager (HashiCorp Vault, AWS Secrets Manager, Doppler)
+- Generate cryptographically random secrets (minimum 32 bytes): `openssl rand -hex 32`
+- Never commit secrets to version control
+- Rotate secrets periodically and after any suspected compromise
+- Use separate secrets per environment (dev, staging, prod)
+- Minimize the number of people with access to production secrets
+
+---
+
