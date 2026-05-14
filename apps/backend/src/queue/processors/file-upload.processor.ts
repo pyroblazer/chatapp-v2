@@ -25,11 +25,17 @@ export class FileUploadProcessor implements OnModuleInit {
   ) {}
 
   async onModuleInit(): Promise<void> {
-    await this.rabbitMQService.consume(
-      FILE_PROCESSING_QUEUE,
-      this.process.bind(this),
-    );
-    this.logger.log('File upload processor started');
+    try {
+      await this.rabbitMQService.consume(
+        FILE_PROCESSING_QUEUE,
+        this.process.bind(this),
+      );
+      this.logger.log('File upload processor started');
+    } catch {
+      this.logger.warn(
+        'File upload processor could not start — RabbitMQ unavailable',
+      );
+    }
   }
 
   async process(job: FileUploadJob): Promise<void> {

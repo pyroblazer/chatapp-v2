@@ -106,11 +106,16 @@ export const settingsItems: SettingsItemType[] = [
   },
 ];
 
-export enum CDN_URL {
-  BASE = 'https://chuachat.ams3.cdn.digitaloceanspaces.com/',
-  ORIGINAL = 'https://chuachat.ams3.cdn.digitaloceanspaces.com/original/',
-  PREVIEW = 'https://chuachat.ams3.digitaloceanspaces.com/preview/',
-}
+const _UPLOADTHING_APP_ID = import.meta.env.VITE_UPLOADTHING_APP_ID || '';
+const _UT_CDN_BASE = _UPLOADTHING_APP_ID
+  ? `https://${_UPLOADTHING_APP_ID}.ufs.sh/f/`
+  : '/api/storage/local/';
+
+export const CDN_URL = {
+  BASE: _UT_CDN_BASE,
+  ORIGINAL: `${_UT_CDN_BASE}chatapp-uploads/original/`,
+  PREVIEW: `${_UT_CDN_BASE}chatapp-uploads/preview/`,
+} as const;
 
 export enum SenderEvents {
   VIDEO_CALL_INITIATE = 'onVideoCallInitiate',

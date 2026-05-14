@@ -150,8 +150,14 @@ export const mockImageUploadService = {
 
 export const mockStorageService = {
   uploadFile: jest.fn(),
+  uploadWithPreview: jest.fn(),
   deleteFile: jest.fn(),
   getPresignedUrl: jest.fn(),
+  fileExists: jest.fn(),
+  getFile: jest.fn(),
+  isAvailable: jest.fn().mockReturnValue(true),
+  checkHealth: jest.fn().mockResolvedValue(true),
+  getDefaultBucket: jest.fn().mockReturnValue('chatapp-uploads'),
 };
 
 export const mockRabbitMQService = {

@@ -11,6 +11,6 @@ import { BotController } from './bot.controller';
   imports: [TypeOrmModule.forFeature([Bot, BotConversation, AIMessage])],
   controllers: [BotController],
   providers: [AiService, BotService],
-  exports: [BotService],
+  exports: [BotService, AiService],
 })
 export class BotModule {}

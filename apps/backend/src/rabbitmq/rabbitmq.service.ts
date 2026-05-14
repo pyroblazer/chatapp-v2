@@ -10,7 +10,6 @@ export interface RabbitMQConnectionOptions {
   vhost: string;
 }
 
-const MAX_RETRIES = 10;
 const BASE_DELAY_MS = 1000;
 const MAX_DELAY_MS = 30000;
 
@@ -29,6 +28,10 @@ export class RabbitMQService implements OnModuleDestroy {
     this.connect();
   }
 
+  isAvailable(): boolean {
+    return this.channel != null;
+  }
+
   private getConnectionString(): string {
     const { host, port, username, password, vhost } = this.options;
     return `amqp://${username}:${password}@${host}:${port}/${encodeURIComponent(
@@ -42,6 +45,7 @@ export class RabbitMQService implements OnModuleDestroy {
       this.channel = await this.connection.createChannel();
 
       this.connection.on('close', () => {
+        this.channel = null;
         if (!this.isShuttingDown) {
           this.logger.warn(
             'RabbitMQ connection closed. Attempting reconnect...',
@@ -67,18 +71,14 @@ export class RabbitMQService implements OnModuleDestroy {
       this.reconnectAttempts = 0;
       this.logger.log('Connected to RabbitMQ successfully');
     } catch (error) {
+      this.channel = null;
       this.logger.error(`Failed to connect to RabbitMQ: ${error.message}`);
       this.attemptReconnect();
     }
   }
 
   private attemptReconnect(): void {
-    if (this.isShuttingDown || this.reconnectAttempts >= MAX_RETRIES) {
-      this.logger.error(
-        `Max reconnection attempts (${MAX_RETRIES}) reached. Giving up.`,
-      );
-      return;
-    }
+    if (this.isShuttingDown) return;
 
     this.reconnectAttempts++;
     const delay = Math.min(
@@ -87,7 +87,7 @@ export class RabbitMQService implements OnModuleDestroy {
     );
 
     this.logger.log(
-      `Attempting reconnect ${this.reconnectAttempts}/${MAX_RETRIES} in ${delay}ms...`,
+      `Attempting reconnect ${this.reconnectAttempts} in ${delay}ms...`,
     );
 
     setTimeout(() => {
@@ -98,22 +98,11 @@ export class RabbitMQService implements OnModuleDestroy {
   private async restoreConsumers(): Promise<void> {
     for (const [queue, consumerTag] of this.consumers.entries()) {
       try {
-        // The old consumer tags are invalid after reconnection; we clear and re-consume
         this.consumers.delete(queue);
       } catch {
         // Ignore
       }
     }
-    // Consumers are tracked by their handlers - they need to be re-registered
-    // by the calling code. We emit a custom mechanism through a reconnect event
-    // that queue processors listen to.
-  }
-
-  private async ensureChannel(): Promise<Channel> {
-    if (!this.channel) {
-      throw new Error('RabbitMQ channel is not available');
-    }
-    return this.channel;
   }
 
   /**
@@ -123,48 +112,71 @@ export class RabbitMQService implements OnModuleDestroy {
     queue: string,
     options?: Options.AssertQueue,
   ): Promise<void> {
-    const channel = await this.ensureChannel();
+    const channel = this.channel;
+    if (!channel) {
+      this.logger.warn(
+        `Cannot assert queue "${queue}": RabbitMQ channel not available`,
+      );
+      return;
+    }
 
-    // Set up dead letter exchange for this queue
-    const dlxExchange = `${queue}.dlx`;
-    const dlqName = `${queue}.dlq`;
+    try {
+      const dlxExchange = `${queue}.dlx`;
+      const dlqName = `${queue}.dlq`;
 
-    await channel.assertExchange(dlxExchange, 'direct', { durable: true });
-    await channel.assertQueue(dlqName, { durable: true });
-    await channel.bindQueue(dlqName, dlxExchange, queue);
+      await channel.assertExchange(dlxExchange, 'direct', { durable: true });
+      await channel.assertQueue(dlqName, { durable: true });
+      await channel.bindQueue(dlqName, dlxExchange, queue);
 
-    const queueOptions: Options.AssertQueue = {
-      durable: true,
-      ...options,
-      arguments: {
-        'x-dead-letter-exchange': dlxExchange,
-        'x-dead-letter-routing-key': queue,
-        ...(options?.arguments || {}),
-      },
-    };
+      const queueOptions: Options.AssertQueue = {
+        durable: true,
+        ...options,
+        arguments: {
+          'x-dead-letter-exchange': dlxExchange,
+          'x-dead-letter-routing-key': queue,
+          ...(options?.arguments || {}),
+        },
+      };
 
-    await channel.assertQueue(queue, queueOptions);
-    this.logger.log(`Queue asserted: ${queue} (DLQ: ${dlqName})`);
+      await channel.assertQueue(queue, queueOptions);
+      this.logger.log(`Queue asserted: ${queue} (DLQ: ${dlqName})`);
+    } catch (error) {
+      this.logger.error(`Failed to assert queue "${queue}": ${error.message}`);
+    }
   }
 
   /**
    * Publish a message to a queue.
    */
   async publish(queue: string, message: any): Promise<boolean> {
-    const channel = await this.ensureChannel();
-    await this.assertQueue(queue);
-
-    const buffer = Buffer.from(JSON.stringify(message));
-    const sent = channel.sendToQueue(queue, buffer, {
-      persistent: true,
-      contentType: 'application/json',
-    });
-
-    if (!sent) {
-      this.logger.warn(`Failed to publish message to queue: ${queue}`);
+    const channel = this.channel;
+    if (!channel) {
+      this.logger.warn(
+        `Cannot publish to queue "${queue}": RabbitMQ channel not available. Message dropped.`,
+      );
+      return false;
     }
 
-    return sent;
+    try {
+      await this.assertQueue(queue);
+
+      const buffer = Buffer.from(JSON.stringify(message));
+      const sent = channel.sendToQueue(queue, buffer, {
+        persistent: true,
+        contentType: 'application/json',
+      });
+
+      if (!sent) {
+        this.logger.warn(`Failed to publish message to queue: ${queue}`);
+      }
+
+      return sent;
+    } catch (error) {
+      this.logger.error(
+        `Failed to publish to queue "${queue}": ${error.message}`,
+      );
+      return false;
+    }
   }
 
   /**
@@ -175,53 +187,64 @@ export class RabbitMQService implements OnModuleDestroy {
     queue: string,
     handler: (message: any) => Promise<void>,
   ): Promise<void> {
-    const channel = await this.ensureChannel();
-    await this.assertQueue(queue);
+    const channel = this.channel;
+    if (!channel) {
+      this.logger.warn(
+        `Cannot consume from queue "${queue}": RabbitMQ channel not available. Consumer not registered.`,
+      );
+      return;
+    }
 
-    const { consumerTag } = await channel.consume(
-      queue,
-      async (msg: ConsumeMessage | null) => {
-        if (!msg) return;
+    try {
+      await this.assertQueue(queue);
 
-        const retryCount = this.getRetryCount(msg);
-        const maxRetries = 3;
+      const { consumerTag } = await channel.consume(
+        queue,
+        async (msg: ConsumeMessage | null) => {
+          if (!msg) return;
 
-        try {
-          const content = JSON.parse(msg.content.toString());
-          this.logger.debug(
-            `Processing message from ${queue} (retry: ${retryCount})`,
-          );
-          await handler(content);
-          channel.ack(msg);
-        } catch (error) {
-          this.logger.error(
-            `Error processing message from ${queue}: ${error.message}`,
-          );
+          const retryCount = this.getRetryCount(msg);
+          const maxRetries = 3;
 
-          if (retryCount < maxRetries) {
-            // Reject and requeue with incremented retry count
-            channel.ack(msg);
-            const headers = msg.properties.headers || {};
-            headers['x-retry-count'] = retryCount + 1;
-            const buffer = Buffer.from(msg.content.toString());
-            channel.sendToQueue(queue, buffer, {
-              persistent: true,
-              contentType: 'application/json',
-              headers,
-            });
-          } else {
-            // Max retries exceeded, reject to DLQ
-            this.logger.warn(
-              `Message from ${queue} exceeded max retries (${maxRetries}), sending to DLQ`,
+          try {
+            const content = JSON.parse(msg.content.toString());
+            this.logger.debug(
+              `Processing message from ${queue} (retry: ${retryCount})`,
             );
-            channel.nack(msg, false, false);
-          }
-        }
-      },
-    );
+            await handler(content);
+            channel.ack(msg);
+          } catch (error) {
+            this.logger.error(
+              `Error processing message from ${queue}: ${error.message}`,
+            );
 
-    this.consumers.set(queue, consumerTag);
-    this.logger.log(`Consumer registered for queue: ${queue}`);
+            if (retryCount < maxRetries) {
+              channel.ack(msg);
+              const headers = msg.properties.headers || {};
+              headers['x-retry-count'] = retryCount + 1;
+              const buffer = Buffer.from(msg.content.toString());
+              channel.sendToQueue(queue, buffer, {
+                persistent: true,
+                contentType: 'application/json',
+                headers,
+              });
+            } else {
+              this.logger.warn(
+                `Message from ${queue} exceeded max retries (${maxRetries}), sending to DLQ`,
+              );
+              channel.nack(msg, false, false);
+            }
+          }
+        },
+      );
+
+      this.consumers.set(queue, consumerTag);
+      this.logger.log(`Consumer registered for queue: ${queue}`);
+    } catch (error) {
+      this.logger.error(
+        `Failed to consume from queue "${queue}": ${error.message}`,
+      );
+    }
   }
 
   private getRetryCount(msg: ConsumeMessage): number {
@@ -237,13 +260,26 @@ export class RabbitMQService implements OnModuleDestroy {
     exchange: string,
     pattern: string,
   ): Promise<void> {
-    const channel = await this.ensureChannel();
-    await channel.assertExchange(exchange, 'direct', { durable: true });
-    await channel.assertQueue(queue);
-    await channel.bindQueue(queue, exchange, pattern);
-    this.logger.log(
-      `Bound queue ${queue} to exchange ${exchange} with pattern ${pattern}`,
-    );
+    const channel = this.channel;
+    if (!channel) {
+      this.logger.warn(
+        `Cannot bind queue "${queue}": RabbitMQ channel not available`,
+      );
+      return;
+    }
+
+    try {
+      await channel.assertExchange(exchange, 'direct', { durable: true });
+      await channel.assertQueue(queue);
+      await channel.bindQueue(queue, exchange, pattern);
+      this.logger.log(
+        `Bound queue ${queue} to exchange ${exchange} with pattern ${pattern}`,
+      );
+    } catch (error) {
+      this.logger.error(
+        `Failed to bind queue "${queue}": ${error.message}`,
+      );
+    }
   }
 
   /**
@@ -258,7 +294,6 @@ export class RabbitMQService implements OnModuleDestroy {
     this.logger.log('Shutting down RabbitMQ connection...');
 
     try {
-      // Cancel all consumers
       if (this.channel) {
         for (const [queue, consumerTag] of this.consumers.entries()) {
           try {

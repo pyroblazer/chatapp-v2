@@ -24,11 +24,17 @@ export class AuditProcessor implements OnModuleInit {
   ) {}
 
   async onModuleInit(): Promise<void> {
-    await this.rabbitMQService.consume(
-      AUDIT_EVENTS_QUEUE,
-      this.process.bind(this),
-    );
-    this.logger.log('Audit processor started');
+    try {
+      await this.rabbitMQService.consume(
+        AUDIT_EVENTS_QUEUE,
+        this.process.bind(this),
+      );
+      this.logger.log('Audit processor started');
+    } catch {
+      this.logger.warn(
+        'Audit processor could not start — RabbitMQ unavailable',
+      );
+    }
   }
 
   async process(event: AuditEvent): Promise<void> {

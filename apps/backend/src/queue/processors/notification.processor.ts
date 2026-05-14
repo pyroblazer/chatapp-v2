@@ -22,11 +22,17 @@ export class NotificationProcessor implements OnModuleInit {
   ) {}
 
   async onModuleInit(): Promise<void> {
-    await this.rabbitMQService.consume(
-      NOTIFICATIONS_QUEUE,
-      this.process.bind(this),
-    );
-    this.logger.log('Notification processor started');
+    try {
+      await this.rabbitMQService.consume(
+        NOTIFICATIONS_QUEUE,
+        this.process.bind(this),
+      );
+      this.logger.log('Notification processor started');
+    } catch {
+      this.logger.warn(
+        'Notification processor could not start — RabbitMQ unavailable',
+      );
+    }
   }
 
   async process(job: NotificationJob): Promise<void> {

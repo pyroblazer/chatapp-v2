@@ -1,6 +1,13 @@
-import { Injectable, Logger } from '@nestjs/common';
-import * as Minio from 'minio';
+import {
+  Injectable,
+  Logger,
+  NotFoundException,
+  OnModuleDestroy,
+  OnModuleInit,
+} from '@nestjs/common';
+import { UTApi, UTFile } from 'uploadthing/server';
 import * as sharp from 'sharp';
+import { LocalStorageProvider } from './local-storage.provider';
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
 
@@ -25,41 +32,76 @@ export interface FileMetadata {
 }
 
 @Injectable()
-export class StorageService {
+export class StorageService implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(StorageService.name);
-  private readonly minioClient: Minio.Client;
+  private readonly utApi: UTApi;
+  private readonly localStorage: LocalStorageProvider;
   private readonly defaultBucket: string;
+  private readonly appId: string;
+  private available = false;
+  private healthCheckInterval: NodeJS.Timeout | null = null;
+  private readonly uploadedFiles: Map<string, string> = new Map();
 
   constructor() {
-    const endPoint = process.env.MINIO_ENDPOINT || 'localhost';
-    const port = parseInt(process.env.MINIO_PORT || '9000', 10);
-    const accessKey =
-      process.env.MINIO_ACCESS_KEY ||
-      process.env.MINIO_ROOT_USER ||
-      'minioadmin';
-    const secretKey =
-      process.env.MINIO_SECRET_KEY ||
-      process.env.MINIO_ROOT_PASSWORD ||
-      'minioadmin';
-    const useSSL = process.env.MINIO_USE_SSL === 'true';
-
-    this.minioClient = new Minio.Client({
-      endPoint,
-      port,
-      accessKey,
-      secretKey,
-      useSSL,
-    });
-
+    const token = process.env.UPLOADTHING_TOKEN || '';
+    this.utApi = new UTApi(token ? { token } : undefined);
+    this.appId = process.env.UPLOADTHING_APP_ID || '';
+    this.localStorage = new LocalStorageProvider();
     this.defaultBucket = process.env.S3_BUCKET || 'chatapp-uploads';
+
+    const intervalMs = parseInt(
+      process.env.STORAGE_HEALTH_CHECK_INTERVAL || '30000',
+      10,
+    );
+    this.healthCheckInterval = setInterval(
+      () => this.checkHealth(),
+      intervalMs,
+    );
+
     this.logger.log(
-      `StorageService initialized with endpoint: ${endPoint}:${port}, bucket: ${this.defaultBucket}`,
+      `StorageService initialized (UploadThing app: ${this.appId || 'not configured'}, bucket: ${this.defaultBucket})`,
     );
   }
 
-  /**
-   * Validate file before upload.
-   */
+  async onModuleInit(): Promise<void> {
+    try {
+      await this.checkHealth();
+      if (this.available) {
+        this.logger.log('UploadThing storage is available');
+      }
+    } catch {
+      this.logger.warn(
+        'UploadThing storage is unavailable — using local filesystem fallback',
+      );
+    }
+  }
+
+  onModuleDestroy(): void {
+    if (this.healthCheckInterval) {
+      clearInterval(this.healthCheckInterval);
+    }
+  }
+
+  isAvailable(): boolean {
+    return this.available;
+  }
+
+  async checkHealth(): Promise<boolean> {
+    try {
+      const result = await Promise.race([
+        this.utApi.listFiles({ limit: 1 }),
+        new Promise<never>((_, reject) =>
+          setTimeout(() => reject(new Error('timeout')), 3000),
+        ),
+      ]);
+      this.available = !!result;
+      return this.available;
+    } catch {
+      this.available = false;
+      return false;
+    }
+  }
+
   private validateFile(
     file: Buffer | Express.Multer.File,
     mimeType?: string,
@@ -78,9 +120,6 @@ export class StorageService {
     }
   }
 
-  /**
-   * Upload a file to MinIO.
-   */
   async uploadFile(
     bucket: string,
     key: string,
@@ -90,22 +129,43 @@ export class StorageService {
     const buffer = Buffer.isBuffer(file) ? file : file.buffer;
     const mimeType =
       metadata?.['Content-Type'] || (file as Express.Multer.File).mimetype;
-    const size = buffer.length;
 
     this.validateFile(file, mimeType);
 
-    await this.minioClient.putObject(bucket, key, buffer, size, {
-      'Content-Type': mimeType || 'application/octet-stream',
-      ...metadata,
-    });
+    const customId = `${bucket}/${key}`;
 
-    this.logger.debug(`File uploaded: ${bucket}/${key} (${size} bytes)`);
+    if (this.available) {
+      try {
+        const utFile = new UTFile([buffer], key, {
+          type: mimeType || 'application/octet-stream',
+          customId,
+        });
+
+        const result = await this.utApi.uploadFiles(utFile);
+
+        if (result && typeof result === 'object' && 'data' in result) {
+          const data = (result as any).data;
+          if (data?.ufsUrl) {
+            this.uploadedFiles.set(customId, data.ufsUrl);
+          }
+        } else if (result && typeof result === 'object' && 'ufsUrl' in result) {
+          this.uploadedFiles.set(customId, (result as any).ufsUrl);
+        }
+
+        this.logger.debug(`File uploaded to UploadThing: ${customId}`);
+        return;
+      } catch (error) {
+        this.available = false;
+        this.logger.warn(
+          `UploadThing upload failed, falling back to local: ${error.message}`,
+        );
+      }
+    }
+
+    await this.localStorage.write(bucket, key, buffer, mimeType);
+    this.logger.debug(`File uploaded locally: ${bucket}/${key}`);
   }
 
-  /**
-   * Upload with image compression (replaces the old compressImage helper).
-   * Generates both original and preview/thumbnail versions.
-   */
   async uploadWithPreview(
     bucket: string,
     key: string,
@@ -115,10 +175,8 @@ export class StorageService {
     const originalKey = `original/${key}`;
     const previewKey = `preview/${key}`;
 
-    // Upload original
     await this.uploadFile(bucket, originalKey, file, metadata);
 
-    // Generate and upload preview (300px, JPEG)
     if (file.mimetype && file.mimetype.startsWith('image/')) {
       const previewBuffer = await sharp(file.buffer)
         .resize(300)
@@ -133,77 +191,71 @@ export class StorageService {
     return { originalKey, previewKey };
   }
 
-  /**
-   * Delete a file from MinIO.
-   */
   async deleteFile(bucket: string, key: string): Promise<void> {
-    await this.minioClient.removeObject(bucket, key);
+    if (this.available) {
+      try {
+        await this.utApi.deleteFiles(key);
+      } catch (error) {
+        this.logger.warn(`Failed to delete from UploadThing: ${error.message}`);
+      }
+    }
+
+    await this.localStorage.delete(bucket, key);
+    this.uploadedFiles.delete(`${bucket}/${key}`);
     this.logger.debug(`File deleted: ${bucket}/${key}`);
   }
 
-  /**
-   * Generate a presigned URL for secure access.
-   */
   async getPresignedUrl(
     bucket: string,
     key: string,
-    expirySeconds = 3600,
+    _expirySeconds = 3600,
   ): Promise<string> {
-    const url = await this.minioClient.presignedUrl(
-      'GET',
-      bucket,
-      key,
-      expirySeconds,
-    );
-    return url;
+    const customId = `${bucket}/${key}`;
+
+    const cached = this.uploadedFiles.get(customId);
+    if (cached) return cached;
+
+    if (this.available && this.appId) {
+      return `https://${this.appId}.ufs.sh/f/${customId}`;
+    }
+
+    if (await this.localStorage.exists(bucket, key)) {
+      return this.localStorage.getUrl(bucket, key);
+    }
+
+    throw new NotFoundException(`File not found: ${bucket}/${key}`);
   }
 
-  /**
-   * Check if a file exists in MinIO.
-   */
   async fileExists(bucket: string, key: string): Promise<boolean> {
-    try {
-      await this.minioClient.statObject(bucket, key);
-      return true;
-    } catch {
-      return false;
+    if (this.available) {
+      try {
+        const url = `https://${this.appId}.ufs.sh/f/${bucket}/${key}`;
+        const response = await fetch(url, { method: 'HEAD' });
+        if (response.ok) return true;
+      } catch {
+        // Fall through to local check
+      }
     }
+
+    return this.localStorage.exists(bucket, key);
   }
 
-  /**
-   * Get a file's content as a Buffer from MinIO.
-   */
   async getFile(bucket: string, key: string): Promise<Buffer | null> {
-    try {
-      const dataStream = await this.minioClient.getObject(bucket, key);
-      const chunks: Buffer[] = [];
-
-      return new Promise((resolve, reject) => {
-        dataStream.on('data', (chunk: Buffer) => chunks.push(chunk));
-        dataStream.on('end', () => resolve(Buffer.concat(chunks)));
-        dataStream.on('error', (err: Error) => {
-          this.logger.error(
-            `Error downloading file ${bucket}/${key}: ${err.message}`,
-          );
-          reject(err);
-        });
-      });
-    } catch (error) {
-      this.logger.error(`File not found: ${bucket}/${key}`);
-      return null;
+    if (this.available) {
+      try {
+        const url = `https://${this.appId}.ufs.sh/f/${bucket}/${key}`;
+        const response = await fetch(url);
+        if (response.ok) {
+          return Buffer.from(await response.arrayBuffer());
+        }
+      } catch {
+        // Fall through to local
+      }
     }
+
+    return this.localStorage.read(bucket, key);
   }
 
-  /**
-   * Get the MinIO client for advanced usage.
-   */
-  getClient(): Minio.Client {
-    return this.minioClient;
-  }
-
-  /**
-   * Get the default bucket name.
-   */
   getDefaultBucket(): string {
     return this.defaultBucket;
   }

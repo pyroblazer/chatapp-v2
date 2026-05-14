@@ -9,37 +9,54 @@ export class RedisCacheService {
   constructor(private readonly redisService: RedisService) {}
 
   async getCached<T>(key: string): Promise<T | null> {
-    const data = await this.redisService.get(`cache:${key}`);
-    if (!data) return null;
     try {
-      return JSON.parse(data) as T;
+      const data = await this.redisService.get(`cache:${key}`);
+      if (!data) return null;
+      try {
+        return JSON.parse(data) as T;
+      } catch {
+        return null;
+      }
     } catch {
+      this.logger.warn(`Cache read failed for key: ${key}`);
       return null;
     }
   }
 
   async setCache(key: string, value: any, ttl?: number): Promise<void> {
-    const serialized = JSON.stringify(value);
-    if (ttl) {
-      await this.redisService.setEx(`cache:${key}`, serialized, ttl);
-    } else {
-      await this.redisService.setEx(
-        `cache:${key}`,
-        serialized,
-        this.defaultTtl,
-      );
+    try {
+      const serialized = JSON.stringify(value);
+      if (ttl) {
+        await this.redisService.setEx(`cache:${key}`, serialized, ttl);
+      } else {
+        await this.redisService.setEx(
+          `cache:${key}`,
+          serialized,
+          this.defaultTtl,
+        );
+      }
+    } catch {
+      this.logger.warn(`Cache write failed for key: ${key}`);
     }
   }
 
   async invalidateCache(key: string): Promise<void> {
-    await this.redisService.del(`cache:${key}`);
+    try {
+      await this.redisService.del(`cache:${key}`);
+    } catch {
+      this.logger.warn(`Cache invalidation failed for key: ${key}`);
+    }
   }
 
   async invalidatePattern(pattern: string): Promise<void> {
-    const client = this.redisService.getClient();
-    const keys = await client.keys(`cache:${pattern}`);
-    if (keys.length > 0) {
-      await client.del(...keys);
+    try {
+      const client = this.redisService.getClient();
+      const keys = await client.keys(`cache:${pattern}`);
+      if (keys.length > 0) {
+        await client.del(...keys);
+      }
+    } catch {
+      this.logger.warn(`Cache pattern invalidation failed for: ${pattern}`);
     }
   }
 
