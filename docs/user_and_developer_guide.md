@@ -2230,3 +2230,79 @@ docker compose exec ollama ollama pull llama3.2
 
 ---
 
+## 14. Production Operations Checklist
+
+### 14.1 Pre-Production Checklist
+
+- [ ] Change all default credentials in `.env.docker` (database, Redis, RabbitMQ, MinIO, JWT secrets, superuser)
+- [ ] Generate cryptographically random JWT secrets (`openssl rand -hex 32`)
+- [ ] Set `ENVIRONMENT=PRODUCTION` to disable `synchronize: true` and enable production logging
+- [ ] Configure TLS certificates for NGINX (HTTPS)
+- [ ] Set `CORS_ORIGIN` to exact frontend domain(s) — never use `*`
+- [ ] Set `MINIO_USE_SSL=true` if using managed S3
+- [ ] Configure database SSL (`DATABASE_SSL=true`)
+- [ ] Run database migrations (`yarn migration:run`)
+- [ ] Disable Swagger docs in production or restrict access
+- [ ] Review and tighten rate limiting thresholds for production traffic
+
+### 14.2 Security Checklist
+
+- [ ] All secrets are in a secrets manager (not in `.env` files or git)
+- [ ] JWT access token lifetime is 15 minutes or less
+- [ ] Refresh token lifetime is appropriate for the use case
+- [ ] HTTP-only cookies are configured with `Secure` and `SameSite` flags
+- [ ] Rate limiting is configured and tested
+- [ ] Admin panel is restricted to authorized IP ranges (recommended)
+- [ ] Audit logging is enabled and capturing all admin actions
+- [ ] Default superuser password has been changed
+- [ ] Unnecessary services are not exposed to the public internet
+- [ ] Regular dependency audits are scheduled (`yarn audit` / `bun audit`)
+
+### 14.3 Performance Checklist
+
+- [ ] PostgreSQL has appropriate indexes on `userId`, `conversationId`, `createdAt`, and search columns
+- [ ] Redis is configured with appropriate `maxmemory` and eviction policy
+- [ ] MinIO buckets have lifecycle policies for old uploads
+- [ ] NGINX `client_max_body_size` matches the application's upload limit
+- [ ] Connection pool sizes are configured for production load
+- [ ] TypeORM eager loading is reviewed for N+1 query risks
+
+### 14.4 Observability Checklist
+
+- [ ] Prometheus is scraping `/api/metrics` every 15 seconds
+- [ ] Grafana dashboards are provisioned and accessible
+- [ ] Loki is receiving logs from Promtail
+- [ ] Alerting rules are configured (high error rate, high latency, service down)
+- [ ] Health check endpoint is monitored by an external service (UptimeRobot, Pingdom)
+- [ ] Log retention policies are configured (Loki retention, Prometheus retention)
+
+### 14.5 Backup Checklist
+
+- [ ] PostgreSQL backups are scheduled (daily recommended): `pg_dump` or managed backup service
+- [ ] MinIO data is backed up or replicated
+- [ ] Redis persistence is configured (AOF or RDB) if cached data must survive restarts
+- [ ] Backup restoration has been tested
+- [ ] Backup encryption is enabled for off-site storage
+
+### 14.6 Disaster Recovery Checklist
+
+- [ ] Recovery Time Objective (RTO) is defined
+- [ ] Recovery Point Objective (RPO) is defined
+- [ ] Database restore procedure is documented and tested
+- [ ] Container images are stored in a container registry (not built on-the-fly)
+- [ ] Environment variable backups are stored securely
+- [ ] A runbook exists for common failure scenarios (see [Section 13: Troubleshooting Guide](#13-troubleshooting-guide))
+
+### 14.7 Deployment Checklist
+
+- [ ] CI pipeline passes (lint, test, build, E2E)
+- [ ] Database migrations are run before deploying new backend
+- [ ] Container images are built and tagged with version/commit
+- [ ] Rolling deployment strategy is used (or blue/green for zero downtime)
+- [ ] Health checks pass after deployment
+- [ ] Smoke tests are run against the production environment
+- [ ] Monitoring dashboards are checked for anomalies post-deployment
+- [ ] Rollback plan is documented and tested
+
+---
+
