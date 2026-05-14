@@ -732,3 +732,267 @@ Every write operation (create, update, delete) performed through the admin panel
 
 ---
 
+## 4. Developer Guide
+
+### 4.1 Local Setup
+
+#### Prerequisites
+
+- **Docker** + **Docker Compose** (for containerized services)
+- **Node.js 18+** and **Yarn** (for local development without Docker)
+- **Bun** runtime (used in CI and Docker — optional for local dev)
+- **Git**
+
+#### Clone the Repository
+
+```bash
+git clone <repository-url>
+cd chatapp
+```
+
+#### Option A: Full Docker Compose (Recommended)
+
+This starts every service — PostgreSQL, Redis, MinIO, RabbitMQ, Ollama, backend, frontend, and NGINX — with a single command:
+
+```bash
+npm run docker:up:d
+```
+
+Wait ~30 seconds for all services to pass health checks. Monitor progress:
+
+```bash
+npm run docker:logs:backend
+```
+
+The seed container automatically creates the superuser account on first run.
+
+**Access:**
+
+| Service | URL |
+|---------|-----|
+| Frontend (via NGINX) | http://localhost |
+| Backend API | http://localhost/api |
+| Swagger Docs | http://localhost/api/docs |
+| MinIO Console | http://localhost:9001 |
+| RabbitMQ Management | http://localhost:15672 |
+| Health Check | http://localhost/api/health |
+
+#### Option B: Dev Mode with Hot Reload
+
+Uses the Docker Compose override that mounts local source directories into containers:
+
+```bash
+npm run docker:up:dev:d
+```
+
+The override mounts `apps/backend/src` and `apps/frontend/src` for live reloading. Changes you make locally are reflected immediately inside the Docker containers.
+
+#### Option C: Local Backend + Docker Infrastructure
+
+Run only infrastructure services in Docker, and the backend/frontend locally:
+
+```bash
+# Start infrastructure only
+docker compose up postgres redis rabbitmq minio -d
+
+# Backend
+cd apps/backend
+yarn install
+yarn migration:run
+yarn seed
+yarn start:dev
+
+# Frontend (separate terminal)
+cd apps/frontend
+yarn install
+yarn start:dev
+```
+
+The frontend Vite dev server (port 3000) proxies `/api` and `/socket.io` requests to `localhost:3001` automatically.
+
+#### With Monitoring Stack
+
+```bash
+npm run docker:up:monitoring
+```
+
+This adds Prometheus (port 9090), Grafana (port 3002), and Loki (port 3100) alongside the main services.
+
+### 4.2 Environment Variables
+
+All configuration is managed through `.env.docker` at the repository root. The file is tracked in git with safe defaults for local development.
+
+#### Core Settings
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `NODE_ENV` | `development` | Node environment |
+| `ENVIRONMENT` | `development` | Application environment (`development` or `PRODUCTION`) |
+| `PORT` | `3001` | Backend API port |
+| `BACKEND_PORT` | `3001` | Backend port (Docker mapping) |
+| `FRONTEND_PORT` | `3000` | Frontend Vite dev server port |
+| `NGINX_HTTP_PORT` | `80` | NGINX entry point port |
+
+#### Database
+
+| Variable | Default | Security Implication |
+|----------|---------|---------------------|
+| `DATABASE_HOST` | `postgres` | Docker service name; use `localhost` for local dev |
+| `DATABASE_PORT` | `5432` | Standard PostgreSQL port |
+| `DATABASE_USERNAME` | `chatapp` | **Change in production** — default is a well-known credential |
+| `DATABASE_PASSWORD` | `chatapp_secret` | **Must change in production** — tracked in git with weak default |
+| `DATABASE_NAME` | `chatapp` | Database name |
+
+**Production recommendation:** Use a managed database service (RDS, Cloud SQL) with strong, randomly generated credentials stored in a secrets manager (Vault, AWS Secrets Manager). Never commit database credentials to version control.
+
+#### Authentication
+
+| Variable | Default | Security Implication |
+|----------|---------|---------------------|
+| `JWT_SECRET` | `change-this-to-a-random-jwt-secret` | **Critical — must change in production.** Used to sign access tokens. If compromised, attackers can forge tokens |
+| `JWT_REFRESH_SECRET` | `change-this-to-a-random-refresh-secret` | **Critical — must change in production.** Used to sign refresh tokens |
+| `COOKIE_SECRET` | `change-this-to-a-random-secret` | **Must change in production.** Used to sign cookies |
+
+**Production recommendation:** Generate cryptographically random secrets (at least 256 bits / 32 bytes) and store them in a secrets manager. Rotate secrets periodically. Use separate secrets per environment (dev, staging, prod).
+
+#### Superuser
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `SUPERUSER_USERNAME` | `admin` | Admin account username created by seed script |
+| `SUPERUSER_PASSWORD` | `changeme123!` | **Must change before first deployment** |
+| `SUPERUSER_EMAIL` | `admin@chatapp.local` | Admin account email |
+
+**Security note:** The seed script runs automatically on first `docker compose up`. Change these defaults in `.env.docker` before deploying to any shared environment.
+
+#### Redis
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `REDIS_HOST` | `redis` | Redis service hostname |
+| `REDIS_PORT` | `6379` | Redis port |
+
+Used for: caching (5-minute TTL), JWT token blacklisting (TTL matches token lifetime), WebSocket pub/sub via Socket.IO Redis adapter.
+
+#### RabbitMQ
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `RABBITMQ_HOST` | `rabbitmq` | RabbitMQ service hostname |
+| `RABBITMQ_PORT` | `5672` | AMQP port |
+| `RABBITMQ_USER` | `chatapp` | Username |
+| `RABBITMQ_PASSWORD` | `chatapp_secret` | **Change in production** |
+
+Used for: async file upload processing, notification delivery, audit log recording. All queues have dead-letter exchanges with 3 retry attempts and exponential backoff.
+
+#### Object Storage (MinIO)
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `MINIO_ROOT_USER` | `minioadmin` | MinIO admin username |
+| `MINIO_ROOT_PASSWORD` | `minioadmin` | **Must change in production** |
+| `MINIO_ENDPOINT` | `minio` | Service hostname |
+| `MINIO_PORT` | `9000` | S3 API port |
+| `MINIO_API_PORT` | `9000` | API port (Docker mapping) |
+| `MINIO_CONSOLE_PORT` | `9001` | Web console port |
+| `MINIO_USE_SSL` | `false` | Enable SSL for S3 connections |
+| `MINIO_ACCESS_KEY` | `minioadmin` | S3 access key |
+| `MINIO_SECRET_KEY` | `minioadmin` | **Must change in production** |
+| `S3_BUCKET` | `chatapp-uploads` | Primary storage bucket |
+
+Three buckets are auto-created by `docker/minio/init-buckets.sh`: `chatapp-uploads`, `chatapp-avatars`, `chatapp-attachments`.
+
+**Production recommendation:** Replace MinIO with a managed S3 service (AWS S3, GCS) for durability and availability. Enable SSL. Use IAM roles or presigned URLs instead of long-lived access keys.
+
+#### AI (Ollama)
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `OLLAMA_HOST` | `http://ollama:11434` | Ollama service URL |
+| `OLLAMA_PORT` | `11434` | Ollama port (Docker mapping) |
+
+The Ollama container uses a persistent volume (`ollama_data`) for downloaded models. First-time model pulls can take several minutes depending on model size.
+
+#### Monitoring
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `PROMETHEUS_PORT` | `9090` | Prometheus web UI |
+| `GRAFANA_PORT` | `3002` | Grafana dashboard |
+| `LOKI_PORT` | `3100` | Loki log aggregation |
+| `GRAFANA_ADMIN_USER` | `admin` | **Change in production** |
+| `GRAFANA_ADMIN_PASSWORD` | `admin` | **Must change in production** |
+
+#### CORS
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `CORS_ORIGIN` | `http://localhost,http://localhost:3000` | Comma-separated allowed origins |
+
+**Production recommendation:** Set to your exact frontend domain(s). Never use `*` in production.
+
+### 4.3 Running Tests
+
+#### Backend Unit Tests
+
+```bash
+cd apps/backend
+yarn test                          # All tests, parallel (--maxWorkers=50%)
+yarn test -- --testPathPattern=auth # Specific module
+yarn test:watch                    # Watch mode
+yarn test:cov                      # With coverage report
+yarn test:e2e                      # End-to-end tests
+```
+
+Tests use Jest with `@swc/jest` transform and run from `src/` matching `*.spec.ts`.
+
+#### Frontend Tests
+
+```bash
+cd apps/frontend
+yarn test                          # Vitest run
+yarn test -- --watch               # Watch mode
+yarn test -- --coverage            # With coverage
+```
+
+Tests use Vitest with `jsdom` environment.
+
+#### E2E Tests
+
+```bash
+npx playwright install             # First time only
+npx playwright test                # Run E2E test suite
+```
+
+E2E tests use Playwright with Chromium, defined in `tests/e2e/`. They require the full Docker Compose stack running.
+
+### 4.4 Useful Commands Reference
+
+```bash
+# Docker Compose (from repo root)
+npm run docker:up              # Start all services (attached)
+npm run docker:up:d            # Start all services (detached)
+npm run docker:up:dev          # Start with dev overrides (attached)
+npm run docker:up:dev:d        # Start with dev overrides (detached)
+npm run docker:up:monitoring   # Start with monitoring stack
+npm run docker:down            # Stop all services
+npm run docker:down:volumes    # Stop and remove all data volumes
+npm run docker:logs            # Tail all service logs
+npm run docker:logs:backend    # Tail backend logs only
+
+# Backend (from apps/backend/)
+yarn start:dev                 # Dev server with watch mode
+yarn build                     # SWC compilation to dist/
+yarn lint                      # ESLint with auto-fix
+yarn seed                      # Create superuser account
+yarn migration:run             # Run pending migrations
+yarn migration:generate src/migrations/Name  # Generate migration
+yarn migration:revert          # Revert last migration
+
+# Frontend (from apps/frontend/)
+yarn start:dev                 # Vite dev server on port 3000
+yarn build                     # Production build to dist/
+```
+
+---
+
