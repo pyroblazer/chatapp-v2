@@ -2306,3 +2306,123 @@ docker compose exec ollama ollama pull llama3.2
 
 ---
 
+## 15. Enterprise Admin Portal Guide
+
+> **Note:** This section describes the enterprise admin architecture vision. The current implementation provides basic admin capabilities (3-role RBAC, user ban/role management, message deletion, report review, and audit logging). The features described below represent the target architecture for a production-grade Trust & Safety and platform operations system.
+
+### 15.1 Admin Authentication
+
+Enterprise admin access requires elevated authentication beyond standard user login:
+
+**Target capabilities:**
+- **SSO Integration** — SAML 2.0 / OIDC integration with corporate identity providers (Okta, Azure AD, Google Workspace)
+- **MFA Enforcement** — All admin accounts require multi-factor authentication (TOTP, hardware keys)
+- **IP Allowlisting** — Admin portal accessible only from approved IP ranges
+- **Session Expiration** — Admin sessions have shorter timeouts (30 minutes idle) than user sessions
+- **Step-up Authentication** — Destructive actions (banning, role changes) require re-authentication
+- **Just-in-Time Privilege Elevation** — Admins request temporary elevated access with approval workflows
+- **Emergency Access** — Break-glass procedures for critical incidents with post-incident review
+
+### 15.2 Admin RBAC System
+
+**Current state:** Three roles — USER, MODERATOR, ADMIN.
+
+**Target granular RBAC:**
+
+| Role | Scope | Key Capabilities |
+|------|-------|-----------------|
+| Super Admin | Platform-wide | Full access, manage other admins, system configuration |
+| Platform Admin | Platform-wide | User management, feature flags, monitoring access |
+| Security Admin | Platform-wide | Security events, incident response, audit log review |
+| Compliance Officer | Platform-wide | Audit trails, data retention, GDPR workflows, legal holds |
+| Moderator | All conversations | Message review, user warnings, content removal |
+| Support Agent | Assigned users | User lookup, impersonation (with safeguards), ticket management |
+| Tenant Admin | Tenant-scoped | Manage users within their tenant, tenant settings |
+| Analytics Viewer | Platform-wide | Read-only access to analytics dashboards |
+| DevOps Operator | Platform-wide | Deployment management, infrastructure monitoring |
+| AI Safety Reviewer | Platform-wide | AI moderation review, prompt governance |
+| Read-only Auditor | Platform-wide | Read-only access to audit logs and compliance data |
+
+### 15.3 User Administration
+
+**Current capabilities:**
+- Search users by username/email
+- Ban/unban accounts
+- Change user roles
+
+**Target capabilities:**
+- **Secure impersonation** — Support agents can impersonate users with explicit audit logging, time-limited sessions, and mandatory reason recording
+- **Account lockout** — Automatic lockout after N failed login attempts with admin override
+- **Shadow-ban** — Restrict user's messages to be invisible to others without notifying the user
+- **MFA reset** — Admin can reset a user's MFA device after identity verification
+- **Force logout** — Invalidate all active sessions for a user across all devices
+- **Device session review** — View all active sessions with device info, IP, location, and last activity
+- **Login history** — Full login history with timestamps, IPs, and device fingerprints
+
+### 15.4 Chat Moderation Tools
+
+**Current capabilities:**
+- Message deletion by moderators
+- User-submitted reports with status lifecycle (pending → reviewed → resolved/dismissed)
+
+**Target capabilities:**
+- **Message flagging** — Automatic flagging based on keyword filters, toxicity scores, or user reports
+- **AI moderation review** — Messages flagged by AI toxicity detection queued for human review
+- **Spam detection** — Behavioral analysis to identify spam patterns (message frequency, duplicate content)
+- **Keyword filtering** — Configurable word/regex filters that auto-flag or auto-delete matching messages
+- **Attachment review** — Media scanning pipeline for images and files (CSAM detection, malware scanning)
+- **Conversation quarantine** — Temporarily freeze a conversation to prevent further messages during investigation
+- **Escalation workflows** — Reports escalate from moderator → senior moderator → admin based on severity and complexity
+
+### 15.5 Trust & Safety Operations
+
+**Target capabilities:**
+- **Anti-spam systems** — Rate limiting, CAPTCHA challenges, behavioral analysis
+- **Raid detection** — Identify coordinated attacks (mass join + mass message patterns)
+- **Bot detection** — Automated account detection via behavioral fingerprints
+- **Fraud detection** — Identify account takeover attempts, credential stuffing
+- **Coordinated abuse detection** — Correlate reports across multiple targets to identify organized harassment
+- **Behavioral analytics** — Anomaly detection on user activity patterns
+
+### 15.6 Audit & Compliance Portal
+
+**Current capabilities:**
+- Immutable audit logs with userId, action, entity, entityId, metadata, IP address, and timestamp
+- Filterable by userId, action, entity, and date range
+
+**Target capabilities:**
+- **GDPR workflows** — Right-to-be-forgotten processing with automated data discovery and deletion verification
+- **Consent tracking** — Record and manage user consent for data processing activities
+- **Legal hold workflows** — Preserve specific users' data upon legal request with indefinite retention override
+- **Export requests** — Generate data exports in machine-readable format for data portability requests
+- **Data retention review** — Dashboard showing data categories, retention periods, and compliance status
+
+### 15.7 Incident Management Console
+
+**Current capabilities:**
+- Health endpoint for PostgreSQL and Redis status
+- Prometheus metrics for request rate and latency
+
+**Target capabilities:**
+- **Live system status** — Real-time dashboard showing all service health, queue depths, and error rates
+- **Queue backlog visibility** — Visual representation of RabbitMQ queue depths with alerting thresholds
+- **WebSocket health** — Active connections, reconnection rates, and error counts
+- **Alert acknowledgment** — On-call engineers acknowledge alerts, triggering escalation if not addressed within SLA
+- **Incident timelines** — Automated timeline generation correlating alerts, deployments, and admin actions
+
+### 15.8 Internal Analytics Dashboard
+
+**Target metrics:**
+
+| Category | Metrics |
+|----------|---------|
+| Engagement | DAU, MAU, message volume, conversation count, average session duration |
+| Real-time | Concurrent WebSocket connections, active conversations, messages/second |
+| Performance | p50/p95/p99 API latency, WebSocket delivery latency, file upload time |
+| AI | Bot usage, token consumption, model inference latency, error rates |
+| Quality | Error rate (4xx/5xx), failed logins, report volume, moderation queue depth |
+| Abuse | Report rate, ban rate, spam detection rate, false positive rate |
+| Retention | D1/D7/D30 retention, churn rate, reactivation rate |
+
+---
+
