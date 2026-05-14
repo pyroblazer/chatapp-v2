@@ -1825,3 +1825,124 @@ The Docker Compose stack maps directly to Kubernetes resources:
 
 ---
 
+## 11. Monitoring & Operations Guide
+
+### 11.1 Monitoring Stack Overview
+
+The monitoring stack consists of four services, started via `docker-compose.monitoring.yml`:
+
+```mermaid
+graph LR
+    BE[Backend :3001] -->|/api/metrics| Prom[Prometheus :9090]
+    Prom -->|Queries| GF[Grafana :3002]
+    PT[Promtail] -->|Ship logs| Loki[Loki :3100]
+    GF -->|Log queries| Loki
+```
+
+| Service | Image | Port | Purpose |
+|---------|-------|------|---------|
+| Prometheus | `prom/prometheus:latest` | 9090 | Metrics scraping and time-series storage |
+| Grafana | `grafana/grafana:latest` | 3002 | Dashboards, alerting, log exploration |
+| Loki | `grafana/loki:latest` | 3100 | Log aggregation (Promtail ships logs here) |
+| Promtail | `grafana/promtail:latest` | — | Log shipper — reads Docker container logs and forwards to Loki |
+
+### 11.2 Prometheus Metrics
+
+The backend exposes a custom Prometheus-format metrics endpoint at `GET /api/metrics`. The `TelemetryService` is a custom implementation (not the OpenTelemetry SDK) that maintains in-memory counters, gauges, and histograms and serializes them to Prometheus exposition format.
+
+**Collected metrics:**
+
+| Metric | Type | Labels | Description |
+|--------|------|--------|-------------|
+| `http_requests_total` | Counter | `method`, `route`, `status_code` | Total HTTP requests processed |
+| `http_request_duration_seconds` | Histogram | `method`, `route`, `status_code` | Request duration in seconds |
+
+**Histogram buckets:** 0.005s, 0.01s, 0.025s, 0.05s, 0.1s, 0.25s, 0.5s, 1s, 2.5s, 5s, 10s
+
+**Scrape configuration** (`docker/prometheus/prometheus.yml`):
+- Target: `backend:3001` (Docker service name)
+- Interval: 15 seconds
+- Path: `/api/metrics`
+
+### 11.3 Grafana Dashboards
+
+Grafana is pre-configured with:
+- **Datasources:** Prometheus (metrics) and Loki (logs), auto-provisioned from `docker/grafana/provisioning/datasources/`
+- **Dashboard:** A pre-built "ChatApp Overview" dashboard (`docker/grafana/provisioning/dashboards/json/chatapp-overview.json`) with panels for:
+  - Request rate (requests/second by route)
+  - Response latency (p50, p95, p99 from histogram)
+  - Error rate (4xx and 5xx status codes)
+  - CPU and memory (if node exporter is added)
+
+**Access:** `http://localhost:3002` with credentials from `.env.docker` (default: `admin`/`admin`).
+
+### 11.4 Log Aggregation
+
+**Promtail** ships container logs to **Loki**:
+- Reads from Docker container stdout/stderr via the Docker socket
+- Labels logs with container name, service, and source
+- Loki stores logs with compression and indexing by labels
+
+**Querying logs in Grafana:**
+- Navigate to **Explore** in Grafana
+- Select **Loki** as the data source
+- Use LogQL queries:
+  ```
+  {container_name="chatapp-backend"} |= "error"
+  {container_name="chatapp-backend"} | json | line_format "{{.message}}"
+  ```
+
+### 11.5 Health Checks
+
+All infrastructure services have native Docker health checks:
+
+| Service | Check | Interval |
+|---------|-------|----------|
+| PostgreSQL | `pg_isready -U chatapp` | 10s |
+| Redis | `redis-cli ping` | 10s |
+| RabbitMQ | `rabbitmq-diagnostics -q ping` | 15s |
+| MinIO | `curl -f http://localhost:9000/minio/health/live` | 10s |
+| Backend | `fetch('http://localhost:3001/api/health')` | 15s |
+| NGINX | `wget -qO /dev/null http://127.0.0.1:80/` | 15s |
+
+**Backend health endpoint** (`GET /api/health`):
+```json
+{
+  "status": "ok",
+  "services": {
+    "postgresql": "up",
+    "redis": "up"
+  },
+  "timestamp": "2025-06-10T14:30:00.000Z"
+}
+```
+
+- `status` is `"ok"` when all services are up, `"degraded"` when any is down
+- PostgreSQL: verifies `connection.isConnected` and runs `SELECT 1`
+- Redis: calls `redisService.ping()` and checks for `PONG`
+
+### 11.6 Alerting Strategy
+
+Grafana supports alerting rules that can notify via email, Slack, PagerDuty, and webhooks. Recommended alerts:
+
+| Alert | Condition | Severity |
+|-------|-----------|----------|
+| High Error Rate | `http_requests_total{status_code=~"5.."}` rate > 5% over 5m | Critical |
+| High Latency | `http_request_duration_seconds` p99 > 2s over 5m | Warning |
+| Backend Down | Health check returns non-200 for 3 consecutive checks | Critical |
+| Database Connection Lost | Health endpoint returns `"degraded"` | Critical |
+| Redis Unavailable | Health endpoint shows Redis `"down"` | Critical |
+
+### 11.7 SLO/SLA Considerations
+
+For production deployments, define Service Level Objectives:
+
+| SLO | Target | Measurement |
+|-----|--------|-------------|
+| API Availability | 99.9% | Successful health checks / total checks |
+| Message Delivery Latency | p99 < 500ms | Time from POST to WebSocket delivery |
+| WebSocket Connection Reliability | 99.5% | Successful connects / total attempts |
+| File Upload Success Rate | 99% | Completed uploads / initiated uploads |
+
+---
+
