@@ -1,5 +1,5 @@
 import { Controller, Get, NotFoundException, Param, Res } from '@nestjs/common';
-import { Response } from 'express';
+import type { Response } from 'express';
 import { LocalStorageProvider } from './local-storage.provider';
 
 const localStorage = new LocalStorageProvider();

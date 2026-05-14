@@ -1,5 +1,5 @@
 import { HttpException, HttpStatus } from '@nestjs/common';
-import { NextFunction, Response } from 'express';
+import type { NextFunction, Response } from 'express';
 import { Attachment, AuthenticatedRequest } from './types';
 import * as bcrypt from 'bcrypt';
 import { v4 as uuidv4 } from 'uuid';

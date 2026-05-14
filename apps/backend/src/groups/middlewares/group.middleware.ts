@@ -1,5 +1,5 @@
 import { Inject, Injectable, NestMiddleware } from '@nestjs/common';
-import { NextFunction, Response } from 'express';
+import type { NextFunction, Response } from 'express';
 import { Services } from '../../utils/constants';
 import type { AuthenticatedRequest } from '../../utils/types';
 import { GroupNotFoundException } from '../exceptions/GroupNotFound';
