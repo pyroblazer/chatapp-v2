@@ -499,3 +499,223 @@ This provides immediate feedback — the user sees the AI "typing" in real-time,
 
 ---
 
+## 13. Security Design Decisions
+
+### 13.1 Why JWT over Server-Side Sessions
+
+| Factor | JWT (Chosen) | Server Sessions |
+|--------|-------------|-----------------|
+| Stateless validation | Signature verification only — no database lookup per request | Every request queries the session store |
+| Horizontal scaling | No shared session store needed | Requires sticky sessions or shared session store (Redis) |
+| Mobile/API clients | Bearer token works naturally | Cookies can be awkward for native mobile apps |
+| Token revocation | Harder — short expiry + blacklist | Easy — delete the session |
+| Payload size | Larger (contains user claims) | Small (session ID only) |
+
+JWT was chosen because the backend uses the Redis adapter for WebSocket scaling (multiple instances). Stateless token validation avoids the need for a shared session store, simplifying the horizontal scaling story. The 15-minute access token lifetime limits the impact of token theft.
+
+### 13.2 Why Refresh Token Rotation
+
+Refresh token rotation (generating a new token pair on every refresh) was implemented because:
+- If a refresh token is stolen, the attacker gets at most one use before the legitimate user's next refresh invalidates it
+- The backend detects reuse of a revoked token (the old token is marked `revoked: true` in PostgreSQL)
+- Refresh tokens are stored as SHA-256 hashes, so even a database compromise doesn't reveal usable tokens
+
+### 13.3 Why RBAC with Three Roles
+
+The three-tier role system (USER / MODERATOR / ADMIN) provides:
+- **Simple mental model** — Easy for operators to understand and apply correctly
+- **Clear escalation path** — Reports → Moderator → Admin
+- **Sufficient granularity** — For the current scale, five or ten roles would add complexity without proportional benefit
+
+The system is designed to be extended to granular RBAC when needed (see Section 20: Admin RBAC Architecture Decisions).
+
+### 13.4 Why Rate Limiting
+
+Global rate limiting (10 requests per 10 seconds per IP) protects against:
+- Brute-force login attacks
+- API abuse (spamming messages, flooding friend requests)
+- Denial-of-service attacks at the application layer
+
+The proxy-aware implementation extracts the real client IP from `X-Forwarded-For`, ensuring rate limiting works correctly behind NGINX.
+
+---
+
+## 14. Database Design Tradeoffs
+
+### 14.1 Normalization vs. Denormalization
+
+The database is **primarily normalized** with strategic denormalization:
+
+| Data | Approach | Rationale |
+|------|----------|-----------|
+| Messages → Conversations | Normalized (foreign key) | Messages belong to exactly one conversation — no duplication |
+| User profiles | Normalized | Single source of truth for avatar, banner, about text |
+| Conversation last message | Denormalized (on conversation record) | Avoids a JOIN + ORDER BY + LIMIT query for every sidebar load |
+| Unread counts | Denormalized | Pre-computed to avoid counting unread messages on every conversation list fetch |
+| Audit log metadata | JSONB (semi-structured) | Varies per action type — schema flexibility without migration |
+
+### 14.2 UUID Primary Keys
+
+All entities use UUID primary keys instead of auto-incrementing integers:
+- **Globally unique** — Safe for future distributed systems or data migration
+- **Non-sequential** — Cannot enumerate resources by incrementing IDs (security benefit)
+- **TypeORM compatible** — `@PrimaryGeneratedColumn('uuid')` works seamlessly
+
+### 14.3 Full-Text Search
+
+PostgreSQL's native `tsvector`/`tsquery` with GIN index was chosen over dedicated search engines (Elasticsearch, Meilisearch) because:
+- No additional service to deploy and maintain
+- Sufficient quality for the current scale (thousands of messages, not millions)
+- Transactional consistency — search index is always in sync with the data
+- GIN index provides sub-second search on message content
+
+### 14.4 When to Consider Elasticsearch
+
+Migrate to Elasticsearch when:
+- Message volume exceeds 10M+ records
+- Complex search features are needed (fuzzy matching, faceted search, highlighting)
+- Search latency requirements demand dedicated infrastructure
+- Cross-entity search (messages + users + groups in a single query) becomes complex
+
+---
+
+## 15. Performance Engineering Decisions
+
+### 15.1 Redis Caching Strategy
+
+| Cached Data | TTL | Invalidation |
+|-------------|-----|-------------|
+| User profiles | 5 min | On profile update |
+| Conversation lists | 5 min | On new message / conversation creation |
+| Friend lists | 5 min | On friend add/remove |
+
+The 5-minute TTL balances freshness with cache hit rate. Pattern-based invalidation (`invalidatePattern`) ensures all relevant caches are cleared when the underlying data changes.
+
+### 15.2 Cursor-Based Pagination
+
+Message loading uses cursor-based pagination (`?before=<messageId>`) instead of offset-based pagination (`?page=N`):
+- **Consistent results** — New messages arriving during pagination don't shift results
+- **Index-friendly** — `WHERE createdAt < ? ORDER BY createdAt DESC LIMIT 50` uses the B-tree index efficiently
+- **No COUNT query** — Offset-based pagination requires `COUNT(*)` for total pages, which is expensive on large tables
+
+### 15.3 Expected Bottlenecks
+
+| Bottleneck | Mitigation |
+|-----------|-----------|
+| Message list loading | Cursor pagination + Redis caching of conversation lists |
+| WebSocket fanout | Redis adapter for multi-instance; room-based broadcasting (not global) |
+| Full-text search | GIN index; query length minimum (2 chars); result limit (100) |
+| File upload throughput | Presigned URLs bypass backend; async thumbnail generation via RabbitMQ |
+| Audit log writes | Async via RabbitMQ — doesn't block the request path |
+
+---
+
+## 16. Compliance & Governance Decisions
+
+### 16.1 GDPR Alignment
+
+| GDPR Article | Implementation Status |
+|-------------|----------------------|
+| **Art. 15 - Right of Access** | Implemented — `GET /api/auth/me` returns user data |
+| **Art. 16 - Right to Rectification** | Implemented — `PATCH /api/users/profiles` |
+| **Art. 17 - Right to Erasure** | Not implemented — requires data deletion workflow |
+| **Art. 20 - Right to Data Portability** | Not implemented — requires export endpoint |
+| **Art. 25 - Data Protection by Design** | Partially — JWT auth, encryption, minimal data collection |
+| **Art. 30 - Records of Processing** | Not implemented — requires processing activity documentation |
+| **Art. 32 - Security of Processing** | Implemented — bcrypt, JWT, rate limiting, audit logs |
+
+### 16.2 Data Retention
+
+| Data Type | Retention | Rationale |
+|-----------|-----------|-----------|
+| Messages | Indefinite | Core business data — users expect message history |
+| Notifications | 90 days | Auto-deleted by system; not critical business data |
+| Audit logs | Indefinite | Compliance requirement — must be retained for accountability |
+| File attachments | Indefinite | Linked to messages — deletion would break message integrity |
+| Refresh tokens | 7 days | Matches token lifetime; expired tokens cleaned up |
+
+### 16.3 PII Handling
+
+**Personally Identifiable Information in the system:**
+- Usernames, email addresses (account data)
+- IP addresses (audit logs, request headers)
+- Message content (potentially contains PII)
+- File attachments (potentially contain PII)
+
+**Current mitigations:**
+- IP addresses stored only in audit logs (append-only, admin-only access)
+- User profile data accessible only to the user themselves and admins
+- No PII in Redis cache keys (uses user IDs, not emails)
+
+---
+
+## 17. Operational Excellence Philosophy
+
+### 17.1 Incident Management
+
+**Severity classification:**
+
+| Severity | Definition | Response Time | Example |
+|----------|-----------|---------------|---------|
+| SEV1 - Critical | Platform down or data loss | 15 minutes | Database unavailable, all logins failing |
+| SEV2 - High | Major feature broken | 1 hour | Messages not delivering, file uploads failing |
+| SEV3 - Medium | Feature degraded | 4 hours | Search slow, notifications delayed |
+| SEV4 - Low | Minor issue | 24 hours | UI cosmetic bug, non-critical feature glitch |
+
+### 17.2 SLO Targets
+
+| Service | SLO | Measurement |
+|---------|-----|-------------|
+| API availability | 99.9% | Health endpoint success rate |
+| Message delivery | 99.99% | Messages persisted / messages sent |
+| WebSocket connectivity | 99.5% | Successful connects / total attempts |
+| File upload | 99% | Completed uploads / initiated uploads |
+
+### 17.3 Disaster Recovery
+
+| Component | RPO | RTO | Strategy |
+|-----------|-----|-----|----------|
+| PostgreSQL | <1 hour | <4 hours | Daily `pg_dump` + WAL archiving |
+| MinIO | <1 hour | <4 hours | Replication to secondary bucket |
+| Redis | Acceptable loss | <5 minutes | Recreate from PostgreSQL (cache only) |
+| RabbitMQ | Acceptable loss | <5 minutes | Consumers reconnect; messages in-flight may be lost |
+
+### 17.4 Chaos Testing (Future)
+
+To validate reliability, the following failure scenarios should be tested:
+- Kill the Redis container during active WebSocket connections
+- Kill the RabbitMQ container during file upload processing
+- Simulate network partition between backend and PostgreSQL
+- Kill a backend instance mid-request during a load test
+
+---
+
+## 18. Future Evolution Strategy
+
+### 18.1 What Should Be Extracted First
+
+When the modular monolith needs decomposition, extract in this order:
+
+1. **AI Bot Service** — Most independent module, communicates via WebSocket events, has its own data model (Bot, BotConversation, AIMessage). Low coupling with core messaging
+2. **Notification Service** — Already decoupled via RabbitMQ consumer. Extract to a standalone service with its own database
+3. **Search Service** — Read-only access to message data. Can be powered by Elasticsearch with change data capture from PostgreSQL
+
+### 18.2 What Should NOT Be Prematurely Optimized
+
+- **The auth module** — Tightly coupled with guards across all endpoints. Extracting auth creates a single point of failure and latency for every request
+- **The database** — Sharding or partitioning the PostgreSQL database should wait until actual performance data shows it's needed
+- **Event sourcing** — The current request/response + event-driven pattern is sufficient. Event sourcing adds complexity that's only justified when replay and temporal queries are needed
+
+### 18.3 Technical Debt Management
+
+| Debt Item | Priority | Effort | Impact |
+|-----------|----------|--------|--------|
+| Access token blacklisting | High | Medium | Enable immediate token revocation on ban |
+| Migration-based schema management | High | Low | Required for production deployments |
+| Frontend error boundaries per page | Medium | Low | Prevent full app crashes from component errors |
+| Message deduplication on reconnect | Medium | Medium | Eliminate duplicate messages after reconnection |
+| OpenTelemetry SDK adoption | Low | High | Required only when running multiple services |
+| Multi-region PostgreSQL | Low | High | Needed only for globally distributed deployments |
+
+---
+
