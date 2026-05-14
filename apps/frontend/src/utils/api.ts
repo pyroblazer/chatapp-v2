@@ -62,7 +62,10 @@ axiosClient.interceptors.response.use(
   async (error) => {
     const originalRequest = error.config;
     const isRefreshCall = originalRequest?.url?.includes('/auth/refresh');
-    if (error.response?.status === 401 && !originalRequest._retry && !isRefreshCall) {
+    const isAuthEndpoint =
+      originalRequest?.url?.includes('/auth/login') ||
+      originalRequest?.url?.includes('/auth/register');
+    if (error.response?.status === 401 && !originalRequest._retry && !isRefreshCall && !isAuthEndpoint) {
       originalRequest._retry = true;
       try {
         const { data } = await axiosClient.post('/auth/refresh');

@@ -127,6 +127,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: oven-sh/setup-bun@v2
+      - name: Install root dependencies
+        run: bun install --frozen-lockfile
       - name: Install Playwright
         run: bunx playwright install --with-deps
       - name: Start Docker services

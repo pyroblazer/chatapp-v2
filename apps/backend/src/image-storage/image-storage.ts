@@ -10,6 +10,7 @@ import type {
 
 export interface IImageStorageService {
   upload(params: UploadImageParams);
+  getDefaultBucket(): string;
   uploadMessageAttachment(
     params: UploadMessageAttachmentParams,
   ): Promise<MessageAttachment>;

@@ -106,7 +106,7 @@ export class GroupService implements IGroupService {
     if (params.avatar) {
       const key = generateUUIDV4();
       await this.imageStorageService.upload({ key, file: params.avatar });
-      group.avatar = key;
+      group.avatar = `${this.imageStorageService.getDefaultBucket()}/${key}`;
     }
     group.title = params.title ?? group.title;
     return this.groupRepository.save(group);

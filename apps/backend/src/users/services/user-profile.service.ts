@@ -44,12 +44,12 @@ export class UserProfileService implements IUserProfile {
   async updateBanner(file: Express.Multer.File) {
     const key = generateUUIDV4();
     await this.imageStorageService.upload({ key, file });
-    return key;
+    return `${this.imageStorageService.getDefaultBucket()}/${key}`;
   }
 
   async updateAvatar(file: Express.Multer.File) {
     const key = generateUUIDV4();
     await this.imageStorageService.upload({ key, file });
-    return key;
+    return `${this.imageStorageService.getDefaultBucket()}/${key}`;
   }
 }

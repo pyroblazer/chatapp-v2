@@ -23,6 +23,10 @@ export class ImageStorageService implements IImageStorageService {
     this.bucket = this.storageService.getDefaultBucket();
   }
 
+  getDefaultBucket(): string {
+    return this.bucket;
+  }
+
   async upload(params: UploadImageParams) {
     await this.storageService.uploadFile(this.bucket, params.key, params.file, {
       'Content-Type': params.file.mimetype,
