@@ -1103,3 +1103,116 @@ The backend follows a modular monolith architecture with 29 feature modules:
 
 ---
 
+## 6. Frontend Developer Guide
+
+### 6.1 React Architecture
+
+The frontend is a **single-page application** (SPA) built with React 18, using Vite 6 as the build tool. The application follows a feature-based component architecture with clear separation between pages (route-level), reusable components, state management, and utility layers.
+
+**Key architectural decisions:**
+
+| Decision | Choice | Rationale |
+|----------|--------|-----------|
+| Build tool | Vite 6 | Fast HMR, native ESM, optimized production builds. Significantly faster than webpack for development |
+| State management | Redux Toolkit | Predictable state, devtools integration, well-suited for complex real-time applications with many interdependent slices |
+| Routing | React Router v6 | Nested routes with `<Outlet />`, lazy loading for code splitting |
+| Styling | styled-components (primary) + SCSS Modules (secondary) | Theme support, scoped styles, dynamic styling based on props |
+| Forms | React Hook Form | Performant, minimal re-renders, built-in validation |
+
+### 6.2 Routing and Code Splitting
+
+All page components are **lazy-loaded** using `React.lazy()` and `Suspense`, reducing the initial bundle size:
+
+```typescript
+const LoginPage = lazy(() => import('./pages/LoginPage'));
+const ConversationPage = lazy(() => import('./pages/conversations/ConversationPage'));
+```
+
+**Route guard pattern:**
+- `<AuthenticatedRoute>` wraps all protected routes — checks `AuthContext` for a valid user
+- `ConversationPageGuard` and `GroupPageGuard` validate that the conversation/group exists before rendering the channel view
+- Nested routes use the sidebar + outlet pattern: the parent renders the sidebar, and `<Outlet />` renders the specific content panel
+
+### 6.3 State Management
+
+Redux Toolkit manages 14 domain-specific slices. The state architecture follows a flat, normalized pattern:
+
+```mermaid
+graph TD
+    subgraph Store
+        CS[conversationSlice<br/>Conversations list]
+        MS[messageSlice<br/>Messages + thunks]
+        SS[selectedSlice<br/>Active tab]
+        FS[friendsSlice<br/>Friends + requests]
+        GS[groupSlice<br/>Groups list]
+        GMS[groupMessageSlice<br/>Group messages]
+        CLS[callSlice<br/>Active call]
+        STS[settingsSlice<br/>Theme, preferences]
+    end
+
+    subgraph Async
+        MT[messageThunk<br/>fetchMessages, sendMessage]
+        FT[friendsThunk<br/>fetchFriends, sendRequest]
+    end
+
+    MT -->|dispatches| MS
+    FT -->|dispatches| FS
+```
+
+**Async operations** use `createAsyncThunk`:
+- API calls are defined as thunks (e.g., `fetchConversations`, `fetchMessages`)
+- Thunks dispatch `pending`, `fulfilled`, and `rejected` actions automatically
+- Components dispatch thunks and read state via `useSelector` and `useDispatch`
+- Loading and error states are tracked in each slice
+
+**Why Redux Toolkit over alternatives:**
+- The application has 14+ interdependent state slices with cross-slice communication (e.g., receiving a message updates both the messages slice and the conversation list's last message preview)
+- The Redux DevTools extension provides full state inspection and time-travel debugging, critical for real-time applications
+- `createAsyncThunk` provides a consistent pattern for all API interactions with built-in loading/error states
+- Zustand or Context API would require more boilerplate for this level of state complexity
+
+### 6.4 API Layer
+
+The API client (`src/utils/api.ts`) is a pre-configured Axios instance:
+
+**JWT lifecycle:**
+1. On login, the access token is stored in the Redux store (memory only — not localStorage for security)
+2. Every API request includes the token via an Axios request interceptor
+3. On a 401 response, the interceptor automatically calls `POST /auth/refresh` (using the HTTP-only refresh cookie)
+4. If the refresh succeeds, the original request is retried with the new token
+5. If the refresh fails, the user is redirected to the login page
+
+**WebSocket authentication:**
+- The Socket.IO connection includes the access token in the `auth` field
+- Token is sent once during the WebSocket handshake — no per-message auth overhead
+- If the token expires during a connected session, the client must reconnect with a fresh token
+
+### 6.5 Theming
+
+The application supports dark and light themes using styled-components' `ThemeProvider`:
+
+- Theme objects (`DarkTheme` / `LightTheme`) define a complete set of design tokens: colors, spacing, typography, borders, shadows
+- Components access theme values via `${props => props.theme.primaryBackground}`
+- Theme selection is stored in the Redux `settings` slice and persisted both locally and on the server
+- Adding a new theme requires only creating a new theme object that satisfies the same interface
+
+### 6.6 Error Handling
+
+- `<ErrorBoundary>` wraps the entire application, catching render errors and displaying a fallback UI
+- API errors are handled at the thunk level — rejected thunks populate error state in their respective slices
+- React Toastify displays error notifications for API failures
+- Network errors trigger reconnection logic in the Axios interceptor and Socket.IO client
+
+### 6.7 Anti-Patterns to Avoid
+
+| Anti-Pattern | Correct Approach |
+|-------------|-----------------|
+| Storing tokens in `localStorage` | Use memory (Redux store) — the HTTP-only refresh cookie handles persistence |
+| Fetching data in `useEffect` | Use `createAsyncThunk` and dispatch from thunks |
+| Prop-drilling deeply | Use Redux `useSelector` for shared state; use Context only for truly scoped state (Auth, Socket) |
+| Direct DOM manipulation | Use React state and refs |
+| Inline styles mixed with styled-components | Pick one system — prefer styled-components for theme integration |
+| Mutating Redux state directly | Always use Immer-powered reducers from `createSlice` |
+
+---
+
