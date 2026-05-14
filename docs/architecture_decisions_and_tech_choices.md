@@ -719,3 +719,263 @@ When the modular monolith needs decomposition, extract in this order:
 
 ---
 
+## 19. Why Enterprise Admin Architecture Matters
+
+### 19.1 The Rationale
+
+Admin tooling is not a feature bolted onto the product — it is part of the core architecture. Every user-facing feature must have a corresponding admin capability:
+
+- Users can send messages → Moderators must be able to review and remove messages
+- Users can register accounts → Admins must be able to ban and manage accounts
+- The system processes data → Compliance officers must be able to audit and export data
+- The system runs services → Operators must be able to monitor and respond to incidents
+
+Without enterprise admin architecture, the platform cannot operate safely at scale. Trust & Safety, compliance, and operational tooling are not optional — they are requirements for any platform with user-generated content.
+
+### 19.2 Why Observability Must Include Privileged Actions
+
+Every action performed by an administrator is a potential vector for abuse. Insider threats are a real risk:
+- A compromised admin account can ban legitimate users
+- A malicious insider can access private user data
+- A misconfigured admin action can cause platform-wide disruption
+
+Comprehensive audit logging of privileged actions (who did what, when, from where, with what context) is the foundation of accountability and incident investigation.
+
+---
+
+## 20. Admin RBAC Architecture Decisions
+
+### 20.1 RBAC vs ABAC
+
+| Model | Pros | Cons |
+|-------|------|------|
+| **RBAC (Role-Based)** | Simple, auditable, easy to reason about | Less granular than ABAC |
+| **ABAC (Attribute-Based)** | Fine-grained, context-aware (time, location, device) | Complex to implement, harder to audit |
+| **Policy Engine (OPA/OpenFGA)** | Extremely flexible, centralized policy management | Additional infrastructure, learning curve |
+
+**Current choice:** Static RBAC with three roles (USER, MODERATOR, ADMIN). This is appropriate for the current scale where the admin team is small and roles are well-defined.
+
+**Future evolution:** When the admin team grows or multi-tenant requirements emerge, consider:
+- **OpenFGA** — Google's Zanzibar-inspired authorization system, excellent for fine-grained, relationship-based access control
+- **Casbin** — Policy-based access control with support for RBAC, ABAC, and ACL models
+- **OPA (Open Policy Agent)** — General-purpose policy engine with Rego language for complex authorization rules
+
+### 20.2 Privilege Escalation Workflows
+
+**Just-in-Time (JIT) access:** Admins request temporary elevated privileges with:
+- A documented reason
+- A time limit (e.g., 1 hour)
+- Automatic expiration
+- Full audit trail
+
+**Dual approval:** Critical actions require confirmation from a second admin:
+- Granting ADMIN role to any user
+- Accessing another admin's audit trail
+- Bulk operations (mass ban, mass message deletion)
+
+---
+
+## 21. Moderation System Design Decisions
+
+### 21.1 Human Moderation vs AI Moderation
+
+| Factor | Human Moderation | AI Moderation |
+|--------|-----------------|---------------|
+| Accuracy for context | High (understands nuance) | Medium (may miss sarcasm, cultural context) |
+| Speed | Slow (seconds to minutes per review) | Fast (milliseconds) |
+| Scale | Expensive (labor cost) | Cheap (compute cost) |
+| False positives | Low | Higher (especially with edge cases) |
+| Legal liability | Clear accountability | Complex (who is responsible for AI decisions?) |
+
+**Recommended hybrid approach:**
+1. AI performs initial triage (toxicity scoring, spam detection, keyword matching)
+2. Low-confidence cases are queued for human review
+3. High-confidence AI decisions (obvious spam, clear violations) are automated
+4. All automated actions are logged and can be appealed
+5. Human moderators review AI decisions periodically for quality calibration
+
+### 21.2 Queue-Based Moderation Pipeline
+
+```mermaid
+graph LR
+    MSG[New Message] --> AI[AI Toxicity Check]
+    AI -->|Low risk| DELIVER[Deliver to Recipient]
+    AI -->|Medium risk| QUEUE[Human Review Queue]
+    AI -->|High risk| BLOCK[Block + Notify Sender]
+    QUEUE --> MOD[Moderator Review]
+    MOD -->|Confirm violation| ACTION[Take Action]
+    MOD -->|False positive| DELIVER
+```
+
+### 21.3 Privacy Considerations
+
+- Moderators should see message content only in the context of a report — not browse arbitrary conversations
+- AI scanning should not store message content beyond the analysis period
+- Users should be informed when their content is actioned upon (transparency principle)
+- Moderation decisions must be auditable with the reasoning recorded
+
+---
+
+## 22. Admin Security Design Decisions
+
+### 22.1 Multi-Factor Authentication for Admins
+
+Admin accounts should require MFA because:
+- Admin credentials provide access to user data and platform controls
+- Password-only authentication is vulnerable to phishing, credential stuffing, and social engineering
+- MFA reduces account compromise risk by 99.9% (Microsoft study)
+
+**Implementation options:**
+- TOTP (Google Authenticator, Authy) — most common, easy to implement
+- Hardware keys (YubiKey, FIDO2) — highest security, requires physical possession
+- SMS OTP — lowest security (SIM swapping attacks), not recommended for admins
+
+### 22.2 Step-up Authentication
+
+For destructive or high-impact actions (banning a user, changing roles, bulk operations), require the admin to re-authenticate even within an active session. This mitigates:
+- Unauthorized actions from an unattended admin workstation
+- Session hijacking via XSS or cookie theft
+- Compromised admin tokens being used for destructive operations
+
+### 22.3 Secure Impersonation
+
+User impersonation is a necessary support tool but introduces significant risk:
+- **Must be time-limited** — Sessions expire after 15 minutes
+- **Must be read-only by default** — No write operations while impersonating
+- **Must be fully audited** — Every impersonation session logged with agent, user, reason, and duration
+- **Must be reversible** — The user is notified after the session ends
+
+---
+
+## 23. Internal Platform Operations Philosophy
+
+### 23.1 Self-Service Platform Operations
+
+The goal is to minimize the operational burden on the core engineering team by making common operations self-service:
+
+| Operation | Self-Service | Admin Intervention |
+|-----------|-------------|-------------------|
+| User registration | Yes | — |
+| Password reset | Yes (via email) | Manual reset (if email unavailable) |
+| Account ban | — | Admin action |
+| Feature toggle | Admin UI | — |
+| Database migration | CI/CD pipeline | Manual (for emergency hotfixes) |
+| Cache invalidation | Admin UI | — |
+| Monitoring configuration | Grafana UI | — |
+
+### 23.2 Progressive Delivery
+
+When deploying new features:
+1. **Feature flag off** — Deploy the code with the feature disabled
+2. **Internal testing** — Enable for admin/staff accounts
+3. **Canary release** — Enable for 1-5% of users
+4. **Gradual rollout** — Increase to 25%, 50%, 100%
+5. **Cleanup** — Remove the feature flag
+
+This minimizes blast radius — if a feature has a bug, it affects only a small percentage of users before it's detected and rolled back.
+
+---
+
+## 24. Multi-Tenant Governance Decisions
+
+### 24.1 Isolation Strategy
+
+> **Note:** ChatApp is currently single-tenant. This section describes the target multi-tenant architecture.
+
+| Strategy | Description | Cost | Isolation | Complexity |
+|----------|-------------|------|-----------|-----------|
+| **Shared schema** | All tenants in one DB, tenant_id column on every table | Lowest | Logical (application-enforced) | Lowest |
+| **Schema-per-tenant** | Separate PostgreSQL schema per tenant | Medium | Schema-level | Medium |
+| **DB-per-tenant** | Separate database per tenant | Highest | Full database isolation | Highest |
+
+**Recommendation for ChatApp:** Schema-per-tenant. This provides strong isolation (one tenant cannot accidentally query another's data) while keeping operational costs manageable (one PostgreSQL instance with multiple schemas). TypeORM supports schema-per-tenant via `schema` configuration.
+
+### 24.2 Tenant-Specific Configuration
+
+Each tenant may require:
+- Custom branding (logo, colors, domain)
+- Different retention policies
+- Different moderation rules
+- Different AI model configurations
+- Tenant-specific rate limits
+
+These should be stored in a `tenant_config` table and loaded at request time, with caching to avoid database hits on every request.
+
+---
+
+## 25. AI Governance & Safety Architecture
+
+### 25.1 Prompt Governance
+
+AI bots can generate harmful content if not properly governed:
+
+**Mitigation strategies:**
+- **System prompt constraints** — Every bot has a system prompt that defines acceptable behavior
+- **Input sanitization** — User messages to bots are validated for length and content before sending to the LLM
+- **Output filtering** — Bot responses are checked for harmful content before delivery (future)
+- **Prompt injection prevention** — User input is clearly separated from system prompts in the LLM API call
+
+### 25.2 Context Leakage Prevention
+
+AI bots have access to conversation history. Risks:
+- **Cross-user leakage** — If context is misconfigured, one user's conversation could appear in another's
+- **System prompt extraction** — Users may attempt to extract the system prompt via clever prompting
+
+**Mitigations:**
+- Conversation history is scoped to `userId + botId` — physically impossible to access another user's history
+- System prompts are not included in the response — only in the LLM API call
+- Token limits prevent excessive context window usage
+
+### 25.3 AI Safety as Operational Responsibility
+
+AI safety is not a one-time implementation — it requires ongoing operational attention:
+- **Regular prompt reviews** — Audit system prompts for potential misuse vectors
+- **Response sampling** — Periodically review AI responses for quality and safety
+- **User feedback loop** — Users can report problematic AI responses (via the existing report system)
+- **Model updates** — Track Ollama model updates for safety improvements
+
+---
+
+## 26. Operational Risk Management
+
+### 26.1 Incident Management Philosophy
+
+**Principles:**
+1. **Blameless post-mortems** — Focus on system failures, not individual blame
+2. **Detect → Respond → Recover → Learn** — Structured incident lifecycle
+3. **Write the runbook after the fire** — Every incident produces or updates a runbook
+4. **Alert fatigue is a real risk** — Only alert on actionable conditions
+
+### 26.2 Privileged Access Governance
+
+| Principle | Implementation |
+|-----------|---------------|
+| **Least privilege** | Admins receive the minimum role for their responsibilities |
+| **Time-limited access** | Elevated privileges expire automatically |
+| **Regular review** | Quarterly audit of admin access levels |
+| **Separation of duties** | No single person can both execute and approve critical actions |
+| **Break-glass procedures** | Emergency access with mandatory post-incident review |
+
+### 26.3 Change Management
+
+**Change categories:**
+
+| Category | Examples | Approval Required |
+|----------|---------|-------------------|
+| Standard | Feature deployments, config changes | CI/CD pipeline approval |
+| Normal | Database schema changes, infrastructure updates | Peer review + admin approval |
+| Emergency | Security patches, incident hotfixes | Verbal approval + post-change review |
+| Major | Version upgrades, architecture changes | Change advisory board review |
+
+### 26.4 Why Operational Governance Matters at Scale
+
+As the platform grows from a small team to a larger organization:
+- **More people with admin access** → Higher insider threat surface
+- **More features and services** → Higher operational complexity
+- **More users and data** → Higher impact of incidents
+- **More compliance requirements** → Higher regulatory scrutiny
+
+Investing in operational governance early (audit logging, RBAC, incident procedures) pays compound dividends as the platform scales. Retrofitting governance after a breach or compliance failure is far more expensive than building it in from the start.
+
+---
+
