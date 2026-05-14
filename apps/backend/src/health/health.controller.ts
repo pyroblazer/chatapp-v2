@@ -1,4 +1,5 @@
 import { Controller, Get, Optional } from '@nestjs/common';
+import { Public } from '../utils/public.decorator';
 import { InjectConnection } from '@nestjs/typeorm';
 import { Connection } from 'typeorm';
 import { RedisService } from '../redis/redis.service';
@@ -17,6 +18,7 @@ export class HealthController {
     @Optional() private readonly aiService?: AiService,
   ) {}
 
+  @Public()
   @Get()
   async check() {
     const services: Record<string, string> = {};

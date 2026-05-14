@@ -7,6 +7,7 @@ import {
   Query,
 } from '@nestjs/common';
 import { Routes, Services } from '../../utils/constants';
+import { Public } from '../../utils/public.decorator';
 import type { IUserService } from '../interfaces/user';
 
 @Controller(Routes.USERS)
@@ -22,6 +23,7 @@ export class UsersController {
     return this.userService.searchUsers(query);
   }
 
+  @Public()
   @Get('check')
   async checkUsername(@Query('username') username: string) {
     if (!username)

@@ -18,6 +18,7 @@ import type { IAuthService } from './auth';
 import { CreateUserDto } from './dtos/CreateUser.dto';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { AuthUser } from '../utils/decorators';
+import { Public } from '../utils/public.decorator';
 import * as crypto from 'crypto';
 
 @Controller(Routes.AUTH)
@@ -27,6 +28,7 @@ export class AuthController {
     @Inject(Services.USERS) private userService: IUserService,
   ) {}
 
+  @Public()
   @Post('register')
   async registerUser(@Body() createUserDto: CreateUserDto) {
     const user = await this.userService.createUser(createUserDto);
@@ -34,6 +36,7 @@ export class AuthController {
     return { user: instanceToPlain(user), ...tokens };
   }
 
+  @Public()
   @Post('login')
   async login(
     @Body() body: { username: string; password: string },
@@ -60,6 +63,7 @@ export class AuthController {
     });
   }
 
+  @Public()
   @Post('refresh')
   async refresh(@Req() req: Request, @Res() res: Response) {
     const refreshToken = req.cookies?.refresh_token;

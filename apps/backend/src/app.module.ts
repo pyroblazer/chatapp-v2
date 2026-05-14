@@ -16,6 +16,7 @@ import { FriendRequestsModule } from './friend-requests/friend-requests.module';
 import { FriendsModule } from './friends/friends.module';
 import { EventsModule } from './events/events.module';
 import { ThrottlerBehindProxyGuard } from './utils/throttler';
+import { JwtAuthGuard } from './auth/guards/jwt-auth.guard';
 import { ExistsModule } from './exists/exists.module';
 import { MessageAttachmentsModule } from './message-attachments/message-attachments.module';
 import { BaseModule } from './base/base.module';
@@ -91,6 +92,10 @@ if (process.env.ENVIRONMENT === 'PRODUCTION') envFilePath = '.env.production';
   ],
   controllers: [],
   providers: [
+    {
+      provide: APP_GUARD,
+      useClass: JwtAuthGuard,
+    },
     {
       provide: APP_GUARD,
       useClass: ThrottlerBehindProxyGuard,
