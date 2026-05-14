@@ -19,7 +19,7 @@ export const CallSidebarItem: FC<Props> = ({ friend }) => {
       </div>
       <div>
         <div>
-          <span className="username">{user?.username}</span>
+          <span className="username">{getUserFriendInstance(user!, friend).username}</span>
         </div>
         <div className="icons">
           <div className="icon">

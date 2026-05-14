@@ -222,6 +222,15 @@ export const completeUserProfile = (data: FormData) =>
 export const checkUsernameExists = (username: string) =>
   axiosClient.get(`/users/check?username=${username}`, config);
 
+export const getBlockedUsers = () =>
+  axiosClient.get('/users/blocked', config);
+
+export const blockUser = (username: string) =>
+  axiosClient.post(`/users/blocked/${username}`, {}, config);
+
+export const unblockUser = (username: string) =>
+  axiosClient.delete(`/users/blocked/${username}`, config);
+
 export const updateUserProfile = (data: FormData) =>
   axiosClient.patch<User>('/users/profiles', data, {
     ...config,

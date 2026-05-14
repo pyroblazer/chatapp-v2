@@ -33,6 +33,7 @@ import { NotificationsModule } from './notifications/notifications.module';
 import { AdminModule } from './admin/admin.module';
 import { AuditModule } from './audit/audit.module';
 import { BotModule } from './bot/bot.module';
+import { BlockedUsersModule } from './blocked-users/blocked-users.module';
 
 let envFilePath = '.env.development';
 if (process.env.ENVIRONMENT === 'PRODUCTION') envFilePath = '.env.production';
@@ -86,6 +87,7 @@ if (process.env.ENVIRONMENT === 'PRODUCTION') envFilePath = '.env.production';
     AdminModule,
     AuditModule,
     BotModule,
+    BlockedUsersModule,
   ],
   controllers: [],
   providers: [

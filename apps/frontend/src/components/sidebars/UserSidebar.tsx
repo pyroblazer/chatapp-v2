@@ -35,7 +35,7 @@ export const UserSidebar = () => {
         </UserSidebarHeader>
         <UserSidebarScrollableContainer>
           {userSidebarItems.map((item) => (
-            <UserSidebarItem item={item} />
+            <UserSidebarItem key={item.id} item={item} />
           ))}
         </UserSidebarScrollableContainer>
 

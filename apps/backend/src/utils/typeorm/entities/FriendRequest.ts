@@ -2,8 +2,7 @@ import {
   Column,
   CreateDateColumn,
   Entity,
-  JoinColumn,
-  OneToOne,
+  ManyToOne,
   PrimaryGeneratedColumn,
 } from 'typeorm';
 import type { User } from './User';
@@ -14,16 +13,14 @@ export class FriendRequest {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @OneToOne(() => require('./User').User, {
+  @ManyToOne(() => require('./User').User, {
     createForeignKeyConstraints: false,
   })
-  @JoinColumn()
   sender: User;
 
-  @OneToOne(() => require('./User').User, {
+  @ManyToOne(() => require('./User').User, {
     createForeignKeyConstraints: false,
   })
-  @JoinColumn()
   receiver: User;
 
   @CreateDateColumn()

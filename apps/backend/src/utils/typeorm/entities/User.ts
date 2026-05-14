@@ -3,6 +3,7 @@ import {
   Column,
   Entity,
   JoinColumn,
+  JoinTable,
   ManyToMany,
   OneToMany,
   OneToOne,
@@ -67,4 +68,8 @@ export class User {
   })
   @JoinColumn()
   peer: Peer;
+
+  @ManyToMany(() => require('./User').User, { cascade: false })
+  @JoinTable({ name: 'user_blocked_users' })
+  blockedUsers: User[];
 }

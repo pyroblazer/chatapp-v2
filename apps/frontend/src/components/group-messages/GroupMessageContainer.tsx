@@ -1,7 +1,3 @@
-import { MessageContainerStyle } from '../../utils/styles';
+import { MessageContainer } from '../messages/MessageContainer';
 
-
-
-export const GroupMessageContainer = () => {
-  return <MessageContainerStyle></MessageContainerStyle>;
-};
+export const GroupMessageContainer = () => <MessageContainer />;

@@ -22,6 +22,7 @@ export enum Routes {
   NOTIFICATIONS = 'notifications',
   ADMIN = 'admin',
   AUDIT_LOGS = 'admin/audit-logs',
+  BLOCKED_USERS = 'users/blocked',
 }
 
 export enum Services {
@@ -51,6 +52,7 @@ export enum Services {
   NOTIFICATIONS = 'NOTIFICATIONS_SERVICE',
   ADMIN = 'ADMIN_SERVICE',
   AUDIT = 'AUDIT_SERVICE',
+  BLOCKED_USERS = 'BLOCKED_USERS_SERVICE',
 }
 
 export enum ServerEvents {

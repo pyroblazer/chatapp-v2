@@ -79,6 +79,11 @@ const CurrentCallPage = lazy(() =>
     default: m.CurrentCallPage,
   }))
 );
+const BlockedPage = lazy(() =>
+  import('./pages/friends/BlockedPage').then((m) => ({
+    default: m.BlockedPage,
+  }))
+);
 
 enableMapSet();
 
@@ -155,7 +160,7 @@ function App() {
               </Route>
               <Route path="friends" element={<FriendsLayoutPage />}>
                 <Route path="requests" element={<FriendRequestPage />} />
-                <Route path="blocked" element={<div>Blocked</div>} />
+                <Route path="blocked" element={<BlockedPage />} />
               </Route>
               <Route path="settings" element={<SettingsPage />}>
                 <Route path="profile" element={<SettingsProfilePage />} />
