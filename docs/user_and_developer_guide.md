@@ -2506,3 +2506,87 @@ The current implementation does not include a feature flag system. Future enhanc
 
 ---
 
+## 17. Enterprise Support Workflows
+
+### 17.1 Ticket Investigation
+
+When a support ticket is received:
+
+1. **Identify the user** — Search by username or email in the admin panel Users tab
+2. **Review account status** — Check role, ban status, registration date
+3. **Check audit log** — Filter by `userId` to see recent actions on the account
+4. **Review reports** — Check if the user has submitted or received reports
+5. **Check presence** — Verify if the user is currently online
+6. **Document findings** — Record investigation notes in the ticketing system
+
+### 17.2 User Impersonation Safeguards
+
+> **Current status:** Impersonation is not implemented in the current codebase. The following describes the target workflow.
+
+Impersonation allows support agents to see exactly what a user sees. This is a high-risk operation that requires strict safeguards:
+
+- **Mandatory reason** — Agent must record a ticket number and reason before impersonation is granted
+- **Time-limited** — Impersonation sessions expire after 15 minutes
+- **Full audit trail** — Every impersonation session is logged with agent ID, user ID, start time, end time, and reason
+- **Read-only by default** — Agent cannot send messages, modify settings, or perform write operations while impersonating
+- **User notification** — After the impersonation session ends, the user is notified that their account was accessed (compliance requirement in some jurisdictions)
+- **Manager approval** — Impersonation of admin accounts requires manager-level approval
+
+### 17.3 Escalation Trees
+
+```mermaid
+graph TD
+    T[Ticket Received] --> L1[L1: Support Agent]
+    L1 -->|Account issues| L2A[L2: Senior Support]
+    L1 -->|Abuse report| L2B[L2: Moderator]
+    L1 -->|Security concern| L2C[L2: Security Admin]
+    L2A -->|Complex issue| L3A[L3: Platform Admin]
+    L2B -->|Severe abuse| L3B[L3: Trust & Safety Lead]
+    L2C -->|Active attack| L3C[L3: Security Lead / CISO]
+    L3B -->|Legal implication| L4[Legal / Compliance]
+    L3C -->|Breach confirmed| L4
+```
+
+**Escalation criteria:**
+
+| Level | Trigger | Response Time |
+|-------|---------|---------------|
+| L1 → L2 | Unable to resolve within 30 minutes, or issue requires elevated privileges | Immediate |
+| L2 → L3 | Multiple users affected, potential platform-wide issue, or legal/compliance concern | Within 1 hour |
+| L3 → L4 | Confirmed security breach, legal hold request, regulatory inquiry | Immediate |
+
+### 17.4 Abuse Escalation
+
+1. **Report received** — User submits report via the app
+2. **Auto-triage** — System assigns severity based on report reason and user history
+3. **Moderator review** — L2 moderator reviews the report, views the reported content, and decides:
+   - **Dismiss** — No violation found
+   - **Warn** — Send warning to the user
+   - **Delete content** — Remove offending message
+   - **Temporary ban** — Suspend account for a defined period
+   - **Escalate** — Forward to Trust & Safety lead for severe cases
+4. **Resolution** — Reporter is notified of the outcome (without revealing specific actions taken)
+
+### 17.5 Compliance Escalation
+
+1. **Request received** — Legal or regulatory request for user data
+2. **Compliance officer review** — Verify the request is valid and properly authorized
+3. **Legal hold** — If required, place the user's data on legal hold to prevent deletion
+4. **Data retrieval** — Extract the requested data with audit trail
+5. **Response** — Provide data through proper legal channels
+6. **Documentation** — Record the entire process in the compliance log
+
+### 17.6 Security Incident Escalation
+
+1. **Detection** — Alert from monitoring (unusual login patterns, mass report spike, anomaly detection)
+2. **Initial assessment** — Security admin evaluates severity:
+   - **Low** — Isolated incident, single user affected
+   - **Medium** — Multiple users affected, potential vulnerability
+   - **High** — Active attack, data breach suspected, platform integrity at risk
+3. **Containment** — For high-severity: disable affected accounts, block suspicious IPs, revoke compromised tokens
+4. **Investigation** — Full audit log review, correlate events, identify attack vector
+5. **Recovery** — Patch vulnerability, restore affected accounts, communicate with users
+6. **Post-incident review** — Document timeline, root cause, and preventive measures
+
+---
+
