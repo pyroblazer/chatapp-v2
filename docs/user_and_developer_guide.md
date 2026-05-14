@@ -2426,3 +2426,83 @@ Enterprise admin access requires elevated authentication beyond standard user lo
 
 ---
 
+## 16. Internal Developer Operations Guide
+
+### 16.1 Internal APIs
+
+The backend exposes admin APIs under `/api/admin/*` that serve as the internal operational interface:
+
+| Endpoint | Method | Purpose |
+|----------|--------|---------|
+| `/api/admin/users` | GET | List and search users |
+| `/api/admin/users/:id/ban` | PATCH | Ban/unban user |
+| `/api/admin/users/:id/role` | PATCH | Change user role |
+| `/api/admin/messages/:id` | DELETE | Moderate (delete) any message |
+| `/api/admin/reports` | GET | List reports |
+| `/api/admin/reports/:id` | PATCH | Update report status |
+| `/api/admin/audit-logs` | GET | Query audit logs |
+| `/api/bots` | POST/DELETE | Create and delete AI bots |
+| `/api/health` | GET | Service health status |
+| `/api/metrics` | GET | Prometheus-format metrics |
+
+All admin endpoints require JWT authentication with the appropriate role claim.
+
+### 16.2 Database Migration Workflows
+
+```bash
+# Generate a migration from entity changes
+cd apps/backend
+yarn migration:generate src/migrations/DescriptiveName
+
+# Review the generated SQL
+cat src/migrations/DescriptiveName.ts
+
+# Run pending migrations
+yarn migration:run
+
+# Revert the last migration (emergency rollback)
+yarn migration:revert
+```
+
+**Migration best practices:**
+- Always review generated SQL before running
+- Test migrations against a copy of production data
+- Run migrations before deploying new code that depends on them
+- Never edit a migration that has already been run — create a new one instead
+- Add column defaults for NOT NULL columns to avoid breaking existing rows
+
+### 16.3 Queue Management
+
+RabbitMQ Management UI (http://localhost:15672) provides operational visibility:
+
+- **Queue depths** — Monitor `file-upload`, `notification`, and `audit` queues
+- **Dead-letter queues** — Check `.dlq` queues for failed messages
+- **Consumer status** — Verify backend consumers are connected
+- **Message rates** — Publish and acknowledge rates per queue
+
+**Queue replay:** Failed messages in dead-letter queues can be replayed by moving them back to the original queue via the management UI.
+
+### 16.4 Operational Scripts
+
+**Seed script** (`apps/backend/src/seeds/`):
+- Creates the superuser account with ADMIN role
+- Idempotent — safe to run multiple times
+- Configured via `SUPERUSER_USERNAME`, `SUPERUSER_PASSWORD`, `SUPERUSER_EMAIL`
+
+**Docker convenience scripts** (root `package.json`):
+```bash
+npm run docker:up              # Start all services
+npm run docker:down:volumes    # Full reset (removes all data)
+npm run docker:logs:backend    # Tail backend logs
+```
+
+### 16.5 Feature Flags (Future)
+
+The current implementation does not include a feature flag system. Future enhancements should include:
+- Runtime feature toggles (enable/disable features without redeployment)
+- Per-user or per-group rollouts
+- A/B testing support
+- Kill switches for emergency feature disabling
+
+---
+
