@@ -44,6 +44,12 @@ export const setAccessToken = (token: string | null) => {
 
 export const getAccessToken = () => accessToken;
 
+let onAuthFailureCallback: (() => void) | null = null;
+
+export const setOnAuthFailure = (cb: () => void) => {
+  onAuthFailureCallback = cb;
+};
+
 axiosClient.interceptors.request.use((config) => {
   if (accessToken) {
     config.headers.Authorization = `Bearer ${accessToken}`;
@@ -65,7 +71,11 @@ axiosClient.interceptors.response.use(
         return axiosClient(originalRequest);
       } catch {
         setAccessToken(null);
-        window.location.href = '/login';
+        if (onAuthFailureCallback) {
+          onAuthFailureCallback();
+        } else {
+          window.location.href = '/login';
+        }
         return Promise.reject(error);
       }
     }
