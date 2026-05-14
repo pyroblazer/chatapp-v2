@@ -17,5 +17,8 @@
     "docker:ps": "docker compose ps",
     "docker:build": "docker compose build",
     "docker:build:no-cache": "docker compose build --no-cache"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.60.0"
   }
 }

@@ -1,25 +1,49 @@
 import { test, expect } from '@playwright/test';
+import { registerAndLogin } from '../setup/test-fixtures';
 
-test.describe('Navigation', () => {
-  test('should show sidebar navigation items', async ({ page }) => {
-    await page.goto('/login');
-    // Login with seeded admin user
-    await page.fill('input[id="username"], input[placeholder*="sername"]', 'admin');
-    await page.fill('input[type="password"]', 'changeme123!');
-    await page.click('button[type="submit"]');
-    await page.waitForURL('**/conversations**', { timeout: 10000 }).catch(() => {});
-
-    // Verify we're past the login page
-    const url = page.url();
-    expect(url).not.toContain('/login');
+test.describe('Navigation - Sidebar', () => {
+  test.beforeEach(async ({ page }) => {
+    await registerAndLogin(page);
   });
 
-  test('should navigate between pages', async ({ page }) => {
-    await page.goto('/login');
-    await page.fill('input[id="username"], input[placeholder*="sername"]', 'admin');
-    await page.fill('input[type="password"]', 'changeme123!');
-    await page.click('button[type="submit"]');
-    await page.waitForURL('**/conversations**', { timeout: 10000 }).catch(() => {});
+  test('should show conversations page by default after login', async ({ page }) => {
+    await expect(page).toHaveURL(/\/conversations/);
+  });
+
+  test('should navigate to groups page', async ({ page }) => {
+    await page.goto('/groups');
+    await expect(page).toHaveURL(/\/groups/);
+  });
+
+  test('should navigate to friends page', async ({ page }) => {
+    await page.goto('/friends');
+    await expect(page).toHaveURL(/\/friends/);
+  });
+
+  test('should navigate to calls page', async ({ page }) => {
+    await page.goto('/calls');
+    await expect(page).toHaveURL(/\/calls/);
+  });
+
+  test('should navigate to settings page', async ({ page }) => {
+    await page.goto('/settings');
+    await expect(page).toHaveURL(/\/settings/);
+  });
+
+  test('should redirect unknown routes to conversations', async ({ page }) => {
+    await page.goto('/nonexistent-route');
+    await expect(page).toHaveURL(/\/conversations/);
+  });
+});
+
+test.describe('Navigation - Page transitions', () => {
+  test.beforeEach(async ({ page }) => {
+    await registerAndLogin(page);
+  });
+
+  test('should navigate between all main pages', async ({ page }) => {
+    await page.goto('/conversations');
+    await expect(page).toHaveURL(/\/conversations/);
 
     await page.goto('/groups');
     await expect(page).toHaveURL(/\/groups/);
@@ -27,10 +51,47 @@ test.describe('Navigation', () => {
     await page.goto('/friends');
     await expect(page).toHaveURL(/\/friends/);
 
+    await page.goto('/calls');
+    await expect(page).toHaveURL(/\/calls/);
+
     await page.goto('/settings');
     await expect(page).toHaveURL(/\/settings/);
 
-    await page.goto('/calls');
-    await expect(page).toHaveURL(/\/calls/);
+    // Back to conversations
+    await page.goto('/conversations');
+    await expect(page).toHaveURL(/\/conversations/);
+  });
+
+  test('should use browser back/forward correctly', async ({ page }) => {
+    await page.goto('/conversations');
+    await page.goto('/friends');
+    await page.goto('/settings');
+    await page.goBack();
+    await expect(page).toHaveURL(/\/friends/);
+    await page.goBack();
+    await expect(page).toHaveURL(/\/conversations/);
+    await page.goForward();
+    await expect(page).toHaveURL(/\/friends/);
+  });
+});
+
+test.describe('Navigation - Nested routes', () => {
+  test.beforeEach(async ({ page }) => {
+    await registerAndLogin(page);
+  });
+
+  test('should navigate to friend requests sub-page', async ({ page }) => {
+    await page.goto('/friends/requests');
+    await expect(page).toHaveURL(/\/friends\/requests/);
+  });
+
+  test('should navigate to settings profile sub-page', async ({ page }) => {
+    await page.goto('/settings/profile');
+    await expect(page).toHaveURL(/\/settings\/profile/);
+  });
+
+  test('should navigate to settings appearance sub-page', async ({ page }) => {
+    await page.goto('/settings/appearance');
+    await expect(page).toHaveURL(/\/settings\/appearance/);
   });
 });

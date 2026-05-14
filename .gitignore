@@ -42,3 +42,7 @@ docker-data/
 
 # npm lock files (project uses bun)
 package-lock.json
+
+# Playwright
+playwright-report/
+test-results/

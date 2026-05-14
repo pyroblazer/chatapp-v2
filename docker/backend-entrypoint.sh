@@ -1,8 +1,6 @@
 #!/bin/sh
 set -e
 
-# Wait for a TCP service using Node.js net module (available in all node images)
-# This provides defense-in-depth beyond Docker's depends_on healthchecks
 wait_for() {
   host="$1"
   port="$2"
@@ -12,16 +10,17 @@ wait_for() {
 
   echo "Waiting for $name ($host:$port)..."
 
-  until node -e "
-    var s = require('net').createConnection($port, '$host', function(){
+  until bun -e "
+    const net = await import('net');
+    const s = net.createConnection($port, '$host', () => {
       s.end();
       process.exit(0);
     });
-    s.on('error', function(){
+    s.on('error', () => {
       s.destroy();
       process.exit(1);
     });
-    setTimeout(function(){ process.exit(1); }, 2000);
+    setTimeout(() => process.exit(1), 2000);
   " 2>/dev/null; do
     i=$((i + 1))
     if [ "$i" -ge "$max" ]; then
