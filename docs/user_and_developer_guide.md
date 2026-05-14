@@ -1216,3 +1216,179 @@ The application supports dark and light themes using styled-components' `ThemePr
 
 ---
 
+## 7. Backend Developer Guide
+
+### 7.1 NestJS Architecture
+
+The backend is a **NestJS modular monolith** running on Bun runtime. All API routes are prefixed with `/api` (set via `app.setGlobalPrefix('api')` in `main.ts`). The application boots with:
+
+```mermaid
+sequenceDiagram
+    participant Bootstrap as main.ts
+    participant AppModule as AppModule
+    participant Config as ConfigModule
+    participant DB as TypeORM
+    participant Passport as PassportModule
+    participant EventEmitter as EventEmitterModule
+    participant Throttler as ThrottlerModule
+    participant Gateway as GatewayModule
+
+    Bootstrap->>AppModule: NestFactory.create()
+    AppModule->>Config: Load .env.development or .env.production
+    AppModule->>DB: Connect to PostgreSQL with entities
+    AppModule->>Passport: Register JWT strategy
+    AppModule->>EventEmitter: Initialize in-process event bus
+    AppModule->>Throttler: Rate limit (10 req / 10s)
+    AppModule->>Gateway: Setup WebSocket with Redis adapter
+    Bootstrap->>Bootstrap: Global prefix 'api'
+    Bootstrap->>Bootstrap: CORS, ValidationPipe, CookieParser
+    Bootstrap->>Bootstrap: Swagger docs at /api/docs
+    Bootstrap->>Bootstrap: Listen on PORT
+```
+
+**Global providers registered in `AppModule`:**
+- `ThrottlerBehindProxyGuard` — Rate limiting applied to all endpoints (10 requests per 10 seconds)
+- `TelemetryInterceptor` — Prometheus metrics collection for every HTTP request
+
+### 7.2 Dependency Injection Pattern
+
+Services use string tokens from the `Services` enum rather than class-based tokens. This decouples consumers from concrete implementations:
+
+```typescript
+// Registration (in the module)
+providers: [
+  { provide: Services.CONVERSATIONS, useClass: ConversationsService },
+]
+
+// Consumption (in a controller or other service)
+constructor(
+  @Inject(Services.CONVERSATIONS)
+  private readonly conversationService: IConversationsService,
+) {}
+```
+
+**Key enums in `src/utils/constants.ts`:**
+- `Services` — DI tokens for all injectable services (e.g., `CONVERSATIONS`, `MESSAGES`, `FRIENDS`)
+- `Routes` — API route prefixes for all controllers (e.g., `AUTH`, `CONVERSATIONS`, `GROUPS`)
+- `ServerEvents` — Internal event names emitted by controllers (e.g., `MESSAGE_CREATE`, `FRIEND_REQUEST_RECEIVED`)
+- `WebsocketEvents` — Client-facing WebSocket event names (e.g., `onMessage`, `onFriendRequestReceived`)
+
+### 7.3 Module Pattern
+
+Every backend module follows a consistent structure:
+
+```
+src/<module>/
+├── <module>.module.ts          # NestJS module registration
+├── <module>.controller.ts      # REST endpoints with @Routes prefix
+├── <module>.service.ts         # Business logic implementation
+├── <module>.ts                 # Service interface (I<ServiceName>Service)
+├── dtos/                       # class-validator decorated DTOs
+├── exceptions/                 # Custom HttpException subclasses
+├── middlewares/                # Route-level access control
+└── tests/                      # *.spec.ts Jest unit tests
+```
+
+**Creating a new module:**
+1. Define the service interface in `<module>.ts`
+2. Implement the service class in `<module>.service.ts`
+3. Register with `Services` enum token in `<module>.module.ts`
+4. Create the controller with `Routes` prefix in `<module>.controller.ts`
+5. Add the module to `imports` in `app.module.ts`
+
+### 7.4 Event-Driven Architecture
+
+The application uses a **two-layer event system** for real-time communication:
+
+```mermaid
+flowchart LR
+    subgraph Layer 1
+        C[Controller] -->|emit ServerEvent| E[EventEmitter2]
+    end
+    subgraph Layer 2
+        E -->|@OnEvent| G[MessagingGateway]
+        G -->|socket.emit| W[WebSocket Clients]
+    end
+```
+
+**Layer 1 — NestJS EventEmitter2:**
+- Controllers emit domain events after performing write operations
+- Events are defined in the `ServerEvents` enum
+- Example: After creating a message, the controller emits `ServerEvents.MESSAGE_CREATE` with the message payload
+
+**Layer 2 — MessagingGateway:**
+- `gateway.ts` listens for server events via `@OnEvent` decorators
+- Transforms server events into WebSocket events and broadcasts to connected clients
+- Manages socket rooms (per-conversation, per-group) for targeted delivery
+
+This decoupling ensures business logic controllers don't need to know about WebSocket connections, and the gateway doesn't need to know about business logic.
+
+### 7.5 Request Lifecycle
+
+```mermaid
+sequenceDiagram
+    participant Client
+    participant NGINX
+    participant Guard as AuthGuard / ThrottlerGuard
+    participant Interceptor as TelemetryInterceptor
+    participant Pipe as ValidationPipe
+    participant Controller
+    participant Service
+    participant DB as PostgreSQL
+    participant EventEmitter
+    participant Gateway as WebSocket Gateway
+
+    Client->>NGINX: HTTP Request
+    NGINX->>Guard: Proxy to :3001/api/*
+    Guard->>Guard: Check JWT + rate limit
+    Guard->>Interceptor: Request allowed
+    Interceptor->>Pipe: Record start time
+    Pipe->>Controller: Validate & transform DTO
+    Controller->>Service: Business logic
+    Service->>DB: TypeORM query
+    Service->>EventEmitter: Emit ServerEvent
+    EventEmitter->>Gateway: @OnEvent handler
+    Gateway->>Client: socket.emit WebSocket event
+    Service->>Controller: Return result
+    Controller->>Interceptor: Response
+    Interceptor->>Client: Record duration + increment metrics
+```
+
+### 7.6 DTO Validation
+
+All request bodies are validated using `class-validator` decorators on DTO classes:
+
+```typescript
+export class CreateMessageDto {
+  @IsString()
+  @MaxLength(4000)
+  content: string;
+}
+```
+
+The global `ValidationPipe` in `main.ts` automatically:
+- Validates incoming request bodies against DTO decorators
+- Strips unknown properties (`whitelist: true`)
+- Transforms plain objects to DTO class instances (`transform: true`)
+- Returns 400 Bad Request with specific validation errors
+
+### 7.7 Database Access
+
+TypeORM 0.3.x with PostgreSQL 16. Key patterns:
+
+- **Entities** use UUID primary keys and are defined in `src/utils/typeorm/`
+- **BaseMessage** is an abstract class shared by `Message` and `GroupMessage` entities
+- **Schema sync:** `synchronize: true` in development auto-creates the schema; migrations are required for production
+- **Relationships:** Eagerly loaded where needed to prevent N+1 queries
+- **Transactions:** TypeORM's `@Transaction()` decorator or `QueryRunner` for multi-step operations
+
+### 7.8 Logging Strategy
+
+The application uses NestJS's built-in `Logger`:
+- Request/response logging via the `TelemetryInterceptor`
+- Error logging at the service level
+- Bootstrap logging in `main.ts`
+- Production: error-level logging only (`logging: ['error']`)
+
+---
+
