@@ -996,3 +996,110 @@ yarn build                     # Production build to dist/
 
 ---
 
+## 5. Repository Walkthrough
+
+### 5.1 Top-Level Structure
+
+```
+chatapp/
+├── apps/                        # Application source code
+│   ├── backend/                 # NestJS backend (TypeScript, Bun runtime)
+│   └── frontend/                # React frontend (Vite, TypeScript)
+├── docker/                      # Docker configuration files
+│   ├── backend.Dockerfile       # Multi-stage backend Docker build
+│   ├── backend-entrypoint.sh    # Backend startup script (migration + seed)
+│   ├── frontend.Dockerfile      # Multi-stage frontend Docker build
+│   ├── nginx/                   # NGINX reverse proxy config
+│   ├── grafana/                 # Grafana provisioning (dashboards, datasources)
+│   ├── loki/                    # Loki configuration
+│   ├── minio/                   # MinIO bucket initialization script
+│   ├── prometheus/              # Prometheus scrape configuration
+│   ├── promtail/                # Promtail log shipping config
+│   └── rabbitmq/                # RabbitMQ configuration
+├── docs/                        # Documentation (this guide + feature docs)
+│   ├── features/                # Feature-specific documentation (15 files)
+│   ├── architecture.md          # System architecture deep-dive
+│   ├── dev-guide.md             # Quick start developer guide
+│   ├── run-guide.md             # How to run the application
+│   └── frontend.md              # Frontend architecture guide
+├── tests/                       # Test suites
+│   ├── e2e/                     # Playwright end-to-end tests (6 spec files)
+│   ├── setup/                   # Test fixtures and helpers
+│   └── integration/             # Integration tests (placeholder)
+├── .env.docker                  # Environment variables (tracked with safe defaults)
+├── .github/workflows/ci.yml    # CI pipeline (lint, test, build, E2E, Docker)
+├── docker-compose.yml           # Main service definitions (9 services)
+├── docker-compose.override.yml  # Dev mode overrides (source mounts)
+├── docker-compose.monitoring.yml # Monitoring stack (Prometheus, Grafana, Loki)
+├── package.json                 # Root scripts for Docker operations + Playwright
+├── playwright.config.ts         # E2E test configuration
+├── vercel.json                  # Frontend Vercel deployment config
+└── CLAUDE.md                    # AI assistant guidance for the codebase
+```
+
+### 5.2 Backend Module Structure (`apps/backend/src/`)
+
+The backend follows a modular monolith architecture with 29 feature modules:
+
+| Module | Directory | Purpose |
+|--------|-----------|---------|
+| Admin | `admin/` | User management, ban/role changes, report review, role guards |
+| Audit | `audit/` | Audit log recording via RabbitMQ processor |
+| Auth | `auth/` | JWT authentication, registration, login, refresh, guards, strategies |
+| Base | `base/` | Shared base controller tests |
+| Bot | `bot/` | Ollama AI bot — entities, service, controller, streaming processors |
+| Conversations | `conversations/` | Direct message conversations, message CRUD, pagination |
+| Events | `events/` | Event definitions for friend requests and friends |
+| Exists | `exists/` | Existence checks (username availability, conversation lookup) |
+| Friend Requests | `friend-requests/` | Friend request lifecycle — send, accept, reject, cancel |
+| Friends | `friends/` | Friends list management, online friends |
+| Gateway | `gateway/` | WebSocket gateway — connection, rooms, call signaling, session manager, Redis adapter |
+| Groups | `groups/` | Group chats — CRUD, member management, ownership transfer |
+| Health | `health/` | Health check endpoint (PostgreSQL + Redis status) |
+| Image Storage | `image-storage/` | Sharp image processing and thumbnails |
+| Message Attachments | `message-attachments/` | File attachment association with messages |
+| Messages | `messages/` | Message entities, DTOs, custom exceptions |
+| Notifications | `notifications/` | Notification system — creation, delivery, read status |
+| Queue | `queue/` | RabbitMQ queue processors (notification processor) |
+| RabbitMQ | `rabbitmq/` | RabbitMQ connection management, channel creation, queue setup |
+| Reactions | `reactions/` | Emoji reactions on messages |
+| Read Receipts | `read-receipts/` | Message read receipt tracking and batch updates |
+| Redis | `redis/` | Redis caching service, token blacklisting, generic cache |
+| Search | `search/` | Full-text search via PostgreSQL tsvector/tsquery |
+| Seeds | `seeds/` | Database seeding — superuser account creation |
+| Storage | `storage/` | MinIO/S3 file storage — presigned URLs, upload, download |
+| Telemetry | `telemetry/` | Prometheus metrics — request counter, duration histogram |
+| Users | `users/` | User profiles, DTOs, custom exceptions, presence status |
+| Utils | `utils/` | Shared constants — `Services`, `Routes`, `ServerEvents`, `WebsocketEvents` enums; TypeORM entities |
+
+**Module pattern:** Each module follows a consistent structure:
+1. **Interface file** — Defines the service interface and DI token type
+2. **Service class** — Implements business logic
+3. **Module registration** — Service registered with `Services` enum token
+4. **Controller** — REST endpoints with `Routes` prefix
+5. **Tests** — Jest unit tests in `tests/*.spec.ts`
+
+### 5.3 Frontend Structure (`apps/frontend/src/`)
+
+| Directory | Contents |
+|-----------|---------|
+| `components/` | Reusable UI components — avatars, calls, context-menus, conversations, forms (login, register, create group), friends, groups, messages, modals, navbar, recipients, settings, sidebars, users |
+| `guards/` | Route guards — `ConversationPageGuard`, `GroupPageGuard` |
+| `pages/` | Route-level pages — Login, Register, App, conversations, groups, friends, settings, calls, onboarding |
+| `store/` | 16 Redux slices — conversation, selected, messageContainer, group, groupMessage, groupRecipientsSidebar, messages, friends, call, message-panel, rate-limit, settings, system-messages, modals |
+| `utils/` | API client (`api.ts`), TypeScript types, constants, helpers, React contexts (Auth, Socket, MessageMenu), hooks (useAuth, useConversationGuard, useDebounce, useGroupGuard, useToast, socket hooks), styled-components styles, themes (DarkTheme/LightTheme) |
+
+### 5.4 Docker Configuration (`docker/`)
+
+| File | Purpose |
+|------|---------|
+| `backend.Dockerfile` | Multi-stage build: `development` (Bun + source mount), `build` (SWC compile), `production` (Bun runtime + compiled output) |
+| `backend-entrypoint.sh` | Runs migrations, seeds database, then starts the server |
+| `frontend.Dockerfile` | Multi-stage build: `development` (Vite dev server), `build` (Vite production build), `production` (NGINX serves static files) |
+| `nginx/nginx.conf` | Reverse proxy: `/api/*` and `/socket.io/*` to backend, everything else to frontend. Includes WebSocket upgrade headers |
+| `minio/init-buckets.sh` | Creates `chatapp-uploads`, `chatapp-avatars`, `chatapp-attachments` buckets on first start |
+| `prometheus/prometheus.yml` | Scrape config targeting backend `/api/metrics` every 15 seconds |
+| `grafana/provisioning/` | Auto-loaded Grafana datasources (Prometheus, Loki) and pre-built dashboard JSON |
+
+---
+
