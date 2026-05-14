@@ -1564,3 +1564,109 @@ When a client disconnects and reconnects:
 
 ---
 
+## 9. AI Bot Guide
+
+### 9.1 Ollama Integration
+
+The AI bot system integrates with **Ollama**, a local LLM inference engine that runs as a Docker container. This architecture choice provides complete privacy — no user data leaves the Docker network.
+
+```mermaid
+sequenceDiagram
+    participant User
+    participant Backend as BotController
+    participant Ollama as Ollama Service
+    participant GW as WebSocket Gateway
+    participant DB as PostgreSQL
+
+    User->>Backend: POST /api/bots/:id/chat { content }
+    Backend->>DB: Store user message (role: user)
+    Backend->>DB: Load conversation history
+    Backend->>Ollama: POST /api/chat { model, messages, stream: true }
+
+    loop Streaming tokens
+        Ollama-->>Backend: Token chunk
+        Backend->>GW: Emit onAIStreamChunk
+        GW->>User: socket.emit('onAIStreamChunk', { chunk })
+    end
+
+    Ollama-->>Backend: Stream complete
+    Backend->>DB: Store assistant message (role: assistant)
+    Backend->>GW: Emit onAIStreamEnd
+    GW->>User: socket.emit('onAIStreamEnd', { fullContent, tokenCount })
+```
+
+### 9.2 Local LLM Setup
+
+The Ollama container is included in `docker-compose.yml` and starts automatically. To get started:
+
+1. **Start the stack:** `npm run docker:up:d`
+2. **Pull a model** (inside the Ollama container):
+   ```bash
+   docker compose exec ollama ollama pull llama3.2
+   ```
+3. **Create a bot** via the admin API or let the seed script create a default bot
+
+**Available models** (subject to hardware constraints):
+- `llama3.2` — General-purpose assistant (recommended, ~2GB)
+- `codellama` — Programming-focused assistant
+- `mistral` — Fast, efficient model
+- Custom models via Ollama's model library
+
+**Hardware requirements:** LLM inference is CPU/GPU intensive. Without a GPU, responses will be slow (5-30 seconds per response). With GPU passthrough configured in Docker, response times drop to 1-5 seconds.
+
+### 9.3 Persona System
+
+Each bot has a configurable persona that defines its behavior:
+
+| Field | Purpose | Example |
+|-------|---------|---------|
+| `name` | Display name in the conversation sidebar | "ChatBot", "Code Helper" |
+| `persona` | Short description shown in the bot list | "A helpful and friendly assistant" |
+| `model` | Ollama model identifier | `llama3.2`, `codellama` |
+| `systemPrompt` | Full system prompt injected before conversation history | "You are an expert programmer who explains concepts clearly..." |
+
+The system prompt is sent as the first message in every LLM call with `role: "system"`, followed by the conversation history with `role: "user"` and `role: "assistant"` entries.
+
+### 9.4 Streaming Response Design
+
+Bot responses are streamed token-by-token via WebSocket for immediate user feedback:
+
+**Events:**
+- `onAIStreamChunk` — Each token as it's generated: `{ conversationId, chunk }`
+- `onAIStreamEnd` — Generation complete: `{ conversationId, messageId, fullContent, tokenCount }`
+- `onAIStreamError` — Generation failed: `{ conversationId, error }`
+
+**Error handling:**
+- If Ollama is unavailable (503), the user receives an error message
+- If the stream fails mid-generation, `onAIStreamError` is emitted with the error details
+- Partial responses are not stored — only complete responses are persisted to the database
+
+### 9.5 Context Retrieval
+
+Each bot maintains a separate conversation per user. Context retrieval works as follows:
+
+1. When a user sends a message, the backend loads the full conversation history from PostgreSQL
+2. The history is formatted as an array of `{ role, content }` messages
+3. The system prompt is prepended to the history
+4. The complete message array is sent to Ollama's chat API
+
+**Token budgeting:** The current implementation does not enforce a token limit. Long conversations may exceed the model's context window, causing Ollama to truncate early messages. Future enhancements should implement:
+- Sliding window context (keep last N messages)
+- Token counting and budget allocation
+- Summary-based context compression
+
+### 9.6 Cost, Latency, and Privacy Tradeoffs
+
+| Factor | Ollama (Local) | OpenAI / Hosted APIs |
+|--------|---------------|---------------------|
+| **Cost** | Free (hardware costs only) | Per-token pricing ($0.01-0.06/1K tokens) |
+| **Privacy** | Complete — data never leaves the network | User data sent to third-party servers |
+| **Latency** | 1-30s (depends on hardware) | 0.5-3s (optimized inference) |
+| **Quality** | Depends on model (7B-70B params) | GPT-4 class models available |
+| **Setup** | Requires GPU for acceptable speed | API key only |
+| **Offline** | Works without internet | Requires internet connectivity |
+
+**Recommendation:** Use Ollama for privacy-sensitive deployments and development. Consider hosted APIs for production deployments requiring higher quality or lower latency.
+
+---
+
