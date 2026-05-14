@@ -578,3 +578,157 @@ The current interface is in English only. Internationalization (i18n) is planned
 
 ---
 
+## 3. Admin & Moderator Guide
+
+### 3.1 Role Hierarchy
+
+The platform uses a three-tier role-based access control system:
+
+| Role | Capabilities |
+|------|-------------|
+| **USER** | Standard access — messaging, groups, friends, calls, file uploads. Can submit reports against other users |
+| **MODERATOR** | All USER capabilities + delete any message across conversations and groups, review and resolve user reports |
+| **ADMIN** | All MODERATOR capabilities + ban/unban user accounts, change user roles, view audit logs. Only ADMINs can promote other users |
+
+New users are assigned the `USER` role by default. Role assignment can only be changed by an existing ADMIN, and administrators cannot change their own role.
+
+### 3.2 Admin Panel Access
+
+1. Click the **gear icon** (Settings) in the bottom-left sidebar
+2. Select **Admin** from the settings menu
+3. The admin panel loads with three tabs: **Users**, **Reports**, and **Audit**
+
+Access is guarded by backend role checks — requests from users without the required role receive `403 Forbidden` responses.
+
+### 3.3 User Management
+
+#### Listing Users
+
+Navigate to the **Users tab** in the admin panel. The interface displays a paginated table of all registered users with columns:
+
+| Column | Description |
+|--------|-------------|
+| Username | Display name with avatar |
+| Email | Registered email address |
+| Role | Current role (USER / MODERATOR / ADMIN) |
+| Status | Active or Banned |
+| Joined | Registration date |
+
+**Search:** Filter by username or email using the search field above the table. The backend performs a case-insensitive partial match via the `search` query parameter.
+
+**Pagination:** Default 20 users per page with page navigation controls.
+
+#### Banning Users
+
+1. Find the user in the Users tab (search or browse)
+2. Click the **Ban** toggle in the user's row
+3. Confirm the action in the dialog
+
+**Effects of banning:**
+- The user cannot log in — the login endpoint returns a specific error
+- All existing JWT tokens for the user remain valid until they expire (mitigated by the 15-minute access token lifetime)
+- The user's messages and conversations remain in the system (not deleted)
+- The ban action is recorded in the audit log with the admin's user ID and IP address
+
+**Unbanning** reverses the restriction — the user can log in normally again.
+
+#### Changing User Roles
+
+1. Find the user in the Users tab
+2. Click the **Role** dropdown in the user's row
+3. Select the new role (USER, MODERATOR, or ADMIN)
+4. Confirm the action
+
+**Constraints:**
+- Cannot change your own role
+- Only ADMINs can perform role changes
+- Role changes take effect immediately — the user's next request is evaluated against their new role
+- The action is recorded in the audit log
+
+### 3.4 Content Moderation
+
+#### Deleting Messages
+
+Moderators and administrators can delete any message across all conversations and groups:
+
+1. Locate the offending message (either in the conversation view or via a report)
+2. Click the message's context menu (three dots) — this shows the admin **Delete** option in addition to the standard options
+3. Confirm the deletion
+
+Deleted messages are removed for **all participants**, and the deletion is broadcast via the `onMessageDelete` WebSocket event. The deletion is recorded in the audit log with the moderator's identity and the message's original content stored in the metadata.
+
+#### Report Review Workflow
+
+Users can submit reports against other users, optionally referencing a specific message. Reports flow through a status lifecycle:
+
+```mermaid
+stateDiagram-v2
+    [*] --> Pending : User submits report
+    Pending --> Reviewed : Moderator opens report
+    Reviewed --> Resolved : Action taken (ban, message delete)
+    Reviewed --> Dismissed : No violation found
+    Resolved --> [*]
+    Dismissed --> [*]
+```
+
+**Moderator workflow:**
+
+1. Open the **Reports tab** in the admin panel
+2. Reports with `pending` status are highlighted for immediate attention
+3. Click a report to view details:
+   - Reported user's profile (username, email, registration date)
+   - Reporter's identity
+   - Reason for the report (free-text)
+   - Referenced message content (if applicable)
+4. Assess the report:
+   - **Resolve** — Take action (delete message, ban user) and mark as resolved
+   - **Dismiss** — No violation found; mark as dismissed
+   - **Review** — Mark as reviewed while investigating (intermediate status)
+
+**Filtering:** Reports can be filtered by status (`pending`, `reviewed`, `resolved`, `dismissed`) and paginated (default 20 per page).
+
+### 3.5 Audit Logging
+
+#### Overview
+
+Every write operation (create, update, delete) performed through the admin panel is automatically recorded in an immutable audit log. The audit processor runs as a RabbitMQ consumer, ensuring reliable delivery even during high traffic.
+
+**Audit log schema:**
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `userId` | UUID | The admin who performed the action |
+| `action` | String | `CREATE`, `UPDATE`, or `DELETE` |
+| `entity` | String | Entity type affected (User, Message, Group, etc.) |
+| `entityId` | String | UUID or ID of the affected entity |
+| `metadata` | JSONB | Additional context — previous values, reason, related IDs |
+| `ipAddress` | String | Request source IP address |
+| `createdAt` | Date | Timestamp of the action |
+
+#### Viewing Audit Logs
+
+1. Open the **Audit tab** in the admin panel
+2. The log displays entries in reverse chronological order (newest first)
+3. Apply filters:
+   - **User** — Filter by the admin who performed the action
+   - **Action** — Filter by type (CREATE, UPDATE, DELETE)
+   - **Entity** — Filter by entity type (User, Message, Group)
+   - **Date range** — Filter by `from` and `to` dates (ISO 8601 format)
+4. Default pagination: 50 entries per page
+
+**Use cases for audit log review:**
+- **Accountability:** Track who banned a user, who deleted a message, who changed a role
+- **Compliance:** Provide evidence of moderation actions for legal or regulatory inquiries
+- **Incident investigation:** Correlate admin actions with user reports of issues
+- **Insider threat detection:** Monitor for unusual admin activity patterns (future — alerting integration)
+
+### 3.6 Security Considerations for Administrators
+
+- **Authentication required:** All admin endpoints require a valid JWT access token with the appropriate role claim
+- **Authorization at the API level:** Backend guards check the user's role before processing any admin request — the UI restrictions are a convenience, not a security boundary
+- **IP logging:** Every admin action is logged with the source IP address for forensic purposes
+- **Audit immutability:** Audit logs are append-only; there is no API to modify or delete audit entries
+- **Role escalation prevention:** Admins cannot change their own role, preventing self-demotion or self-promotion beyond the current level
+
+---
+
