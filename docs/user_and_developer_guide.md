@@ -2590,3 +2590,71 @@ graph TD
 
 ---
 
+## 18. Admin Observability Guide
+
+### 18.1 Admin Activity Tracing
+
+All admin actions are automatically captured in the audit log system. The `AuditProcessor` (RabbitMQ consumer) records every write operation with:
+
+- **Who** — `userId` of the admin performing the action
+- **What** — `action` (CREATE/UPDATE/DELETE) and `entity` type
+- **When** — `createdAt` timestamp
+- **Where** — `ipAddress` of the request
+- **Context** — `metadata` JSONB with additional details
+
+**Querying admin activity:**
+```
+GET /api/admin/audit-logs?userId=<adminId>&from=2025-01-01&to=2025-01-31
+```
+
+### 18.2 Privileged Action Logging
+
+Certain high-risk actions warrant additional monitoring:
+
+| Action | Risk Level | Logging Detail |
+|--------|-----------|----------------|
+| User ban | High | Admin ID, target user ID, reason (if provided), IP, timestamp |
+| Role change | Critical | Admin ID, target user ID, old role, new role, IP, timestamp |
+| Message deletion | Medium | Moderator ID, message ID, conversation ID, original content stored in metadata |
+| Report resolution | Medium | Moderator ID, report ID, resolution status, IP, timestamp |
+| Bot creation/deletion | Medium | Admin ID, bot details, IP, timestamp |
+
+### 18.3 Access Anomaly Detection
+
+**Target capabilities for detecting suspicious admin activity:**
+
+- **Unusual time patterns** — Admin accessing the system outside their normal working hours
+- **Geographic anomalies** — Admin logging in from an unexpected location
+- **Volume anomalies** — Sudden spike in admin actions (e.g., banning 100 users in 5 minutes)
+- **Privilege escalation** — Admin granting ADMIN role to multiple users
+- **Data access patterns** — Admin viewing audit logs for other admins (potential cover-up attempt)
+
+### 18.4 Sensitive Action Alerting
+
+Recommended real-time alerts for admin actions:
+
+| Alert | Condition | Recipient |
+|-------|-----------|-----------|
+| Mass ban | > 10 bans by single admin in 5 minutes | Security team |
+| Role escalation | ADMIN role granted to any user | Platform admin |
+| Self-protection attempt | Admin modifies own audit trail | Security team |
+| Off-hours access | Admin login outside 8am-8pm local time | Security team (info) |
+| Impersonation start | Any impersonation session initiated | Compliance team |
+
+### 18.5 Insider Threat Mitigation
+
+**Principles:**
+- **Separation of duties** — No single admin can both perform and audit the same action
+- **Least privilege** — Admins receive the minimum role required for their responsibilities
+- **Time-limited access** — Elevated privileges expire automatically (for JIT access)
+- **Dual approval** — Critical actions (e.g., ADMIN role grant) require approval from a second admin
+- **Regular review** — Admin access reviews conducted quarterly
+
+**Current implementation status:**
+- Audit logging captures all admin actions with IP addresses — **implemented**
+- Role-based access with three tiers — **implemented**
+- Admins cannot change their own role — **implemented**
+- Granular permission system, JIT access, dual approval — **future**
+
+---
+
