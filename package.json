@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
+    "dev": "docker compose -f docker-compose.yml -f docker-compose.override.yml up --build",
     "docker:up": "docker compose down --remove-orphans && docker compose up --build",
     "docker:up:d": "docker compose down --remove-orphans && docker compose up --build -d",
     "docker:up:dev": "docker compose down --remove-orphans && docker compose -f docker-compose.yml -f docker-compose.override.yml up --build",
