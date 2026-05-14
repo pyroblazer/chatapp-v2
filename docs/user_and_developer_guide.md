@@ -1670,3 +1670,158 @@ Each bot maintains a separate conversation per user. Context retrieval works as 
 
 ---
 
+## 10. DevOps & Deployment Guide
+
+### 10.1 Docker Compose Architecture
+
+The platform runs as 9 Docker containers orchestrated by Docker Compose:
+
+```mermaid
+graph TB
+    subgraph "Docker Compose Stack"
+        N[NGINX<br/>Reverse Proxy :80]
+        FE[Frontend<br/>React SPA :80]
+        BE[Backend<br/>NestJS :3001]
+        SEED[Backend Seed<br/>One-shot]
+        PG[(PostgreSQL 16<br/>:5432)]
+        RD[(Redis 7<br/>:6379)]
+        MQ[RabbitMQ 3<br/>:5672/:15672]
+        S3[MinIO<br/>:9000/:9001]
+        AI[Ollama<br/>:11434]
+    end
+
+    N --> FE
+    N --> BE
+    BE --> PG
+    BE --> RD
+    BE --> MQ
+    BE --> S3
+    BE --> AI
+    SEED --> PG
+```
+
+**Startup order and health checks:**
+1. PostgreSQL, Redis, RabbitMQ, MinIO start first with native health checks
+2. Backend waits for all infrastructure services to be `healthy` (via `depends_on: condition: service_healthy`)
+3. Backend seed runs after the backend is healthy
+4. Frontend starts after the backend is healthy
+5. NGINX starts last, proxying to both frontend and backend
+
+**Volumes:** Six persistent volumes ensure data survives container restarts: `postgres_data`, `redis_data`, `minio_data`, `rabbitmq_data`, `backend_uploads`, `ollama_data`.
+
+### 10.2 Docker Builds
+
+Both the backend and frontend use **multi-stage Dockerfiles** optimized for different environments:
+
+**Backend (`docker/backend.Dockerfile`):**
+
+| Stage | Base | Purpose |
+|-------|------|---------|
+| `development` | `oven/bun:1` | Hot-reload dev server with source mount |
+| `build` | `oven/bun:1` | SWC compilation (`bun run build`) |
+| `production` | `oven/bun:1` | Production dependencies + compiled output |
+
+**Frontend (`docker/frontend.Dockerfile`):**
+
+| Stage | Base | Purpose |
+|-------|------|---------|
+| `development` | `oven/bun:1` | Vite dev server with source mount |
+| `build` | `oven/bun:1` | Production build (`bun run build`) |
+| `production` | `nginx:1.27-alpine` | Static file serving with client-side routing |
+
+The frontend production stage embeds an NGINX config with `try_files $uri $uri/ /index.html` for SPA routing and long-term caching for `/assets/`.
+
+### 10.3 NGINX Reverse Proxy
+
+The NGINX configuration (`docker/nginx/nginx.conf`) handles three routing concerns:
+
+| Location | Upstream | Notes |
+|----------|----------|-------|
+| `/api/` | `backend:3001` | REST API with WebSocket upgrade headers |
+| `/socket.io/` | `backend:3001` | Socket.IO WebSocket connections |
+| `/` | `frontend:3000` | Frontend SPA |
+
+**WebSocket configuration:**
+- `proxy_http_version 1.1` and `Upgrade`/`Connection` headers enable WebSocket proxying
+- `proxy_read_timeout 86400s` (24 hours) prevents long-lived WebSocket connections from being terminated
+- `client_max_body_size 50M` allows large file uploads
+- `X-Real-IP` and `X-Forwarded-For` headers pass the real client IP to the backend
+
+### 10.4 CI/CD Pipeline
+
+The GitHub Actions pipeline (`.github/workflows/ci.yml`) runs on every push to `main`/`develop` and on PRs to `main`:
+
+```mermaid
+graph TD
+    BL[Backend Lint] --> BT[Backend Tests<br/>Matrix: auth, conversations, messages, health]
+    BT --> BB[Backend Build]
+    FL[Frontend Lint] --> FT[Frontend Tests]
+    FL --> FB[Frontend Build]
+    FT --> FB
+    BB --> E2E[E2E Tests<br/>Playwright + Docker Compose]
+    FB --> E2E
+    BB --> DB[Docker Build Check]
+    FB --> DB
+```
+
+**Pipeline stages:**
+
+| Job | Runner | Services | Purpose |
+|-----|--------|----------|---------|
+| `backend-lint` | ubuntu-latest | — | ESLint check |
+| `backend-test` | ubuntu-latest | PostgreSQL 16 + Redis 7 | Jest unit tests (4 matrix shards) |
+| `backend-build` | ubuntu-latest | — | SWC compilation |
+| `frontend-lint` | ubuntu-latest | — | ESLint check |
+| `frontend-test` | ubuntu-latest | — | Vitest unit tests |
+| `frontend-build` | ubuntu-latest | — | Vite production build |
+| `e2e-tests` | ubuntu-latest | Full Docker stack | Playwright E2E (4 workers) |
+| `docker-build` | ubuntu-latest | — | Smoke test Docker image builds |
+
+All jobs use **Bun** runtime via `oven-sh/setup-bun@v2`.
+
+### 10.5 Deployment
+
+**Frontend deployment:** Configured for Vercel via `vercel.json` at the repository root. The Vite production build outputs to `dist/`, which Vercel serves as a static site.
+
+**Backend deployment:** Via Docker. The backend container can be deployed to any Docker-compatible host:
+- Single-server: Docker Compose on a VPS
+- Container orchestration: AWS ECS, Google Cloud Run, or Kubernetes
+- The health endpoint (`/api/health`) enables load balancer health checks
+
+### 10.6 Horizontal Scaling Strategy
+
+To scale the backend horizontally:
+
+1. **Run multiple backend containers** behind a load balancer
+2. **Enable the Redis adapter** for Socket.IO (already configured) — this synchronizes WebSocket events across instances
+3. **Configure sticky sessions** at the load balancer level (recommended but not required with the Redis adapter)
+4. **Scale RabbitMQ consumers** independently — each backend instance runs its own consumer, increasing throughput
+5. **PostgreSQL** supports read replicas for read-heavy workloads
+
+**Limitations:**
+- The session manager stores one socket per user in memory — with multiple instances, the in-memory map only contains sockets connected to that instance. The Redis adapter handles cross-instance delivery.
+- File uploads go through MinIO (already stateless) — no sticky sessions needed for uploads.
+
+### 10.7 Kubernetes Migration Path
+
+The Docker Compose stack maps directly to Kubernetes resources:
+
+| Docker Compose | Kubernetes |
+|---------------|------------|
+| Service | Deployment + Service |
+| Volume | PersistentVolumeClaim |
+| Environment variables | ConfigMap + Secrets |
+| Health checks | Liveness + Readiness probes |
+| NGINX reverse proxy | Ingress controller |
+| Docker network | Service mesh / CNI |
+
+**Migration steps:**
+1. Create Docker registry and push images
+2. Define Kubernetes manifests (Deployments, Services, PVCs)
+3. Create ConfigMaps from `.env.docker` and Secrets for sensitive values
+4. Add Ingress resource replacing the NGINX container
+5. Configure horizontal pod autoscaling for the backend deployment
+6. Set up managed PostgreSQL, Redis, and RabbitMQ (or run as StatefulSets)
+
+---
+
