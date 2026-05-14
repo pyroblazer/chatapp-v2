@@ -11,10 +11,10 @@ export function useAuth() {
     getAuthUser()
       .then(({ data }) => {
         updateAuthUser(data);
-        setTimeout(() => setLoading(false), 1000);
+        setLoading(false);
       })
-      .catch((err) => {
-        setTimeout(() => setLoading(false), 1000);
+      .catch(() => {
+        setLoading(false);
       });
 
     return () => {

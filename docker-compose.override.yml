@@ -26,4 +26,6 @@ services:
       - ./apps/frontend/public:/app/public
     environment:
       - NODE_ENV=development
+      - VITE_API_URL=/api
+      - VITE_WEBSOCKET_URL=
     command: bun run start:dev

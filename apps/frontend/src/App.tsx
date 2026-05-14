@@ -14,6 +14,8 @@ import 'react-toastify/dist/ReactToastify.css';
 import { ConversationPageGuard } from './guards/ConversationPageGuard';
 import { GroupPageGuard } from './guards/GroupPageGuard';
 import { ErrorBoundary } from './components/ErrorBoundary';
+import { ThemeProvider } from 'styled-components';
+import { DarkTheme } from './utils/themes';
 
 const ConversationPage = lazy(() =>
   import('./pages/conversations/ConversationPage').then((m) => ({
@@ -128,6 +130,7 @@ function App() {
   const [user, setUser] = useState<User>();
   return (
     <AppWithProviders user={user} setUser={setUser} socket={socket}>
+      <ThemeProvider theme={DarkTheme}>
       <ErrorBoundary>
         <Suspense fallback={<LoadingFallback />}>
           <Routes>
@@ -166,6 +169,7 @@ function App() {
           </Routes>
         </Suspense>
       </ErrorBoundary>
+      </ThemeProvider>
       <ToastContainer theme="dark" />
     </AppWithProviders>
   );

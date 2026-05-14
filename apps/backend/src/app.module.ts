@@ -68,8 +68,8 @@ if (process.env.ENVIRONMENT === 'PRODUCTION') envFilePath = '.env.production';
     EventsModule,
     ExistsModule,
     ThrottlerModule.forRoot({
-      ttl: 10,
-      limit: 10,
+      ttl: parseInt(process.env.THROTTLE_TTL || '10', 10),
+      limit: parseInt(process.env.THROTTLE_LIMIT || '10', 10),
     }),
     MessageAttachmentsModule,
     BaseModule,

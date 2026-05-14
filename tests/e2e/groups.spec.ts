@@ -14,14 +14,14 @@ test.describe('Groups - Display', () => {
   });
 
   test('should show groups list area', async ({ page }) => {
-    const content = page.locator('main, [class*="group"], [class*="Group"], [class*="sidebar"]').first();
-    await expect(content).toBeVisible({ timeout: 5000 });
+    await expect(page).toHaveURL(/\/groups/);
+    // The sidebar search input is rendered for the groups page
+    await expect(page.locator('input[placeholder="Search for Conversations"]')).toBeVisible({ timeout: 5000 });
   });
 
   test('should show empty state when no groups exist', async ({ page }) => {
-    // New user has no groups
-    const panel = page.locator('main, [class*="messagePanel"], [class*="MessagePanel"]').first();
-    await expect(panel).toBeVisible({ timeout: 5000 });
+    // New user has no groups — the panel placeholder is shown
+    await expect(page.locator('text=ConversationPanel')).toBeVisible({ timeout: 5000 });
   });
 });
 

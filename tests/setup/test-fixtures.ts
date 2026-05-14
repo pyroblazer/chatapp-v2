@@ -12,8 +12,9 @@ let userCounter = 0;
 
 export function createTestUser(overrides: Partial<TestUser> = {}): TestUser {
   userCounter++;
+  const shortId = Date.now().toString(36).slice(-5);
   return {
-    username: `e2euser${userCounter}_${Date.now()}`,
+    username: `u${shortId}${userCounter}`,
     password: 'TestPass123!',
     firstName: 'Test',
     lastName: `User${userCounter}`,
@@ -96,14 +97,7 @@ export async function setAuthCookies(
 
 export async function registerAndLogin(page: Page): Promise<TestUser> {
   const user = createTestUser();
-  const registered = await registerUserViaAPI(user);
-  const { accessToken, setCookie } = await loginViaAPI(
-    user.username,
-    user.password,
-  );
-  registered.accessToken = accessToken;
-  await setAuthCookies(page, accessToken, setCookie);
-  await page.goto('/conversations');
-  await page.waitForURL('**/conversations**', { timeout: 10000 });
-  return registered;
+  await registerUserViaAPI(user);
+  await loginViaUI(page, user.username, user.password);
+  return user;
 }

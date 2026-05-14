@@ -28,9 +28,9 @@ test.describe('Conversations - Authenticated', () => {
   });
 
   test('should show empty state when no conversations exist', async ({ page }) => {
-    // New user has no conversations
-    const body = page.locator('main, [class*="messagePanel"], [class*="MessagePanel"]').first();
-    await expect(body).toBeVisible({ timeout: 5000 });
+    // New user has no conversations — the panel area renders with placeholder text
+    await expect(page).toHaveURL(/\/conversations/);
+    await expect(page.locator('text=ConversationPanel')).toBeVisible({ timeout: 5000 });
   });
 
   test('should switch between Private and Group tabs', async ({ page }) => {
@@ -48,9 +48,8 @@ test.describe('Conversations - Authenticated', () => {
   });
 
   test('should show message input area when no conversation is selected', async ({ page }) => {
-    // The message panel should be visible (either empty state or placeholder)
-    const panel = page.locator('main, [class*="messagePanel"], [class*="MessagePanel"], [class*="panel"]').first();
-    await expect(panel).toBeVisible({ timeout: 5000 });
+    // The conversation panel placeholder is visible when no conversation is selected
+    await expect(page.locator('text=ConversationPanel')).toBeVisible({ timeout: 5000 });
   });
 });
 

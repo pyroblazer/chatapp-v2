@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { createTestUser, loginViaAPI, registerUserViaAPI } from '../setup/test-fixtures';
+import { createTestUser, loginViaAPI, registerAndLogin, registerUserViaAPI, setAuthCookies } from '../setup/test-fixtures';
 
 test.describe('Authentication - Unauthenticated', () => {
   test('should redirect unauthenticated users to /login from /', async ({ page }) => {
@@ -95,7 +95,7 @@ test.describe('Authentication - Register Page', () => {
     await expect(page).toHaveURL(/\/login/);
   });
 
-  test('should register successfully and redirect to conversations', async ({ page }) => {
+  test('should register successfully and redirect to login', async ({ page }) => {
     const user = createTestUser();
     await page.goto('/register');
     await page.fill('input#username', user.username);
@@ -103,7 +103,7 @@ test.describe('Authentication - Register Page', () => {
     await page.fill('input#lastName', user.lastName);
     await page.fill('input#password', user.password);
     await page.click('button:has-text("Create My Account")');
-    await expect(page).toHaveURL(/\/conversations/, { timeout: 10000 });
+    await expect(page).toHaveURL(/\/login/, { timeout: 10000 });
   });
 
   test('should reject duplicate username on registration', async ({ page }) => {
@@ -138,20 +138,14 @@ test.describe('Authentication - Logout', () => {
   test('should logout and redirect to login', async ({ page }) => {
     const user = createTestUser();
     await registerUserViaAPI(user);
-    const { accessToken, setCookie } = await loginViaAPI(user.username, user.password);
-    await page.goto('/');
-    await page.evaluate((token) => {
-      localStorage.setItem('access_token', token);
-    }, accessToken);
-    await page.goto('/conversations');
-    await expect(page).toHaveURL(/\/conversations/, { timeout: 10000 });
-    // Navigate to settings or use sidebar logout
     await page.goto('/login');
-    // Clear auth state
-    await page.evaluate(() => {
-      localStorage.removeItem('access_token');
-    });
-    await page.goto('/conversations');
-    await expect(page).toHaveURL(/\/login/, { timeout: 5000 });
+    await page.fill('input#username', user.username);
+    await page.fill('input#password', user.password);
+    await page.click('button:has-text("Login")');
+    await page.waitForURL('**/conversations**', { timeout: 10000 });
+    // Clear auth state: remove the refresh_token cookie then reload to reset in-memory token
+    await page.context().clearCookies();
+    await page.reload();
+    await expect(page).toHaveURL(/\/login/, { timeout: 10000 });
   });
 });

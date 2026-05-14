@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { createTestUser, registerAndLogin, registerUserViaAPI, loginViaAPI } from '../setup/test-fixtures';
+import { createTestUser, registerAndLogin, registerUserViaAPI, loginViaAPI, loginViaUI } from '../setup/test-fixtures';
 
 const BASE_URL = process.env.BASE_URL || 'http://localhost:80';
 
@@ -23,9 +23,9 @@ test.describe('Friends - Display', () => {
   });
 
   test('should show empty friends list for new user', async ({ page }) => {
-    // New user has no friends — the list container should be visible even if empty
-    const content = page.locator('[class*="friend"], [class*="Friend"], main').first();
-    await expect(content).toBeVisible({ timeout: 5000 });
+    // New user has no friends — page renders with nav and Add Friend button
+    await expect(page).toHaveURL(/\/friends/);
+    await expect(page.locator('button:has-text("Add Friend")')).toBeVisible({ timeout: 5000 });
   });
 
   test('should navigate to friend requests page', async ({ page }) => {
@@ -134,10 +134,8 @@ test.describe('Friends - Accept Friend Request', () => {
       }
     }
 
-    // user2 views friends list
-    await page.evaluate((token) => {
-      localStorage.setItem('access_token', token);
-    }, loginRes2.accessToken);
+    // user2 views friends list via UI login
+    await loginViaUI(page, user2.username, user2.password);
     await page.goto('/friends');
     await page.waitForTimeout(1000);
     // Should show friend
