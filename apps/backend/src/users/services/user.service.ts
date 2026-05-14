@@ -53,6 +53,16 @@ export class UserService implements IUserService {
     return this.userRepository.save(user);
   }
 
+  async usernameExists(username: string): Promise<boolean> {
+    const result = await this.userRepository
+      .createQueryBuilder('user')
+      .select('1')
+      .where('user.username = :username', { username })
+      .limit(1)
+      .getRawOne();
+    return result !== undefined && result !== null;
+  }
+
   searchUsers(query: string) {
     const statement = '(user.username LIKE :query)';
     return this.userRepository

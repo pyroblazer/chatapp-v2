@@ -1,5 +1,4 @@
-import { AxiosError } from 'axios';
-import { FC } from 'react';
+import { FC, useRef } from 'react';
 import { checkUsernameExists } from '../../../utils/api';
 import {
   InputContainer,
@@ -14,6 +13,8 @@ export const UsernameField: FC<RegisterFormFieldProps> = ({
   register,
   errors,
 }) => {
+  const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   return (
     <InputContainer>
       <InputContainerHeader>
@@ -34,16 +35,18 @@ export const UsernameField: FC<RegisterFormFieldProps> = ({
             message: 'Exceeds 16 characters',
           },
           validate: {
-            checkUsername: async (username: string) => {
-              try {
-                await checkUsernameExists(username);
-              } catch (err) {
-                return (
-                  (err as AxiosError).response?.status === 409 &&
-                  'Username already exists'
-                );
-              }
-            },
+            checkUsername: (username: string) =>
+              new Promise((resolve) => {
+                if (debounceTimer.current) clearTimeout(debounceTimer.current);
+                debounceTimer.current = setTimeout(async () => {
+                  try {
+                    const { data } = await checkUsernameExists(username);
+                    resolve(data.exists ? 'Username already taken' : true);
+                  } catch {
+                    resolve(true);
+                  }
+                }, 500);
+              }),
           },
         })}
       />
