@@ -52,7 +52,7 @@ export const EditGroupForm = () => {
         success('Group Details Updated!');
       })
       .catch((err) => {
-        error('Error Saving Changes. Try again.');
+        error(err?.response?.data?.message || err?.message || 'Error Saving Changes. Try again.');
       })
       .finally(() => dispatch(setIsSavingChanges(false)));
   };

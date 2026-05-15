@@ -10,6 +10,7 @@ import {
   EditMessageActionsContainer,
   EditMessageInputField,
 } from '../../utils/styles';
+import { toast } from 'react-toastify';
 import { EditMessagePayload } from '../../utils/types';
 
 type Props = {
@@ -33,13 +34,11 @@ export const EditMessageContainer: FC<Props> = ({ onEditMessageChange }) => {
       messageId: messageBeingEdited.id,
       content: messageBeingEdited.content || '',
     };
-    conversationType === 'private'
-      ? dispatch(editMessageThunk(params)).finally(() =>
-          dispatch(setIsEditing(false))
-        )
-      : dispatch(editGroupMessageThunk(params)).finally(() =>
-          dispatch(setIsEditing(false))
-        );
+    const thunk = conversationType === 'private' ? editMessageThunk(params) : editGroupMessageThunk(params);
+    dispatch(thunk)
+      .unwrap()
+      .catch((err) => toast.error(err?.response?.data?.message || err?.message || 'Failed to edit message'))
+      .finally(() => dispatch(setIsEditing(false)));
   };
 
   return (

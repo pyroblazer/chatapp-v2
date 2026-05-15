@@ -11,6 +11,7 @@ import {
 import { AuthContext } from '../../utils/context/AuthContext';
 import { isGroupOwner } from '../../utils/helpers';
 import { ContextMenu, ContextMenuItem } from '../../utils/styles';
+import { toast } from 'react-toastify';
 import { IoMdExit, IoIosArchive } from 'react-icons/io';
 import { Edit } from 'akar-icons';
 
@@ -30,9 +31,10 @@ export const GroupSidebarContextMenu: FC = () => {
 
   const leaveGroup = () => {
     if (!contextMenuGroup) return;
-    dispatch(leaveGroupThunk(contextMenuGroup.id)).finally(() =>
-      dispatch(toggleContextMenu(false))
-    );
+    dispatch(leaveGroupThunk(contextMenuGroup.id))
+      .unwrap()
+      .catch((err) => toast.error(err?.response?.data?.message || err?.message || 'Failed to leave group'))
+      .finally(() => dispatch(toggleContextMenu(false)));
   };
 
   return (

@@ -10,6 +10,7 @@ import {
   rejectFriendRequestThunk,
 } from '../../store/friends/friendsThunk';
 import { getFriendRequestDetails } from '../../utils/helpers';
+import { toast } from 'react-toastify';
 import { FriendRequestDetails } from './friend-request/FriendRequestDetails';
 import { FriendRequestIcons } from './friend-request/FriendRequestIcons';
 
@@ -25,11 +26,17 @@ export const FriendRequestItem: FC<Props> = ({ friendRequest }) => {
     const { id } = friendRequest;
     switch (type) {
       case 'accept':
-        return dispatch(acceptFriendRequestThunk(id));
+        return dispatch(acceptFriendRequestThunk(id))
+          .unwrap()
+          .catch((err) => toast.error(err?.response?.data?.message || err?.message || 'Failed to accept request'));
       case 'reject':
-        return dispatch(rejectFriendRequestThunk(id));
+        return dispatch(rejectFriendRequestThunk(id))
+          .unwrap()
+          .catch((err) => toast.error(err?.response?.data?.message || err?.message || 'Failed to reject request'));
       default:
-        return dispatch(cancelFriendRequestThunk(id));
+        return dispatch(cancelFriendRequestThunk(id))
+          .unwrap()
+          .catch((err) => toast.error(err?.response?.data?.message || err?.message || 'Failed to cancel request'));
     }
   };
 

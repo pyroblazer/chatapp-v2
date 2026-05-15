@@ -15,6 +15,7 @@ import { Button } from '../../utils/styles/button';
 import { updateUserProfile } from '../../utils/api';
 import { AuthContext } from '../../utils/context/AuthContext';
 import { CDN_URL } from '../../utils/constants';
+import { toast } from 'react-toastify';
 import { UserAvatar } from '../../components/settings/profile/UserAvatar';
 
 export const SettingsProfilePage = () => {
@@ -73,7 +74,8 @@ export const SettingsProfilePage = () => {
       setAvatarFile(undefined);
       updateAuthUser(updatedUser);
       setIsEditing(false);
-    } catch (err) {
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || err?.message || 'Failed to update profile');
     } finally {
       setLoading(false);
     }

@@ -11,6 +11,7 @@ import { deleteMessageThunk } from '../../store/messages/messageThunk';
 import { selectType } from '../../store/selectedSlice';
 import { AuthContext } from '../../utils/context/AuthContext';
 import { ContextMenu, ContextMenuItem } from '../../utils/styles';
+import { toast } from 'react-toastify';
 
 export const SelectedMessageContextMenu = () => {
   const { id: routeId } = useParams();
@@ -25,9 +26,12 @@ export const SelectedMessageContextMenu = () => {
     const id = parseInt(routeId!);
     if (!message) return;
     const messageId = message.id;
-    return conversationType === 'private'
-      ? dispatch(deleteMessageThunk({ id, messageId: message.id }))
-      : dispatch(deleteGroupMessageThunk({ id, messageId }));
+    const thunk = conversationType === 'private'
+      ? deleteMessageThunk({ id, messageId: message.id })
+      : deleteGroupMessageThunk({ id, messageId });
+    return dispatch(thunk)
+      .unwrap()
+      .catch((err) => toast.error(err?.response?.data?.message || err?.message || 'Failed to delete message'));
   };
 
   const editMessage = () => {

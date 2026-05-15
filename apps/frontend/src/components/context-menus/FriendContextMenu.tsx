@@ -9,6 +9,7 @@ import { checkConversationOrCreate } from '../../utils/api';
 import { AuthContext } from '../../utils/context/AuthContext';
 import { SocketContext } from '../../utils/context/SocketContext';
 import { ContextMenu, ContextMenuItem } from '../../utils/styles';
+import { toast } from 'react-toastify';
 
 export const FriendContextMenu = () => {
   const { user } = useContext(AuthContext);
@@ -27,9 +28,10 @@ export const FriendContextMenu = () => {
   const removeFriend = () => {
     if (!selectedFriendContextMenu) return;
     dispatch(toggleContextMenu(false));
-    dispatch(removeFriendThunk(selectedFriendContextMenu.id)).then(() =>
-      socket.emit('getOnlineFriends')
-    );
+    dispatch(removeFriendThunk(selectedFriendContextMenu.id))
+      .unwrap()
+      .then(() => socket.emit('getOnlineFriends'))
+      .catch((err) => toast.error(err?.response?.data?.message || err?.message || 'Failed to remove friend'));
   };
 
   const sendMessage = () => {
@@ -40,6 +42,7 @@ export const FriendContextMenu = () => {
           navigate(`/conversations/${data.id}`);
         })
         .catch((err) => {
+          toast.error(err?.response?.data?.message || err?.message || 'Failed to open conversation');
         });
   };
 

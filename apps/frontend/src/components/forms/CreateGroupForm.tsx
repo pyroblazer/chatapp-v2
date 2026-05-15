@@ -18,6 +18,7 @@ import { searchUsers } from '../../utils/api';
 import { RecipientResultContainer } from '../recipients/RecipientResultContainer';
 import { SelectedGroupRecipientChip } from '../recipients/SelectedGroupRecipientChip';
 import { createGroupThunk } from '../../store/groupSlice';
+import { toast } from 'react-toastify';
 
 type Props = {
   setShowModal: Dispatch<React.SetStateAction<boolean>>;
@@ -54,6 +55,9 @@ export const CreateGroupForm: FC<Props> = ({ setShowModal }) => {
       .then(({ data }) => {
         setShowModal(false);
         navigate(`/groups/${data.id}`);
+      })
+      .catch((err) => {
+        toast.error(err?.response?.data?.message || err?.message || 'Failed to create group');
       })
   };
 

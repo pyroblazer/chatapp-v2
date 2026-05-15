@@ -11,6 +11,7 @@ import {
 import { AuthContext } from '../../utils/context/AuthContext';
 import { getUserContextMenuIcon, isGroupOwner } from '../../utils/helpers';
 import { ContextMenu, ContextMenuItem } from '../../utils/styles';
+import { toast } from 'react-toastify';
 import { UserContextMenuActionType } from '../../utils/types';
 import { Person, PersonCross, Crown } from 'akar-icons';
 
@@ -40,19 +41,16 @@ export const SelectedParticipantContextMenu: FC<Props> = ({ points }) => {
 
   const kickUser = () => {
     if (!selectedUser) return;
-    dispatch(
-      removeGroupRecipientThunk({
-        id: parseInt(id!),
-        userId: selectedUser.id,
-      })
-    );
+    dispatch(removeGroupRecipientThunk({ id: parseInt(id!), userId: selectedUser.id }))
+      .unwrap()
+      .catch((err) => toast.error(err?.response?.data?.message || err?.message || 'Failed to remove user'));
   };
 
   const transferGroupOwner = () => {
     if (!selectedUser) return;
-    dispatch(
-      updateGroupOwnerThunk({ id: parseInt(id!), newOwnerId: selectedUser.id })
-    );
+    dispatch(updateGroupOwnerThunk({ id: parseInt(id!), newOwnerId: selectedUser.id }))
+      .unwrap()
+      .catch((err) => toast.error(err?.response?.data?.message || err?.message || 'Failed to transfer ownership'));
   };
 
   const isOwner = isGroupOwner(user, group);

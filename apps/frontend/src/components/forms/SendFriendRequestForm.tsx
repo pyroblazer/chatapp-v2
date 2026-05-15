@@ -30,7 +30,7 @@ export const SendFriendRequestForm: FC<Props> = ({ setShowModal }) => {
         success('Friend Request Sent!');
       })
       .catch((err) => {
-        error('Error sending friend request');
+        error(err?.response?.data?.message || err?.message || 'Failed to send friend request');
       });
   };
 
