@@ -15,6 +15,7 @@ import { useDebounce } from '../../utils/hooks/useDebounce';
 import { searchUsers } from '../../utils/api';
 import { RecipientResultContainer } from '../recipients/RecipientResultContainer';
 import { RecipientField } from '../recipients/RecipientField';
+import { toast } from 'react-toastify';
 
 type Props = {
   setShowModal: Dispatch<React.SetStateAction<boolean>>;
@@ -51,6 +52,10 @@ export const CreateConversationForm: FC<Props> = ({ setShowModal }) => {
       .then(({ data }) => {
         setShowModal(false);
         navigate(`/conversations/${data.id}`);
+      })
+      .catch((err) => {
+        const msg = err?.response?.data?.message || err?.message || 'Failed to create conversation';
+        toast.error(msg);
       })
   };
 

@@ -87,7 +87,7 @@ export class ConversationsService implements IConversationsService {
       creator.id,
       recipient.id,
     );
-    if (!isFriends) throw new FriendNotFoundException();
+    if (!isFriends) throw new CreateConversationException('You must be friends with this user');
     const exists = await this.isCreated(creator.id, recipient.id);
     if (exists) throw new ConversationExistsException();
     const newConversation = this.conversationRepository.create({
