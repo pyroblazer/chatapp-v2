@@ -70,29 +70,36 @@ export async function loginViaUI(page: Page, username: string, password: string)
   await page.fill('input#username', username);
   await page.fill('input#password', password);
   await page.click('button:has-text("Login")');
-  await page.waitForURL('**/conversations**', { timeout: 10000 });
+  await page.waitForURL('**/conversations**', { timeout: 15000 });
 }
 
-export async function setAuthCookies(
-  page: Page,
-  accessToken: string,
-  setCookie: string,
-) {
-  await page.context().addCookies([
-    {
-      name: 'refresh_token',
-      value: setCookie.match(/refresh_token=([^;]+)/)?.[1] || '',
-      domain: new URL(BASE_URL).hostname,
-      path: '/api/auth',
-      httpOnly: true,
-      sameSite: 'Strict',
+/** Authenticated fetch wrapper — avoids copy-pasting auth headers in every test */
+export async function apiRequest(
+  method: 'GET' | 'POST' | 'PATCH' | 'DELETE',
+  path: string,
+  token: string,
+  body?: object,
+): Promise<Response> {
+  const options: RequestInit = {
+    method,
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`,
     },
-  ]);
-  // Set access token in localStorage so the frontend picks it up
-  await page.goto('/');
-  await page.evaluate((token) => {
-    localStorage.setItem('access_token', token);
-  }, accessToken);
+  };
+  if (body) options.body = JSON.stringify(body);
+  return fetch(`${BASE_URL}/api${path}`, options);
+}
+
+/** Register via API, login via UI, return user + access token for subsequent API calls */
+export async function setupAuthenticatedPage(
+  page: Page,
+): Promise<TestUser & { accessToken: string }> {
+  const user = createTestUser();
+  await registerUserViaAPI(user);
+  const { accessToken } = await loginViaAPI(user.username, user.password);
+  await loginViaUI(page, user.username, user.password);
+  return { ...user, accessToken };
 }
 
 export async function registerAndLogin(page: Page): Promise<TestUser> {

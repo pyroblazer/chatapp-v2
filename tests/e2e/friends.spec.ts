@@ -1,7 +1,13 @@
 import { test, expect } from '@playwright/test';
-import { createTestUser, registerAndLogin, registerUserViaAPI, loginViaAPI, loginViaUI } from '../setup/test-fixtures';
-
-const BASE_URL = process.env.BASE_URL || 'http://localhost:80';
+import {
+  createTestUser,
+  registerAndLogin,
+  setupAuthenticatedPage,
+  registerUserViaAPI,
+  loginViaAPI,
+  loginViaUI,
+  apiRequest,
+} from '../setup/test-fixtures';
 
 test.describe('Friends - Display', () => {
   test.beforeEach(async ({ page }) => {
@@ -19,11 +25,10 @@ test.describe('Friends - Display', () => {
   });
 
   test('should show Add Friend button', async ({ page }) => {
-    await expect(page.locator('button:has-text("Add Friend")')).toBeVisible({ timeout: 5000 }).catch(() => {});
+    await expect(page.locator('button:has-text("Add Friend")')).toBeVisible({ timeout: 5000 });
   });
 
   test('should show empty friends list for new user', async ({ page }) => {
-    // New user has no friends — page renders with nav and Add Friend button
     await expect(page).toHaveURL(/\/friends/);
     await expect(page.locator('button:has-text("Add Friend")')).toBeVisible({ timeout: 5000 });
   });
@@ -42,9 +47,8 @@ test.describe('Friends - Friend Requests Page', () => {
   test('should display friend requests page with empty state', async ({ page }) => {
     await page.goto('/friends/requests');
     await expect(page).toHaveURL(/\/friends\/requests/);
-    // New user has no friend requests
     const emptyState = page.locator('text=No Friend Requests');
-    await expect(emptyState).toBeVisible({ timeout: 5000 }).catch(() => {});
+    await expect(emptyState).toBeVisible({ timeout: 5000 });
   });
 
   test('should navigate back to friends list from requests', async ({ page }) => {
@@ -55,90 +59,171 @@ test.describe('Friends - Friend Requests Page', () => {
 });
 
 test.describe('Friends - Send Friend Request', () => {
-  test.beforeEach(async ({ page }) => {
-    await registerAndLogin(page);
-  });
-
   test('should open send friend request modal', async ({ page }) => {
+    await registerAndLogin(page);
     await page.goto('/friends');
     const addBtn = page.locator('button:has-text("Add Friend")');
-    if (await addBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
-      await addBtn.click();
-      await expect(page.locator('h2:has-text("Send a Friend Request")')).toBeVisible({ timeout: 3000 }).catch(() => {});
-    }
+    await expect(addBtn).toBeVisible({ timeout: 5000 });
+    await addBtn.click();
+    await expect(page.locator('h2:has-text("Send a Friend Request")')).toBeVisible({
+      timeout: 5000,
+    });
   });
 
-  test('should send friend request via API and see it in requests', async ({ page }) => {
+  test('should send friend request via API and recipient sees it in requests', async ({ page }) => {
     const user1 = createTestUser();
     const user2 = createTestUser();
     await registerUserViaAPI(user1);
     await registerUserViaAPI(user2);
 
-    // user1 sends friend request to user2 via API
-    const loginRes = await loginViaAPI(user1.username, user1.password);
-    await fetch(`${BASE_URL}/api/friends/requests`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${loginRes.accessToken}`,
-      },
-      body: JSON.stringify({ username: user2.username }),
+    const loginRes1 = await loginViaAPI(user1.username, user1.password);
+    const res = await apiRequest('POST', '/friends/requests', loginRes1.accessToken, {
+      username: user2.username,
     });
+    expect(res.ok).toBeTruthy();
 
-    // user2 views requests
-    const loginRes2 = await loginViaAPI(user2.username, user2.password);
-    await page.evaluate((token) => {
-      localStorage.setItem('access_token', token);
-    }, loginRes2.accessToken);
+    // user2 logs in via UI and navigates to requests
+    await loginViaUI(page, user2.username, user2.password);
     await page.goto('/friends/requests');
-    await page.waitForTimeout(1000);
-    // Should show the incoming request
-    await expect(page.locator('text=Incoming Friend Request')).toBeVisible({ timeout: 5000 }).catch(() => {});
+    await page.waitForLoadState('networkidle');
+    await expect(page.locator('text=Incoming Friend Request')).toBeVisible({ timeout: 8000 });
+  });
+
+  test('should show outgoing request for the sender', async ({ page }) => {
+    const user = await setupAuthenticatedPage(page);
+    const otherUser = createTestUser();
+    await registerUserViaAPI(otherUser);
+
+    await page.goto('/friends');
+    const addBtn = page.locator('button:has-text("Add Friend")');
+    await expect(addBtn).toBeVisible({ timeout: 5000 });
+    await addBtn.click();
+
+    const modal = page.locator('h2:has-text("Send a Friend Request")');
+    await expect(modal).toBeVisible({ timeout: 5000 });
+
+    const input = page.locator('input').filter({ hasNot: page.locator('input#username') }).first();
+    if (await input.isVisible({ timeout: 3000 })) {
+      await input.fill(otherUser.username);
+      const [response] = await Promise.all([
+        page.waitForResponse((r) => r.url().includes('/api/friends/requests')),
+        page.locator('button[type="submit"]').click(),
+      ]);
+      expect(response.status()).toBeLessThan(400);
+    }
   });
 });
 
 test.describe('Friends - Accept Friend Request', () => {
-  test('should accept friend request and see friend in list', async ({ page }) => {
+  test('should accept friend request via API and see friend in list', async ({ page }) => {
     const user1 = createTestUser();
     const user2 = createTestUser();
     await registerUserViaAPI(user1);
     await registerUserViaAPI(user2);
 
-    // user1 sends friend request to user2
     const loginRes1 = await loginViaAPI(user1.username, user1.password);
-    await fetch(`${BASE_URL}/api/friends/requests`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${loginRes1.accessToken}`,
-      },
-      body: JSON.stringify({ username: user2.username }),
-    });
-
-    // user2 accepts via API
     const loginRes2 = await loginViaAPI(user2.username, user2.password);
-    const requestsRes = await fetch(`${BASE_URL}/api/friends/requests`, {
-      headers: { Authorization: `Bearer ${loginRes2.accessToken}` },
-    });
-    if (requestsRes.ok) {
-      const requests = await requestsRes.json();
-      const incoming = Array.isArray(requests)
-        ? requests.filter((r: any) => r.type === 'incoming' || r.receiver?.username === user2.username)
-        : [];
-      if (incoming.length > 0) {
-        const requestId = incoming[0].id;
-        await fetch(`${BASE_URL}/api/friends/requests/${requestId}/accept`, {
-          method: 'PATCH',
-          headers: { Authorization: `Bearer ${loginRes2.accessToken}` },
-        });
-      }
-    }
 
-    // user2 views friends list via UI login
+    // user1 sends request to user2
+    await apiRequest('POST', '/friends/requests', loginRes1.accessToken, {
+      username: user2.username,
+    });
+
+    // user2 fetches and accepts the request
+    const requestsRes = await apiRequest('GET', '/friends/requests', loginRes2.accessToken);
+    expect(requestsRes.ok).toBeTruthy();
+    const requests = await requestsRes.json();
+    const incoming = Array.isArray(requests)
+      ? requests.filter((r: any) => r.receiver?.username === user2.username)
+      : [];
+    expect(incoming.length).toBeGreaterThan(0);
+
+    const requestId = incoming[0].id;
+    const acceptRes = await apiRequest(
+      'PATCH',
+      `/friends/requests/${requestId}/accept`,
+      loginRes2.accessToken,
+    );
+    expect(acceptRes.ok).toBeTruthy();
+
+    // user2 views friends list via UI
     await loginViaUI(page, user2.username, user2.password);
     await page.goto('/friends');
-    await page.waitForTimeout(1000);
-    // Should show friend
-    await expect(page.locator(`text=${user1.username}`)).toBeVisible({ timeout: 5000 }).catch(() => {});
+    await page.waitForLoadState('networkidle');
+    await expect(page.locator(`text=${user1.username}`)).toBeVisible({ timeout: 8000 });
+  });
+
+  test('should cancel outgoing friend request via API', async ({ page }) => {
+    const user1 = createTestUser();
+    const user2 = createTestUser();
+    await registerUserViaAPI(user1);
+    await registerUserViaAPI(user2);
+
+    const loginRes1 = await loginViaAPI(user1.username, user1.password);
+    const sendRes = await apiRequest('POST', '/friends/requests', loginRes1.accessToken, {
+      username: user2.username,
+    });
+    expect(sendRes.ok).toBeTruthy();
+    const request = await sendRes.json();
+
+    const cancelRes = await apiRequest(
+      'DELETE',
+      `/friends/requests/${request.id}/cancel`,
+      loginRes1.accessToken,
+    );
+    expect(cancelRes.ok).toBeTruthy();
+
+    // user1 views requests — no outgoing request
+    await loginViaUI(page, user1.username, user1.password);
+    await page.goto('/friends/requests');
+    await page.waitForLoadState('networkidle');
+    const outgoing = page.locator('text=Outgoing Friend Request');
+    await expect(outgoing).not.toBeVisible({ timeout: 3000 });
+  });
+
+  test('should remove a friend via API', async ({ page }) => {
+    const user1 = createTestUser();
+    const user2 = createTestUser();
+    await registerUserViaAPI(user1);
+    await registerUserViaAPI(user2);
+
+    const loginRes1 = await loginViaAPI(user1.username, user1.password);
+    const loginRes2 = await loginViaAPI(user2.username, user2.password);
+
+    // Become friends
+    await apiRequest('POST', '/friends/requests', loginRes1.accessToken, {
+      username: user2.username,
+    });
+    const requestsRes = await apiRequest('GET', '/friends/requests', loginRes2.accessToken);
+    const requests = await requestsRes.json();
+    const incoming = Array.isArray(requests)
+      ? requests.filter((r: any) => r.receiver?.username === user2.username)
+      : [];
+    if (incoming.length > 0) {
+      await apiRequest(
+        'PATCH',
+        `/friends/requests/${incoming[0].id}/accept`,
+        loginRes2.accessToken,
+      );
+    }
+
+    // Get friend entry and remove
+    const friendsRes = await apiRequest('GET', '/friends', loginRes1.accessToken);
+    const friends = await friendsRes.json();
+    const friend = Array.isArray(friends) ? friends[0] : null;
+    if (friend) {
+      const removeRes = await apiRequest(
+        'DELETE',
+        `/friends/${friend.id}/delete`,
+        loginRes1.accessToken,
+      );
+      expect(removeRes.ok).toBeTruthy();
+    }
+
+    // user1 views friends list — empty
+    await loginViaUI(page, user1.username, user1.password);
+    await page.goto('/friends');
+    await page.waitForLoadState('networkidle');
+    await expect(page.locator(`text=${user2.username}`)).not.toBeVisible({ timeout: 5000 });
   });
 });

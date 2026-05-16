@@ -1,7 +1,13 @@
 import { test, expect } from '@playwright/test';
-import { createTestUser, registerAndLogin, registerUserViaAPI, loginViaAPI } from '../setup/test-fixtures';
-
-const BASE_URL = process.env.BASE_URL || 'http://localhost:80';
+import {
+  createTestUser,
+  registerAndLogin,
+  setupAuthenticatedPage,
+  registerUserViaAPI,
+  loginViaAPI,
+  loginViaUI,
+  apiRequest,
+} from '../setup/test-fixtures';
 
 test.describe('Groups - Display', () => {
   test.beforeEach(async ({ page }) => {
@@ -13,140 +19,154 @@ test.describe('Groups - Display', () => {
     await expect(page).toHaveURL(/\/groups/);
   });
 
-  test('should show groups list area', async ({ page }) => {
-    await expect(page).toHaveURL(/\/groups/);
-    // The sidebar search input is rendered for the groups page
-    await expect(page.locator('input[placeholder="Search for Conversations"]')).toBeVisible({ timeout: 5000 });
+  test('should show groups sidebar search input', async ({ page }) => {
+    await expect(page.locator('input[placeholder="Search for Conversations"]')).toBeVisible({
+      timeout: 5000,
+    });
   });
 
   test('should show empty state when no groups exist', async ({ page }) => {
-    // New user has no groups — the panel placeholder is shown
     await expect(page.locator('text=ConversationPanel')).toBeVisible({ timeout: 5000 });
   });
 });
 
 test.describe('Groups - Create Group', () => {
-  test.beforeEach(async ({ page }) => {
-    await registerAndLogin(page);
-  });
-
-  test('should open create group modal when add icon is clicked', async ({ page }) => {
-    await page.goto('/groups');
-    // Switch to Group tab
-    await page.locator('text=Group').first().click();
-    await page.waitForTimeout(500);
-
-    // Click add group icon
-    const addIcon = page.locator('[class*="header"] svg, [class*="Header"] svg').first();
-    if (await addIcon.isVisible({ timeout: 3000 }).catch(() => false)) {
-      await addIcon.click();
-      await expect(page.locator('h2:has-text("Create a Group")')).toBeVisible({ timeout: 3000 }).catch(() => {});
-    }
-  });
-
   test('should create a group via API and see it in list', async ({ page }) => {
-    const user = createTestUser();
+    const user = await setupAuthenticatedPage(page);
     const otherUser = createTestUser();
-    await registerUserViaAPI(user);
     await registerUserViaAPI(otherUser);
 
-    const loginRes = await loginViaAPI(user.username, user.password);
-
-    // Create group via API
-    const groupRes = await fetch(`${BASE_URL}/api/groups`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${loginRes.accessToken}`,
-      },
-      body: JSON.stringify({
-        title: 'E2E Test Group',
-        recipientIds: [otherUser.username],
-        message: 'Welcome to the group!',
-      }),
+    const groupRes = await apiRequest('POST', '/groups', user.accessToken, {
+      title: 'E2E Test Group',
+      users: [otherUser.username],
+      message: 'Welcome to the group!',
     });
+    expect(groupRes.ok).toBeTruthy();
 
-    if (groupRes.ok) {
-      const group = await groupRes.json();
-      await page.goto('/groups');
-      // Switch to Group tab
-      await page.locator('text=Group').first().click();
-      await page.waitForTimeout(1000);
-      // Group should appear in sidebar
-      await expect(page.locator('text=E2E Test Group')).toBeVisible({ timeout: 5000 }).catch(() => {});
-    }
+    await page.reload();
+    await page.waitForLoadState('networkidle');
+    await page.locator('text=Group').first().click();
+    await expect(page.locator('text=E2E Test Group')).toBeVisible({ timeout: 8000 });
+  });
+
+  test('should navigate to created group channel', async ({ page }) => {
+    const user = await setupAuthenticatedPage(page);
+    const otherUser = createTestUser();
+    await registerUserViaAPI(otherUser);
+
+    const groupRes = await apiRequest('POST', '/groups', user.accessToken, {
+      title: 'Navigate Test Group',
+      users: [otherUser.username],
+      message: 'Hello group',
+    });
+    expect(groupRes.ok).toBeTruthy();
+    const group = await groupRes.json();
+
+    await page.goto(`/groups/${group.id}`);
+    await expect(page).toHaveURL(new RegExp(`/groups/${group.id}`));
+    await expect(page.locator('textarea')).toBeVisible({ timeout: 8000 });
+  });
+
+  test('should send a message in a group', async ({ page }) => {
+    const user = await setupAuthenticatedPage(page);
+    const otherUser = createTestUser();
+    await registerUserViaAPI(otherUser);
+
+    const groupRes = await apiRequest('POST', '/groups', user.accessToken, {
+      title: 'Message Test Group',
+      users: [otherUser.username],
+      message: 'Hello',
+    });
+    expect(groupRes.ok).toBeTruthy();
+    const group = await groupRes.json();
+
+    await page.goto(`/groups/${group.id}`);
+    const textarea = page.locator('textarea');
+    await expect(textarea).toBeVisible({ timeout: 8000 });
+    await textarea.fill('Group E2E message');
+    await textarea.press('Enter');
+    await expect(page.locator('text=Group E2E message')).toBeVisible({ timeout: 8000 });
   });
 });
 
 test.describe('Groups - Group Details', () => {
-  test('should navigate to group channel page', async ({ page }) => {
-    const user = createTestUser();
+  test('should show group name in the channel header', async ({ page }) => {
+    const user = await setupAuthenticatedPage(page);
     const otherUser = createTestUser();
-    await registerUserViaAPI(user);
     await registerUserViaAPI(otherUser);
 
-    const loginRes = await loginViaAPI(user.username, user.password);
-
-    const groupRes = await fetch(`${BASE_URL}/api/groups`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${loginRes.accessToken}`,
-      },
-      body: JSON.stringify({
-        title: 'Detail Test Group',
-        recipientIds: [otherUser.username],
-        message: 'Hello group',
-      }),
+    const groupRes = await apiRequest('POST', '/groups', user.accessToken, {
+      title: 'Header Display Group',
+      users: [otherUser.username],
+      message: 'Hi',
     });
+    expect(groupRes.ok).toBeTruthy();
+    const group = await groupRes.json();
 
-    if (groupRes.ok) {
-      const group = await groupRes.json();
-      const groupId = group.id || group.group?.id;
-      if (groupId) {
-        await page.goto(`/groups/${groupId}`);
-        await expect(page).toHaveURL(new RegExp(`/groups/${groupId}`));
-        // Message panel should be visible
-        const panel = page.locator('main, [class*="messagePanel"], [class*="MessagePanel"]').first();
-        await expect(panel).toBeVisible({ timeout: 5000 });
-      }
-    }
+    await page.goto(`/groups/${group.id}`);
+    await expect(page.locator('text=Header Display Group')).toBeVisible({ timeout: 8000 });
   });
 
-  test('should send a message in a group', async ({ page }) => {
-    const user = createTestUser();
+  test('should show group initial message after creation', async ({ page }) => {
+    const user = await setupAuthenticatedPage(page);
     const otherUser = createTestUser();
-    await registerUserViaAPI(user);
     await registerUserViaAPI(otherUser);
 
-    const loginRes = await loginViaAPI(user.username, user.password);
-
-    const groupRes = await fetch(`${BASE_URL}/api/groups`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${loginRes.accessToken}`,
-      },
-      body: JSON.stringify({
-        title: 'Message Test Group',
-        recipientIds: [otherUser.username],
-        message: 'Hello',
-      }),
+    const groupRes = await apiRequest('POST', '/groups', user.accessToken, {
+      title: 'Initial Msg Group',
+      users: [otherUser.username],
+      message: 'Initial group message',
     });
+    expect(groupRes.ok).toBeTruthy();
+    const group = await groupRes.json();
 
-    if (groupRes.ok) {
-      const group = await groupRes.json();
-      const groupId = group.id || group.group?.id;
-      if (groupId) {
-        await page.goto(`/groups/${groupId}`);
-        const textarea = page.locator('textarea');
-        if (await textarea.isVisible({ timeout: 3000 }).catch(() => false)) {
-          await textarea.fill('Group E2E message');
-          await textarea.press('Enter');
-          await page.waitForTimeout(1000);
-          await expect(page.locator('text=Group E2E message')).toBeVisible({ timeout: 3000 }).catch(() => {});
-        }
-      }
-    }
+    await page.goto(`/groups/${group.id}`);
+    await expect(page.locator('text=Initial group message')).toBeVisible({ timeout: 8000 });
+  });
+
+  test('should persist group message after page reload', async ({ page }) => {
+    const user = await setupAuthenticatedPage(page);
+    const otherUser = createTestUser();
+    await registerUserViaAPI(otherUser);
+
+    const groupRes = await apiRequest('POST', '/groups', user.accessToken, {
+      title: 'Persist Group',
+      users: [otherUser.username],
+      message: 'Persistent message',
+    });
+    expect(groupRes.ok).toBeTruthy();
+    const group = await groupRes.json();
+
+    await page.goto(`/groups/${group.id}`);
+    const textarea = page.locator('textarea');
+    await expect(textarea).toBeVisible({ timeout: 8000 });
+    await textarea.fill('Reload persist check');
+    await textarea.press('Enter');
+    await expect(page.locator('text=Reload persist check')).toBeVisible({ timeout: 8000 });
+
+    await page.reload();
+    await expect(page.locator('text=Reload persist check')).toBeVisible({ timeout: 8000 });
+  });
+
+  test('should show group in sidebar for a member', async ({ page }) => {
+    const user1 = createTestUser();
+    const user2 = createTestUser();
+    await registerUserViaAPI(user1);
+    await registerUserViaAPI(user2);
+
+    const { accessToken } = await loginViaAPI(user1.username, user1.password);
+
+    const groupRes = await apiRequest('POST', '/groups', accessToken, {
+      title: 'Member Sidebar Group',
+      users: [user2.username],
+      message: 'Welcome',
+    });
+    expect(groupRes.ok).toBeTruthy();
+
+    // user2 should see the group in their sidebar
+    await loginViaUI(page, user2.username, user2.password);
+    await page.goto('/groups');
+    await page.locator('text=Group').first().click();
+    await expect(page.locator('text=Member Sidebar Group')).toBeVisible({ timeout: 8000 });
   });
 });

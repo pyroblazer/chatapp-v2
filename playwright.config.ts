@@ -7,10 +7,12 @@ export default defineConfig({
   retries: process.env.CI ? 1 : 0,
   workers: process.env.CI ? 2 : '50%',
   reporter: process.env.CI ? 'github' : 'html',
-  timeout: 30000,
+  timeout: 45000,
   use: {
     baseURL: process.env.BASE_URL || 'http://localhost:80',
     trace: 'on-first-retry',
+    screenshot: 'only-on-failure',
+    video: 'retain-on-failure',
     actionTimeout: 10000,
   },
   projects: [

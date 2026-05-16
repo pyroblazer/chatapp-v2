@@ -1,7 +1,13 @@
 import { test, expect } from '@playwright/test';
-import { createTestUser, registerAndLogin, registerUserViaAPI, loginViaAPI } from '../setup/test-fixtures';
-
-const BASE_URL = process.env.BASE_URL || 'http://localhost:80';
+import {
+  createTestUser,
+  registerAndLogin,
+  setupAuthenticatedPage,
+  registerUserViaAPI,
+  loginViaAPI,
+  loginViaUI,
+  apiRequest,
+} from '../setup/test-fixtures';
 
 test.describe('Conversations - Unauthenticated', () => {
   test('should redirect to login when accessing conversations', async ({ page }) => {
@@ -17,7 +23,6 @@ test.describe('Conversations - Authenticated', () => {
 
   test('should display conversation page with sidebar', async ({ page }) => {
     await expect(page).toHaveURL(/\/conversations/);
-    // Sidebar search bar should be visible
     const searchInput = page.locator('input[placeholder="Search for Conversations"]');
     await expect(searchInput).toBeVisible({ timeout: 5000 });
   });
@@ -28,16 +33,15 @@ test.describe('Conversations - Authenticated', () => {
   });
 
   test('should show empty state when no conversations exist', async ({ page }) => {
-    // New user has no conversations — the panel area renders with placeholder text
     await expect(page).toHaveURL(/\/conversations/);
     await expect(page.locator('text=ConversationPanel')).toBeVisible({ timeout: 5000 });
   });
 
   test('should switch between Private and Group tabs', async ({ page }) => {
     await page.locator('text=Group').first().click();
-    await page.waitForTimeout(500);
+    await page.waitForLoadState('networkidle');
     await page.locator('text=Private').first().click();
-    await page.waitForTimeout(500);
+    await page.waitForLoadState('networkidle');
   });
 
   test('should show search input for conversations', async ({ page }) => {
@@ -47,85 +51,121 @@ test.describe('Conversations - Authenticated', () => {
     await expect(searchInput).toHaveValue('test query');
   });
 
-  test('should show message input area when no conversation is selected', async ({ page }) => {
-    // The conversation panel placeholder is visible when no conversation is selected
+  test('should show conversation panel placeholder when no conversation is selected', async ({ page }) => {
     await expect(page.locator('text=ConversationPanel')).toBeVisible({ timeout: 5000 });
+  });
+
+  test('should navigate to groups tab and back', async ({ page }) => {
+    await page.locator('text=Group').first().click();
+    await expect(page).toHaveURL(/\/(conversations|groups)/);
+    await page.locator('text=Private').first().click();
+    await expect(page).toHaveURL(/\/conversations/);
   });
 });
 
 test.describe('Conversations - Create Conversation', () => {
-  test.beforeEach(async ({ page }) => {
-    await registerAndLogin(page);
-  });
-
-  test('should open create conversation modal', async ({ page }) => {
-    // Click the add conversation icon in the sidebar header
-    const addButton = page.locator('[class*="header"] svg, [class*="Header"] svg').first();
-    if (await addButton.isVisible({ timeout: 3000 }).catch(() => false)) {
-      await addButton.click();
-      // Modal should appear with "Create a Conversation" heading
-      await expect(page.locator('h2:has-text("Create a Conversation")')).toBeVisible({ timeout: 3000 }).catch(() => {});
-    }
-  });
-
-  test('should create conversation and see it in sidebar', async ({ page }) => {
-    // Create a second user to converse with
+  test('should create conversation via API and see it in sidebar', async ({ page }) => {
+    const user = await setupAuthenticatedPage(page);
     const otherUser = createTestUser();
     await registerUserViaAPI(otherUser);
 
-    // Create conversation via API
-    const res = await page.request.post(`${BASE_URL}/api/conversations`, {
-      data: { recipientId: otherUser.username, message: 'Hello from E2E' },
+    const res = await apiRequest('POST', '/conversations', user.accessToken, {
+      username: otherUser.username,
+      message: 'Hello from E2E',
     });
-    if (res.ok()) {
-      // Reload and check if conversation appears
-      await page.reload();
-      await page.waitForTimeout(1000);
-      // Should show the conversation in the sidebar
-      const conversationName = page.locator('.conversationName, [class*="conversationName"]');
-      await expect(conversationName.first()).toBeVisible({ timeout: 5000 }).catch(() => {});
-    }
+    expect(res.ok).toBeTruthy();
+
+    await page.reload();
+    await page.waitForLoadState('networkidle');
+    const conversationItem = page.locator(`text=${otherUser.firstName}`).or(
+      page.locator(`text=${otherUser.username}`),
+    );
+    await expect(conversationItem.first()).toBeVisible({ timeout: 8000 });
+  });
+
+  test('should navigate to created conversation', async ({ page }) => {
+    const user = await setupAuthenticatedPage(page);
+    const otherUser = createTestUser();
+    await registerUserViaAPI(otherUser);
+
+    const res = await apiRequest('POST', '/conversations', user.accessToken, {
+      username: otherUser.username,
+      message: 'Navigate test',
+    });
+    expect(res.ok).toBeTruthy();
+    const conv = await res.json();
+
+    await page.goto(`/conversations/${conv.id}`);
+    await expect(page).toHaveURL(new RegExp(`/conversations/${conv.id}`));
+    await expect(page.locator('textarea')).toBeVisible({ timeout: 8000 });
   });
 });
 
 test.describe('Conversations - Send Message', () => {
-  test('should send a message in an existing conversation', async ({ page }) => {
-    // Create two users and a conversation
-    const user1 = createTestUser();
-    const user2 = createTestUser();
-    await registerUserViaAPI(user1);
-    await registerUserViaAPI(user2);
+  test('should send a message in a conversation', async ({ page }) => {
+    const user = await setupAuthenticatedPage(page);
+    const otherUser = createTestUser();
+    await registerUserViaAPI(otherUser);
 
-    const loginRes = await loginViaAPI(user1.username, user1.password);
+    const convRes = await apiRequest('POST', '/conversations', user.accessToken, {
+      username: otherUser.username,
+      message: 'First message',
+    });
+    expect(convRes.ok).toBeTruthy();
+    const conv = await convRes.json();
 
-    // Create conversation via API
-    const convRes = await fetch(`${BASE_URL}/api/conversations`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${loginRes.accessToken}`,
-      },
-      body: JSON.stringify({
-        recipientId: user2.username,
-        message: 'First message',
-      }),
+    await page.goto(`/conversations/${conv.id}`);
+    const textarea = page.locator('textarea');
+    await expect(textarea).toBeVisible({ timeout: 8000 });
+    await textarea.fill('E2E test message');
+    await textarea.press('Enter');
+    await expect(page.locator('text=E2E test message')).toBeVisible({ timeout: 8000 });
+  });
+
+  test('should show existing messages when navigating to conversation', async ({ page }) => {
+    const user = await setupAuthenticatedPage(page);
+    const otherUser = createTestUser();
+    await registerUserViaAPI(otherUser);
+
+    const convRes = await apiRequest('POST', '/conversations', user.accessToken, {
+      username: otherUser.username,
+      message: 'Existing message check',
+    });
+    expect(convRes.ok).toBeTruthy();
+    const conv = await convRes.json();
+
+    await page.goto(`/conversations/${conv.id}`);
+    await expect(page.locator('text=Existing message check')).toBeVisible({ timeout: 8000 });
+  });
+});
+
+test.describe('Conversations - Search', () => {
+  test('should filter conversations by search query', async ({ page }) => {
+    const user = await setupAuthenticatedPage(page);
+    const userAlpha = createTestUser();
+    const userBeta = createTestUser();
+    userAlpha.firstName = 'Alphaxxx';
+    userBeta.firstName = 'Betaxxx';
+    await registerUserViaAPI(userAlpha);
+    await registerUserViaAPI(userBeta);
+
+    await apiRequest('POST', '/conversations', user.accessToken, {
+      username: userAlpha.username,
+      message: 'hi alpha',
+    });
+    await apiRequest('POST', '/conversations', user.accessToken, {
+      username: userBeta.username,
+      message: 'hi beta',
     });
 
-    if (convRes.ok) {
-      const conv = await convRes.json();
-      // Navigate to conversation
-      await page.goto(`/conversations/${conv.id}`);
-      await page.waitForTimeout(1000);
+    await page.reload();
+    await page.waitForLoadState('networkidle');
 
-      // Type and send a message
-      const textarea = page.locator('textarea');
-      if (await textarea.isVisible({ timeout: 3000 }).catch(() => false)) {
-        await textarea.fill('E2E test message');
-        await textarea.press('Enter');
-        await page.waitForTimeout(1000);
-        // Message should appear
-        await expect(page.locator('text=E2E test message')).toBeVisible({ timeout: 3000 }).catch(() => {});
-      }
-    }
+    const searchInput = page.locator('input[placeholder="Search for Conversations"]');
+    await expect(searchInput).toBeVisible({ timeout: 5000 });
+    await searchInput.fill('Alphaxxx');
+    await page.waitForTimeout(500);
+
+    await expect(page.locator('text=Alphaxxx')).toBeVisible({ timeout: 5000 });
   });
 });

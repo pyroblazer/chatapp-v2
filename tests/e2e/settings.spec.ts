@@ -7,7 +7,7 @@ test.describe('Settings - Display', () => {
     await page.goto('/settings');
   });
 
-  test('should display settings page with sidebar', async ({ page }) => {
+  test('should display settings page', async ({ page }) => {
     await expect(page).toHaveURL(/\/settings/);
   });
 
@@ -34,51 +34,29 @@ test.describe('Settings - Profile', () => {
     await expect(page).toHaveURL(/\/settings\/profile/);
   });
 
-  test('should show username display', async ({ page }) => {
-    // Should show @username
+  test('should show username prefixed with @', async ({ page }) => {
     const usernameSpan = page.locator('span').filter({ hasText: /^@/ });
-    await expect(usernameSpan).toBeVisible({ timeout: 5000 }).catch(() => {});
+    await expect(usernameSpan).toBeVisible({ timeout: 5000 });
   });
 
   test('should show About Me section', async ({ page }) => {
-    const aboutLabel = page.locator('text=About Me');
-    await expect(aboutLabel).toBeVisible({ timeout: 5000 }).catch(() => {});
+    await expect(page.locator('text=About Me')).toBeVisible({ timeout: 5000 });
   });
 
-  test('should enable editing about me when edit icon is clicked', async ({ page }) => {
-    // Find and click the edit icon near About Me
-    const editIcon = page.locator('textarea').first();
-    if (await editIcon.isVisible({ timeout: 3000 }).catch(() => false)) {
-      // Try clicking near the About Me label
-      const aboutSection = page.locator('text=About Me');
-      if (await aboutSection.isVisible().catch(() => false)) {
-        // The textarea should become enabled when clicking edit
-        const textarea = page.locator('textarea').first();
-        if (await textarea.isVisible().catch(() => false)) {
-          const isDisabled = await textarea.isDisabled().catch(() => true);
-          if (isDisabled) {
-            // Click the edit icon (svg near About Me)
-            const svgIcons = page.locator('svg');
-            const iconCount = await svgIcons.count();
-            for (let i = 0; i < iconCount; i++) {
-              const icon = svgIcons.nth(i);
-              const box = await icon.boundingBox();
-              if (box && box.y > 100) {
-                await icon.click();
-                break;
-              }
-            }
-          }
-        }
-      }
-    }
+  test('should show About Me textarea', async ({ page }) => {
+    await expect(page.locator('textarea').first()).toBeVisible({ timeout: 5000 });
   });
 
-  test('should navigate between profile and appearance', async ({ page }) => {
+  test('should navigate between profile and appearance via URL', async ({ page }) => {
     await page.goto('/settings/appearance');
     await expect(page).toHaveURL(/\/settings\/appearance/);
     await page.goto('/settings/profile');
     await expect(page).toHaveURL(/\/settings\/profile/);
+  });
+
+  test('should navigate to appearance via sidebar link', async ({ page }) => {
+    await page.locator('text=Appearance').click();
+    await expect(page).toHaveURL(/\/settings\/appearance/);
   });
 });
 
@@ -93,53 +71,50 @@ test.describe('Settings - Appearance / Theme', () => {
   });
 
   test('should show Dark theme radio option', async ({ page }) => {
-    await expect(page.locator('label[for="dark"]')).toBeVisible({ timeout: 5000 }).catch(() => {
-      // Fallback: check for text
-      expect(page.locator('text=Dark')).toBeTruthy();
-    });
+    const darkLabel = page.locator('label[for="dark"]');
+    await expect(darkLabel).toBeVisible({ timeout: 5000 });
   });
 
   test('should show Light theme radio option', async ({ page }) => {
-    await expect(page.locator('label[for="light"]')).toBeVisible({ timeout: 5000 }).catch(() => {
-      expect(page.locator('text=Light')).toBeTruthy();
-    });
+    const lightLabel = page.locator('label[for="light"]');
+    await expect(lightLabel).toBeVisible({ timeout: 5000 });
   });
 
   test('should switch theme from dark to light', async ({ page }) => {
     const lightRadio = page.locator('input#light');
-    if (await lightRadio.isVisible({ timeout: 3000 }).catch(() => false)) {
-      await lightRadio.click();
-      await page.waitForTimeout(500);
-      // Light theme should be selected
-      await expect(lightRadio).toBeChecked();
-    }
+    await expect(lightRadio).toBeVisible({ timeout: 5000 });
+    await lightRadio.click();
+    await expect(lightRadio).toBeChecked();
   });
 
   test('should switch theme from light to dark', async ({ page }) => {
-    // First switch to light
     const lightRadio = page.locator('input#light');
     const darkRadio = page.locator('input#dark');
-    if (await lightRadio.isVisible({ timeout: 3000 }).catch(() => false)) {
-      await lightRadio.click();
-      await page.waitForTimeout(300);
-    }
-    // Now switch back to dark
-    if (await darkRadio.isVisible({ timeout: 3000 }).catch(() => false)) {
-      await darkRadio.click();
-      await page.waitForTimeout(500);
-      await expect(darkRadio).toBeChecked();
-    }
+    await expect(lightRadio).toBeVisible({ timeout: 5000 });
+    await lightRadio.click();
+    await expect(lightRadio).toBeChecked();
+    await darkRadio.click();
+    await expect(darkRadio).toBeChecked();
   });
 
   test('should persist theme after page reload', async ({ page }) => {
     const lightRadio = page.locator('input#light');
-    if (await lightRadio.isVisible({ timeout: 3000 }).catch(() => false)) {
-      await lightRadio.click();
-      await page.waitForTimeout(300);
-      await page.reload();
-      await page.waitForTimeout(1000);
-      // Light should still be checked after reload
-      await expect(page.locator('input#light')).toBeChecked().catch(() => {});
-    }
+    await expect(lightRadio).toBeVisible({ timeout: 5000 });
+    await lightRadio.click();
+    await expect(lightRadio).toBeChecked();
+    await page.reload();
+    await page.waitForLoadState('networkidle');
+    await expect(page.locator('input#light')).toBeChecked({ timeout: 5000 });
+  });
+
+  test('should persist theme after navigating away and back', async ({ page }) => {
+    const lightRadio = page.locator('input#light');
+    await expect(lightRadio).toBeVisible({ timeout: 5000 });
+    await lightRadio.click();
+    await expect(lightRadio).toBeChecked();
+
+    await page.goto('/conversations');
+    await page.goto('/settings/appearance');
+    await expect(page.locator('input#light')).toBeChecked({ timeout: 5000 });
   });
 });

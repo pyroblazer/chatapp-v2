@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { createTestUser, loginViaAPI, registerAndLogin, registerUserViaAPI, setAuthCookies } from '../setup/test-fixtures';
+import { createTestUser, registerUserViaAPI, registerAndLogin } from '../setup/test-fixtures';
 
 test.describe('Authentication - Unauthenticated', () => {
   test('should redirect unauthenticated users to /login from /', async ({ page }) => {
@@ -26,6 +26,11 @@ test.describe('Authentication - Unauthenticated', () => {
     await page.goto('/groups');
     await expect(page).toHaveURL(/\/login/);
   });
+
+  test('should redirect unauthenticated users to /login from /calls', async ({ page }) => {
+    await page.goto('/calls');
+    await expect(page).toHaveURL(/\/login/);
+  });
 });
 
 test.describe('Authentication - Login Page', () => {
@@ -48,9 +53,11 @@ test.describe('Authentication - Login Page', () => {
     await page.goto('/login');
     await page.fill('input#username', 'nonexistent_user_xyz');
     await page.fill('input#password', 'wrongpassword123');
-    await page.click('button:has-text("Login")');
-    // Should stay on login page
-    await page.waitForTimeout(2000);
+    const [response] = await Promise.all([
+      page.waitForResponse((r) => r.url().includes('/api/auth/login')),
+      page.click('button:has-text("Login")'),
+    ]);
+    expect(response.status()).not.toBe(200);
     await expect(page).toHaveURL(/\/login/);
   });
 
@@ -61,7 +68,7 @@ test.describe('Authentication - Login Page', () => {
     await page.fill('input#username', user.username);
     await page.fill('input#password', user.password);
     await page.click('button:has-text("Login")');
-    await expect(page).toHaveURL(/\/conversations/, { timeout: 10000 });
+    await expect(page).toHaveURL(/\/conversations/, { timeout: 15000 });
   });
 
   test('should persist auth after page reload', async ({ page }) => {
@@ -71,9 +78,23 @@ test.describe('Authentication - Login Page', () => {
     await page.fill('input#username', user.username);
     await page.fill('input#password', user.password);
     await page.click('button:has-text("Login")');
-    await expect(page).toHaveURL(/\/conversations/, { timeout: 10000 });
+    await expect(page).toHaveURL(/\/conversations/, { timeout: 15000 });
     await page.reload();
-    await expect(page).toHaveURL(/\/conversations/, { timeout: 10000 });
+    await expect(page).toHaveURL(/\/conversations/, { timeout: 15000 });
+  });
+
+  test('should not login with empty username', async ({ page }) => {
+    await page.goto('/login');
+    await page.fill('input#password', 'TestPass123!');
+    await page.click('button:has-text("Login")');
+    await expect(page).toHaveURL(/\/login/);
+  });
+
+  test('should not login with empty password', async ({ page }) => {
+    await page.goto('/login');
+    await page.fill('input#username', 'someuser');
+    await page.click('button:has-text("Login")');
+    await expect(page).toHaveURL(/\/login/);
   });
 });
 
@@ -102,7 +123,11 @@ test.describe('Authentication - Register Page', () => {
     await page.fill('input#firstName', user.firstName);
     await page.fill('input#lastName', user.lastName);
     await page.fill('input#password', user.password);
-    await page.click('button:has-text("Create My Account")');
+    const [response] = await Promise.all([
+      page.waitForResponse((r) => r.url().includes('/api/auth/register')),
+      page.click('button:has-text("Create My Account")'),
+    ]);
+    expect(response.status()).toBe(201);
     await expect(page).toHaveURL(/\/login/, { timeout: 10000 });
   });
 
@@ -114,9 +139,11 @@ test.describe('Authentication - Register Page', () => {
     await page.fill('input#firstName', user.firstName);
     await page.fill('input#lastName', user.lastName);
     await page.fill('input#password', user.password);
-    await page.click('button:has-text("Create My Account")');
-    // Should stay on register page (duplicate username)
-    await page.waitForTimeout(2000);
+    const [response] = await Promise.all([
+      page.waitForResponse((r) => r.url().includes('/api/auth/register')),
+      page.click('button:has-text("Create My Account")'),
+    ]);
+    expect(response.status()).not.toBe(201);
     await expect(page).toHaveURL(/\/register/);
   });
 
@@ -128,24 +155,17 @@ test.describe('Authentication - Register Page', () => {
     await page.fill('input#lastName', user.lastName);
     await page.fill('input#password', user.password);
     await page.click('button:has-text("Create My Account")');
-    // Should stay on register page
-    await page.waitForTimeout(1000);
+    // Client-side validation — no network request, stays on register
     await expect(page).toHaveURL(/\/register/);
   });
 });
 
 test.describe('Authentication - Logout', () => {
-  test('should logout and redirect to login', async ({ page }) => {
-    const user = createTestUser();
-    await registerUserViaAPI(user);
-    await page.goto('/login');
-    await page.fill('input#username', user.username);
-    await page.fill('input#password', user.password);
-    await page.click('button:has-text("Login")');
-    await page.waitForURL('**/conversations**', { timeout: 10000 });
-    // Clear auth state: remove the refresh_token cookie then reload to reset in-memory token
+  test('should redirect to login after clearing auth cookies', async ({ page }) => {
+    await registerAndLogin(page);
+    await page.waitForURL('**/conversations**', { timeout: 15000 });
     await page.context().clearCookies();
     await page.reload();
-    await expect(page).toHaveURL(/\/login/, { timeout: 10000 });
+    await expect(page).toHaveURL(/\/login/, { timeout: 15000 });
   });
 });
