@@ -15,9 +15,9 @@ export class GroupMiddleware implements NestMiddleware {
 
   async use(req: AuthenticatedRequest, res: Response, next: NextFunction) {
     const { id: userId } = req.user;
-    const id = parseInt(req.params.id);
+    const id = req.params.id;
 
-    if (isNaN(id)) throw new InvalidGroupException();
+    if (!id) throw new InvalidGroupException();
     const params = { id, userId };
     const user = await this.groupService.hasAccess(params);
     if (user) next();

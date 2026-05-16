@@ -9,9 +9,7 @@ import {
   mockUserService,
   mockFriendsService,
 } from '../../__mocks__';
-import { UserNotFoundException } from '../../users/exceptions/UserNotFound';
 import { ConversationExistsException } from '../exceptions/ConversationExists';
-import { FriendNotFoundException } from '../../friends/exceptions/FriendNotFound';
 
 describe('ConversationsService', () => {
   let service: ConversationsService;
@@ -114,7 +112,7 @@ describe('ConversationsService', () => {
           username: 'nonexistent',
           message: 'hello',
         }),
-      ).rejects.toThrow(UserNotFoundException);
+      ).rejects.toThrow('Recipient user not found');
     });
 
     it('should throw if creating conversation with yourself', async () => {
@@ -137,7 +135,7 @@ describe('ConversationsService', () => {
           username: 'recipient',
           message: 'hello',
         }),
-      ).rejects.toThrow(FriendNotFoundException);
+      ).rejects.toThrow('You must be friends with this user');
     });
 
     it('should throw ConversationExistsException if conversation already exists', async () => {

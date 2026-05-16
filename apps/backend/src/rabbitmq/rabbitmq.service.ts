@@ -1,6 +1,6 @@
 import { Injectable, Logger, OnModuleDestroy } from '@nestjs/common';
 import * as amqp from 'amqplib';
-import { Channel, Connection, ConsumeMessage, Options } from 'amqplib';
+import { Channel, ChannelModel, ConsumeMessage, Options } from 'amqplib';
 
 export interface RabbitMQConnectionOptions {
   host: string;
@@ -16,7 +16,7 @@ const MAX_DELAY_MS = 30000;
 @Injectable()
 export class RabbitMQService implements OnModuleDestroy {
   private readonly logger = new Logger(RabbitMQService.name);
-  private connection: Connection | null = null;
+  private connection: ChannelModel | null = null;
   private channel: Channel | null = null;
   private readonly options: RabbitMQConnectionOptions;
   private reconnectAttempts = 0;
@@ -276,9 +276,7 @@ export class RabbitMQService implements OnModuleDestroy {
         `Bound queue ${queue} to exchange ${exchange} with pattern ${pattern}`,
       );
     } catch (error) {
-      this.logger.error(
-        `Failed to bind queue "${queue}": ${error.message}`,
-      );
+      this.logger.error(`Failed to bind queue "${queue}": ${error.message}`);
     }
   }
 

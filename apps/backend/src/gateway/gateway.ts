@@ -36,7 +36,7 @@ import type { IGatewaySessionManager } from './gateway.session';
 
 @WebSocketGateway({
   cors: {
-    origin: ['http://localhost:3000'],
+    origin: process.env.CORS_ORIGIN?.split(',') || ['http://localhost:3000'],
     credentials: true,
   },
   pingInterval: 10000,
@@ -74,7 +74,7 @@ export class MessagingGateway
     @ConnectedSocket() socket: AuthenticatedSocket,
   ) {
     const group = await this.groupsService.findGroupById(
-      parseInt(data.groupId),
+      data.groupId,
     );
     if (!group) return;
     const onlineUsers = [];

@@ -6,7 +6,7 @@ import {
   OnModuleInit,
 } from '@nestjs/common';
 import { UTApi, UTFile } from 'uploadthing/server';
-import * as sharp from 'sharp';
+import sharp from 'sharp';
 import { LocalStorageProvider } from './local-storage.provider';
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
@@ -59,7 +59,9 @@ export class StorageService implements OnModuleInit, OnModuleDestroy {
     );
 
     this.logger.log(
-      `StorageService initialized (UploadThing app: ${this.appId || 'not configured'}, bucket: ${this.defaultBucket})`,
+      `StorageService initialized (UploadThing app: ${
+        this.appId || 'not configured'
+      }, bucket: ${this.defaultBucket})`,
     );
   }
 

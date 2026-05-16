@@ -19,17 +19,21 @@ export class ReactionsService implements IReactionsService {
     emoji: string,
     isGroup: boolean,
   ): Promise<MessageReaction | GroupMessageReaction> {
-    const repo = isGroup
-      ? this.groupMessageReactionRepo
-      : this.messageReactionRepo;
+    if (isGroup) {
+      const existing = await this.groupMessageReactionRepo.findOne({
+        where: { messageId, userId, emoji },
+      });
+      if (existing) return existing;
+      const reaction = this.groupMessageReactionRepo.create({ messageId, userId, emoji });
+      return this.groupMessageReactionRepo.save(reaction);
+    }
 
-    const existing = await repo.findOne({
+    const existing = await this.messageReactionRepo.findOne({
       where: { messageId, userId, emoji },
     });
     if (existing) return existing;
-
-    const reaction = repo.create({ messageId, userId, emoji });
-    return repo.save(reaction);
+    const reaction = this.messageReactionRepo.create({ messageId, userId, emoji });
+    return this.messageReactionRepo.save(reaction);
   }
 
   async removeReaction(
@@ -38,22 +42,24 @@ export class ReactionsService implements IReactionsService {
     emoji: string,
     isGroup: boolean,
   ): Promise<void> {
-    const repo = isGroup
-      ? this.groupMessageReactionRepo
-      : this.messageReactionRepo;
-
-    await repo.delete({ messageId, userId, emoji });
+    if (isGroup) {
+      await this.groupMessageReactionRepo.delete({ messageId, userId, emoji });
+    } else {
+      await this.messageReactionRepo.delete({ messageId, userId, emoji });
+    }
   }
 
   async getReactions(
     messageId: string,
     isGroup: boolean,
   ): Promise<MessageReaction[] | GroupMessageReaction[]> {
-    const repo = isGroup
-      ? this.groupMessageReactionRepo
-      : this.messageReactionRepo;
-
-    return repo.find({
+    if (isGroup) {
+      return this.groupMessageReactionRepo.find({
+        where: { messageId },
+        relations: ['user'],
+      });
+    }
+    return this.messageReactionRepo.find({
       where: { messageId },
       relations: ['user'],
     });

@@ -1,7 +1,9 @@
-import { IsNotEmpty, IsNumber } from 'class-validator';
+import { ApiProperty } from '@nestjs/swagger';
+import { IsNotEmpty, IsString } from 'class-validator';
 
 export class TransferOwnerDto {
+  @ApiProperty({ description: 'User ID of the new group owner', example: 'uuid-string' })
   @IsNotEmpty()
-  @IsNumber()
-  newOwnerId: number;
+  @IsString()
+  newOwnerId: string;
 }

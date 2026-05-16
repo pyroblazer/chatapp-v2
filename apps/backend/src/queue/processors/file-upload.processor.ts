@@ -2,7 +2,7 @@ import { Inject, Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { Services } from '../../utils/constants';
 import { RabbitMQService } from '../../rabbitmq/rabbitmq.service';
 import { StorageService } from '../../storage/storage.service';
-import * as sharp from 'sharp';
+import sharp from 'sharp';
 
 export interface FileUploadJob {
   fileKey: string;
