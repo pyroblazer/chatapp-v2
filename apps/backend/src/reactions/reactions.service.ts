@@ -24,7 +24,11 @@ export class ReactionsService implements IReactionsService {
         where: { messageId, userId, emoji },
       });
       if (existing) return existing;
-      const reaction = this.groupMessageReactionRepo.create({ messageId, userId, emoji });
+      const reaction = this.groupMessageReactionRepo.create({
+        messageId,
+        userId,
+        emoji,
+      });
       return this.groupMessageReactionRepo.save(reaction);
     }
 
@@ -32,7 +36,11 @@ export class ReactionsService implements IReactionsService {
       where: { messageId, userId, emoji },
     });
     if (existing) return existing;
-    const reaction = this.messageReactionRepo.create({ messageId, userId, emoji });
+    const reaction = this.messageReactionRepo.create({
+      messageId,
+      userId,
+      emoji,
+    });
     return this.messageReactionRepo.save(reaction);
   }
 

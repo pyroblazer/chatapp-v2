@@ -30,7 +30,7 @@ export const EditMessageContainer: FC<Props> = ({ onEditMessageChange }) => {
       return;
     }
     const params: EditMessagePayload = {
-      id: parseInt(id!),
+      id: id!,
       messageId: messageBeingEdited.id,
       content: messageBeingEdited.content || '',
     };

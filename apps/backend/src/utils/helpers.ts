@@ -4,9 +4,10 @@ import { Attachment, AuthenticatedRequest } from './types';
 import * as bcrypt from 'bcrypt';
 import { v4 as uuidv4 } from 'uuid';
 
+const BCRYPT_ROUNDS = 12;
+
 export async function hashPassword(rawPassword: string) {
-  const salt = await bcrypt.genSalt();
-  return bcrypt.hash(rawPassword, salt);
+  return bcrypt.hash(rawPassword, BCRYPT_ROUNDS);
 }
 
 export async function compareHash(rawPassword: string, hashedPassword: string) {

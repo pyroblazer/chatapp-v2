@@ -34,7 +34,9 @@ export const messagesSlice = createSlice({
       const messageIndex = conversationMessages.messages.findIndex(
         (m) => m.id === payload.messageId
       );
-      conversationMessages.messages.splice(messageIndex, 1);
+      if (messageIndex !== -1) {
+        conversationMessages.messages.splice(messageIndex, 1);
+      }
     },
     editMessage: (state, action: PayloadAction<MessageType>) => {
       const message = action.payload;
@@ -63,7 +65,9 @@ export const messagesSlice = createSlice({
         const messageIndex = conversationMessages.messages.findIndex(
           (m) => m.id === data.messageId
         );
-        conversationMessages?.messages.splice(messageIndex, 1);
+        if (messageIndex !== -1) {
+          conversationMessages.messages.splice(messageIndex, 1);
+        }
       })
       .addCase(editMessageThunk.fulfilled, (state, action) => {
         const { data: message } = action.payload;
@@ -78,7 +82,7 @@ export const messagesSlice = createSlice({
 
 const selectConversationMessages = (state: RootState) => state.messages.messages;
 
-const selectConversationMessageId = (state: RootState, id: number) => id;
+const selectConversationMessageId = (state: RootState, id: string) => id;
 
 export const selectConversationMessage = createSelector(
   [selectConversationMessages, selectConversationMessageId],

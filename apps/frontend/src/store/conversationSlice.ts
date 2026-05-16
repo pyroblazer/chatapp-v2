@@ -35,7 +35,9 @@ export const conversationsSlice = createSlice({
     updateConversation: (state, action: PayloadAction<Conversation>) => {
       const conversation = action.payload;
       const index = state.conversations.findIndex((c) => c.id === conversation.id);
-      state.conversations.splice(index, 1);
+      if (index !== -1) {
+        state.conversations.splice(index, 1);
+      }
       state.conversations.unshift(conversation);
     },
   },
@@ -55,7 +57,7 @@ export const conversationsSlice = createSlice({
 });
 
 const selectConversations = (state: RootState) => state.conversation.conversations;
-const selectConversationId = (state: RootState, id: number) => id;
+const selectConversationId = (state: RootState, id: string) => id;
 
 export const selectConversationById = createSelector(
   [selectConversations, selectConversationId],

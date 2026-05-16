@@ -1,5 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { INestApplication, ValidationPipe } from '@nestjs/common';
+import { INestApplication } from '@nestjs/common';
 import request from 'supertest';
 
 process.env.JWT_SECRET = process.env.JWT_SECRET || 'test-jwt-secret-for-e2e';
@@ -8,7 +8,8 @@ process.env.JWT_REFRESH_SECRET =
 process.env.DATABASE_HOST = process.env.DATABASE_HOST || 'localhost';
 process.env.DATABASE_PORT = process.env.DATABASE_PORT || '5432';
 process.env.DATABASE_USERNAME = process.env.DATABASE_USERNAME || 'chatapp';
-process.env.DATABASE_PASSWORD = process.env.DATABASE_PASSWORD || 'chatapp_secret';
+process.env.DATABASE_PASSWORD =
+  process.env.DATABASE_PASSWORD || 'chatapp_secret';
 process.env.DATABASE_NAME = process.env.DATABASE_NAME || 'chatapp';
 process.env.ENVIRONMENT = process.env.ENVIRONMENT || 'test';
 

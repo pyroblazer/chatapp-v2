@@ -10,7 +10,7 @@ export function useConversationGuard() {
 
   useEffect(() => {
     setLoading(true);
-    getConversationById(parseInt(id!))
+    getConversationById(id!)
       .catch((err) => {
         setError(err);
       })

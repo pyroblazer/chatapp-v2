@@ -1,21 +1,20 @@
-import {
-  Controller,
-  Get,
-  Inject,
-  Param,
-  Post,
-  UseGuards,
-} from '@nestjs/common';
+import { Controller, Get, Inject, Param, Post } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { SkipThrottle } from '@nestjs/throttler';
-import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import {
+  ApiBearerAuth,
+  ApiOperation,
+  ApiParam,
+  ApiTags,
+} from '@nestjs/swagger';
 import { Routes, ServerEvents, Services } from '../utils/constants';
 import { AuthUser } from '../utils/decorators';
 import type { User } from '../utils/typeorm';
 import type { IReadReceiptsService } from './read-receipts.interface';
 
+@ApiTags('Read Receipts')
+@ApiBearerAuth()
 @Controller(Routes.READ_RECEIPTS)
-@UseGuards(JwtAuthGuard)
 export class ReadReceiptsController {
   constructor(
     @Inject(Services.READ_RECEIPTS)
@@ -24,6 +23,8 @@ export class ReadReceiptsController {
   ) {}
 
   @Post()
+  @ApiOperation({ summary: 'Mark all messages in a conversation as read' })
+  @ApiParam({ name: 'id', description: 'Conversation UUID' })
   async markConversationAsRead(
     @AuthUser() user: User,
     @Param('id') conversationId: string,
@@ -41,6 +42,8 @@ export class ReadReceiptsController {
 
   @Get()
   @SkipThrottle()
+  @ApiOperation({ summary: 'Get unread message count for a conversation' })
+  @ApiParam({ name: 'id', description: 'Conversation UUID' })
   async getUnreadCount(
     @AuthUser() user: User,
     @Param('id') conversationId: string,

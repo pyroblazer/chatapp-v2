@@ -11,14 +11,14 @@ export type UserCredentialsParams = {
 };
 
 export type Profile = {
-  id: number;
+  id: string;
   about?: string;
   avatar?: string;
   banner?: string;
 };
 
 export type UserPresence = {
-  id: number;
+  id: string;
   statusMessage?: string;
   showOffline: boolean;
 };
@@ -28,7 +28,7 @@ export type UserPeer = {
 };
 
 export type User = {
-  id: number;
+  id: string;
   username: string;
   email: string;
   firstName: string;
@@ -39,7 +39,7 @@ export type User = {
 };
 
 export type Conversation = {
-  id: number;
+  id: string;
   creator: User;
   recipient: User;
   createdAt: string;
@@ -56,7 +56,7 @@ export type MessageAttachment = {
 };
 
 export type MessageType = {
-  id: number;
+  id: string;
   content?: string;
   createdAt: string;
   author: User;
@@ -65,7 +65,7 @@ export type MessageType = {
 };
 
 export type GroupMessageType = {
-  id: number;
+  id: string;
   content?: string;
   createdAt: string;
   author: User;
@@ -74,12 +74,12 @@ export type GroupMessageType = {
 };
 
 export type FetchMessagePayload = {
-  id: number;
+  id: string;
   messages: MessageType[];
 };
 
 export type FetchGroupMessagePayload = {
-  id: number;
+  id: string;
   messages: GroupMessageType[];
 };
 
@@ -89,38 +89,38 @@ export type MessageEventPayload = {
 };
 
 export type CreateMessageParams = {
-  id: number;
+  id: string;
   content: string;
 };
 
 export type ConversationMessage = {
-  id: number;
+  id: string;
   messages: MessageType[];
 };
 
 export type GroupMessage = {
-  id: number;
+  id: string;
   messages: GroupMessageType[];
 };
 
 export type DeleteMessageParams = {
-  id: number;
-  messageId: number;
+  id: string;
+  messageId: string;
 };
 
 export type DeleteGroupMessageParams = {
-  id: number;
-  messageId: number;
+  id: string;
+  messageId: string;
 };
 
 export type DeleteMessageResponse = {
-  conversationId: number;
-  messageId: number;
+  conversationId: string;
+  messageId: string;
 };
 
 export type DeleteGroupMessageResponse = {
-  groupId: number;
-  messageId: number;
+  groupId: string;
+  messageId: string;
 };
 
 export type MessagePanelBodyProps = {
@@ -128,8 +128,8 @@ export type MessagePanelBodyProps = {
 };
 
 export type EditMessagePayload = {
-  id: number;
-  messageId: number;
+  id: string;
+  messageId: string;
   content: string;
 };
 
@@ -141,7 +141,7 @@ export type ConversationTypeData = {
 };
 
 export type Group = {
-  id: number;
+  id: string;
   title?: string;
   users: User[];
   creator: User;
@@ -164,13 +164,13 @@ export type CreateGroupParams = {
 };
 
 export type AddGroupRecipientParams = {
-  id: number;
+  id: string;
   username: string;
 };
 
 export type RemoveGroupRecipientParams = {
-  id: number;
-  userId: number;
+  id: string;
+  userId: string;
 };
 
 export type Points = {
@@ -197,8 +197,8 @@ export type RemoveGroupUserMessagePayload = {
 };
 
 export type UpdateGroupOwnerParams = {
-  id: number;
-  newOwnerId: number;
+  id: string;
+  newOwnerId: string;
 };
 
 export type ContextMenuEvent = React.MouseEvent<HTMLDivElement, MouseEvent>;
@@ -211,14 +211,14 @@ export type FormEvent = React.FormEvent<HTMLFormElement>;
 export type FriendRequestStatus = 'accepted' | 'pending' | 'rejected';
 
 export type Friend = {
-  id: number;
+  id: string;
   sender: User;
   receiver: User;
   createdAt: number;
 };
 
 export type FriendRequest = {
-  id: number;
+  id: string;
   sender: User;
   receiver: User;
   createdAt: number;
@@ -228,7 +228,7 @@ export type FriendRequest = {
 export type HandleFriendRequestAction = 'accept' | 'reject' | 'cancel';
 
 export type CancelFriendRequestResponse = {
-  id: number;
+  id: string;
 };
 
 export type AcceptFriendRequestResponse = {
@@ -300,8 +300,8 @@ export type UpdateStatusParams = {
 export type SelectableTheme = 'dark' | 'light';
 
 export type CallPayload = {
-  recipientId: number;
-  conversationId: number;
+  recipientId: string;
+  conversationId: string;
   caller: User;
 };
 
@@ -321,7 +321,7 @@ export type SetVideoRefPayload = {
 export type CallInitiatePayload = {
   localStream: MediaStream;
   isCalling: boolean;
-  activeConversationId: number;
+  activeConversationId: string;
   caller: User;
   receiver: User;
   callType: CallType;
@@ -330,7 +330,7 @@ export type CallInitiatePayload = {
 export type CallType = 'video' | 'audio';
 
 export type UpdateGroupDetailsPayload = {
-  id: number;
+  id: string;
   data: FormData;
 };
 
@@ -345,5 +345,5 @@ export type UpdateGroupPayload = {
 
 export type GroupParticipantLeftPayload = {
   group: Group;
-  userId: number;
+  userId: string;
 };

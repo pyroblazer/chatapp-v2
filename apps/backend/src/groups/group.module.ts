@@ -40,12 +40,7 @@ import { GroupService } from './services/group.service';
       useClass: GroupRecipientService,
     },
   ],
-  exports: [
-    {
-      provide: Services.GROUPS,
-      useClass: GroupService,
-    },
-  ],
+  exports: [Services.GROUPS],
 })
 export class GroupModule implements NestModule {
   configure(consumer: MiddlewareConsumer) {

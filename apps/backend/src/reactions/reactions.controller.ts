@@ -7,18 +7,25 @@ import {
   Param,
   Post,
   Query,
-  UseGuards,
 } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { SkipThrottle } from '@nestjs/throttler';
-import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import {
+  ApiBearerAuth,
+  ApiOperation,
+  ApiParam,
+  ApiQuery,
+  ApiTags,
+} from '@nestjs/swagger';
 import { Routes, ServerEvents, Services } from '../utils/constants';
 import { AuthUser } from '../utils/decorators';
 import type { User } from '../utils/typeorm';
 import type { IReactionsService } from './reactions.interface';
+import { AddReactionDto } from './dtos/AddReaction.dto';
 
+@ApiTags('Reactions')
+@ApiBearerAuth()
 @Controller()
-@UseGuards(JwtAuthGuard)
 export class ReactionsController {
   constructor(
     @Inject(Services.REACTIONS)
@@ -27,10 +34,12 @@ export class ReactionsController {
   ) {}
 
   @Post(Routes.REACTIONS + '/:messageId')
+  @ApiOperation({ summary: 'Add a reaction to a message' })
+  @ApiParam({ name: 'messageId', description: 'Message UUID' })
   async addReaction(
     @AuthUser() user: User,
     @Param('messageId') messageId: string,
-    @Body() body: { emoji: string },
+    @Body() body: AddReactionDto,
   ) {
     const reaction = await this.reactionsService.addReaction(
       messageId,
@@ -46,6 +55,9 @@ export class ReactionsController {
   }
 
   @Delete(Routes.REACTIONS + '/:messageId')
+  @ApiOperation({ summary: 'Remove a reaction from a message' })
+  @ApiParam({ name: 'messageId', description: 'Message UUID' })
+  @ApiQuery({ name: 'emoji', description: 'Emoji to remove' })
   async removeReaction(
     @AuthUser() user: User,
     @Param('messageId') messageId: string,
@@ -68,16 +80,21 @@ export class ReactionsController {
 
   @Get(Routes.REACTIONS + '/:messageId')
   @SkipThrottle()
+  @ApiOperation({ summary: 'Get reactions for a message' })
+  @ApiParam({ name: 'messageId', description: 'Message UUID' })
   async getReactions(@Param('messageId') messageId: string) {
     return this.reactionsService.getReactions(messageId, false);
   }
 
   @Post(Routes.GROUP_REACTIONS + '/:messageId')
+  @ApiOperation({ summary: 'Add a reaction to a group message' })
+  @ApiParam({ name: 'messageId', description: 'Message UUID' })
+  @ApiParam({ name: 'id', description: 'Group UUID' })
   async addGroupReaction(
     @AuthUser() user: User,
     @Param('id') groupId: string,
     @Param('messageId') messageId: string,
-    @Body() body: { emoji: string },
+    @Body() body: AddReactionDto,
   ) {
     const reaction = await this.reactionsService.addReaction(
       messageId,
@@ -94,6 +111,10 @@ export class ReactionsController {
   }
 
   @Delete(Routes.GROUP_REACTIONS + '/:messageId')
+  @ApiOperation({ summary: 'Remove a reaction from a group message' })
+  @ApiParam({ name: 'messageId', description: 'Message UUID' })
+  @ApiParam({ name: 'id', description: 'Group UUID' })
+  @ApiQuery({ name: 'emoji', description: 'Emoji to remove' })
   async removeGroupReaction(
     @AuthUser() user: User,
     @Param('id') groupId: string,
@@ -113,6 +134,9 @@ export class ReactionsController {
 
   @Get(Routes.GROUP_REACTIONS + '/:messageId')
   @SkipThrottle()
+  @ApiOperation({ summary: 'Get reactions for a group message' })
+  @ApiParam({ name: 'messageId', description: 'Message UUID' })
+  @ApiParam({ name: 'id', description: 'Group UUID' })
   async getGroupReactions(
     @Param('id') groupId: string,
     @Param('messageId') messageId: string,

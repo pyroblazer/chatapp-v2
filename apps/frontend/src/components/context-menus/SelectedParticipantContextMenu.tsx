@@ -36,19 +36,19 @@ export const SelectedParticipantContextMenu: FC<Props> = ({ points }) => {
     (state: RootState) => state.groupSidebar.selectedUser
   );
   const group = useSelector((state: RootState) =>
-    selectGroupById(state, parseInt(id!))
+    selectGroupById(state, id!)
   );
 
   const kickUser = () => {
     if (!selectedUser) return;
-    dispatch(removeGroupRecipientThunk({ id: parseInt(id!), userId: selectedUser.id }))
+    dispatch(removeGroupRecipientThunk({ id: id!, userId: selectedUser.id }))
       .unwrap()
       .catch((err) => toast.error(err?.response?.data?.message || err?.message || 'Failed to remove user'));
   };
 
   const transferGroupOwner = () => {
     if (!selectedUser) return;
-    dispatch(updateGroupOwnerThunk({ id: parseInt(id!), newOwnerId: selectedUser.id }))
+    dispatch(updateGroupOwnerThunk({ id: id!, newOwnerId: selectedUser.id }))
       .unwrap()
       .catch((err) => toast.error(err?.response?.data?.message || err?.message || 'Failed to transfer ownership'));
   };

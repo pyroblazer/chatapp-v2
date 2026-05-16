@@ -6,6 +6,6 @@ export class GroupOwnerTransferException extends HttpException {
     const errorMessage = msg
       ? defaultMessage.concat(': ', msg)
       : defaultMessage;
-    super(errorMessage, HttpStatus.BAD_REQUEST);
+    super(errorMessage, HttpStatus.FORBIDDEN);
   }
 }

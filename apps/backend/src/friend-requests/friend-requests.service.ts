@@ -53,7 +53,7 @@ export class FriendRequestService implements IFriendRequestService {
 
   async create({ user: sender, username }: CreateFriendParams) {
     const receiver = await this.userService.findUser({ username });
-    if (!receiver) throw new UserNotFoundException();
+    if (!receiver) throw new FriendRequestException('User not found');
     const exists = await this.isPending(sender.id, receiver.id);
     if (exists) throw new FriendRequestPending();
     if (receiver.id === sender.id)

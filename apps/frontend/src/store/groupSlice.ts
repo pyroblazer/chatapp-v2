@@ -60,7 +60,7 @@ export const updateGroupOwnerThunk = createAsyncThunk(
   (params: UpdateGroupOwnerParams) => updateGroupOwnerAPI(params)
 );
 
-export const leaveGroupThunk = createAsyncThunk('groups/leave', (id: number) =>
+export const leaveGroupThunk = createAsyncThunk('groups/leave', (id: string) =>
   leaveGroupAPI(id)
 );
 
@@ -70,9 +70,9 @@ export const updateGroupDetailsThunk = createAsyncThunk(
     try {
       const { data: group } = await updateGroupDetailsAPI(payload);
       thunkAPI.dispatch(updateGroup({ group }));
-      thunkAPI.fulfillWithValue(group);
+      return thunkAPI.fulfillWithValue(group);
     } catch (err) {
-      thunkAPI.rejectWithValue(err);
+      return thunkAPI.rejectWithValue(err);
     }
   }
 );
@@ -89,6 +89,7 @@ export const groupsSlice = createSlice({
       const existingGroup = state.groups.find((g) => g.id === group.id);
       const index = state.groups.findIndex((g) => g.id === group.id);
       if (!existingGroup) return;
+      if (index === -1) return;
       switch (type) {
         case UpdateGroupAction.NEW_MESSAGE: {
           state.groups.splice(index, 1);
@@ -105,7 +106,9 @@ export const groupsSlice = createSlice({
       const group = state.groups.find((g) => g.id === action.payload.id);
       const index = state.groups.findIndex((g) => g.id === action.payload.id);
       if (!group) return;
-      state.groups.splice(index, 1);
+      if (index !== -1) {
+        state.groups.splice(index, 1);
+      }
     },
     toggleContextMenu: (state, action: PayloadAction<boolean>) => {
       state.showGroupContextMenu = action.payload;
@@ -148,7 +151,7 @@ export const groupsSlice = createSlice({
 });
 
 const selectGroups = (state: RootState) => state.groups.groups;
-const selectGroupId = (state: RootState, id: number) => id;
+const selectGroupId = (state: RootState, id: string) => id;
 
 export const selectGroupById = createSelector(
   [selectGroups, selectGroupId],

@@ -18,9 +18,21 @@ export class AdminService implements IAdminService {
     private readonly reportRepo: Repository<Report>,
   ) {}
 
-  async listUsers(page = 1, limit = 20): Promise<[User[], number]> {
+  async listUsers(
+    page = 1,
+    limit = 20,
+    callerRole = 'MODERATOR',
+  ): Promise<[User[], number]> {
+    const select: (keyof User)[] = [
+      'id',
+      'username',
+      'firstName',
+      'lastName',
+      'active',
+    ];
+    if (callerRole === 'ADMIN') select.push('email');
     return this.userRepo.findAndCount({
-      select: ['id', 'username', 'email', 'firstName', 'lastName', 'active'],
+      select,
       skip: (page - 1) * limit,
       take: limit,
       order: { username: 'ASC' },
@@ -28,10 +40,14 @@ export class AdminService implements IAdminService {
   }
 
   async banUser(userId: string): Promise<void> {
+    const user = await this.userRepo.findOne({ where: { id: userId } });
+    if (!user) throw new HttpException('User not found', HttpStatus.NOT_FOUND);
     await this.userRepo.update({ id: userId }, { active: false });
   }
 
   async unbanUser(userId: string): Promise<void> {
+    const user = await this.userRepo.findOne({ where: { id: userId } });
+    if (!user) throw new HttpException('User not found', HttpStatus.NOT_FOUND);
     await this.userRepo.update({ id: userId }, { active: true });
   }
 
@@ -39,6 +55,8 @@ export class AdminService implements IAdminService {
     userId: string,
     role: 'USER' | 'MODERATOR' | 'ADMIN',
   ): Promise<void> {
+    const user = await this.userRepo.findOne({ where: { id: userId } });
+    if (!user) throw new HttpException('User not found', HttpStatus.NOT_FOUND);
     await this.userRepo.update({ id: userId }, { role });
   }
 

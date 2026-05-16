@@ -64,7 +64,7 @@ export const AppPage = () => {
       },
     });
     dispatch(setPeer(newPeer));
-  }, []);
+  }, [user]);
 
   useFriendRequestReceived();
   useVideoCall();
@@ -143,7 +143,6 @@ export const AppPage = () => {
 
   useEffect(() => {
     if (connection) {
-      if (connection) {
         connection.on('open', () => {
         });
         connection.on('error', () => {
@@ -158,7 +157,6 @@ export const AppPage = () => {
         connection?.off('error');
         connection?.off('data');
       };
-    }
   }, [connection]);
 
   return (

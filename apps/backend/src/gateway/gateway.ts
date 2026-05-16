@@ -73,9 +73,7 @@ export class MessagingGateway
     @MessageBody() data: any,
     @ConnectedSocket() socket: AuthenticatedSocket,
   ) {
-    const group = await this.groupsService.findGroupById(
-      data.groupId,
-    );
+    const group = await this.groupsService.findGroupById(data.groupId);
     if (!group) return;
     const onlineUsers = [];
     const offlineUsers = [];

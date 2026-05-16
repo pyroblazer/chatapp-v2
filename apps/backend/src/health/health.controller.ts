@@ -1,4 +1,5 @@
 import { Controller, Get, Optional } from '@nestjs/common';
+import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { Public } from '../utils/public.decorator';
 import { InjectConnection } from '@nestjs/typeorm';
 import { Connection } from 'typeorm';
@@ -7,6 +8,7 @@ import { RabbitMQService } from '../rabbitmq/rabbitmq.service';
 import { StorageService } from '../storage/storage.service';
 import { AiService } from '../bot/ai/ai.service';
 
+@ApiTags('Health')
 @Controller('health')
 export class HealthController {
   constructor(
@@ -20,6 +22,8 @@ export class HealthController {
 
   @Public()
   @Get()
+  @ApiOperation({ summary: 'Health check' })
+  @ApiResponse({ status: 200, description: 'Service is healthy' })
   async check() {
     const services: Record<string, string> = {};
     let overallStatus = 'ok';

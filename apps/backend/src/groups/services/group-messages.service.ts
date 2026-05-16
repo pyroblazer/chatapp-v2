@@ -33,14 +33,15 @@ export class GroupMessageService implements IGroupMessageService {
     const { content, author } = params;
     const group = await this.groupService.findGroupById(id);
     if (!group)
-      throw new HttpException('No Group Found', HttpStatus.BAD_REQUEST);
+      throw new HttpException('Group not found', HttpStatus.NOT_FOUND);
     const findUser = group.users.find((u) => u.id === author.id);
     if (!findUser)
-      throw new HttpException('User not in group', HttpStatus.BAD_REQUEST);
+      throw new HttpException(
+        'Forbidden: you are not a member of this group',
+        HttpStatus.FORBIDDEN,
+      );
 
-    const parentMessageId = (params as any).parentMessageId as
-      | string
-      | undefined;
+    const { parentMessageId } = params;
 
     const groupMessage = this.groupMessageRepository.create({
       content,
@@ -68,7 +69,7 @@ export class GroupMessageService implements IGroupMessageService {
     return { message: savedMessage, group: updatedGroup };
   }
 
-  getGroupMessages(id: number): Promise<GroupMessage[]> {
+  getGroupMessages(id: string): Promise<GroupMessage[]> {
     return this.groupMessageRepository.find({
       where: { group: { id } },
       relations: ['author', 'attachments', 'author.profile'],
@@ -89,7 +90,7 @@ export class GroupMessageService implements IGroupMessageService {
       .getOne();
 
     if (!group)
-      throw new HttpException('Group not found', HttpStatus.BAD_REQUEST);
+      throw new HttpException('Group not found', HttpStatus.NOT_FOUND);
     const message = await this.groupMessageRepository.findOne({
       where: {
         id: params.messageId,
@@ -99,7 +100,10 @@ export class GroupMessageService implements IGroupMessageService {
     });
 
     if (!message)
-      throw new HttpException('Cannot delete message', HttpStatus.BAD_REQUEST);
+      throw new HttpException(
+        'Cannot delete message: insufficient permissions',
+        HttpStatus.FORBIDDEN,
+      );
 
     if (group.lastMessageSent.id !== message.id)
       return this.groupMessageRepository.delete({ id: message.id });
@@ -131,7 +135,10 @@ export class GroupMessageService implements IGroupMessageService {
       relations: ['group', 'group.creator', 'group.users', 'author'],
     });
     if (!messageDB)
-      throw new HttpException('Cannot Edit Message', HttpStatus.BAD_REQUEST);
+      throw new HttpException(
+        'Cannot edit message: insufficient permissions',
+        HttpStatus.FORBIDDEN,
+      );
     messageDB.content = params.content;
     return this.groupMessageRepository.save(messageDB);
   }

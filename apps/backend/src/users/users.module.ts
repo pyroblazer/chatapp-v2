@@ -34,19 +34,6 @@ import { UserService } from './services/user.service';
       useClass: UserPresenceService,
     },
   ],
-  exports: [
-    {
-      provide: Services.USERS,
-      useClass: UserService,
-    },
-    {
-      provide: Services.USERS_PROFILES,
-      useClass: UserProfileService,
-    },
-    {
-      provide: Services.USER_PRESENCE,
-      useClass: UserPresenceService,
-    },
-  ],
+  exports: [Services.USERS, Services.USERS_PROFILES, Services.USER_PRESENCE],
 })
 export class UsersModule {}

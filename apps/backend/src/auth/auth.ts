@@ -9,6 +9,12 @@ export interface IAuthService {
     refreshToken: string,
   ): Promise<{ accessToken: string; refreshToken: string } | null>;
   revokeRefreshToken(tokenHash: string): Promise<void>;
+  revokeAllUserTokens(userId: string): Promise<void>;
+  changePassword(
+    userId: string,
+    currentPassword: string,
+    newPassword: string,
+  ): Promise<void>;
 }
 
 export interface IJwtPayload {

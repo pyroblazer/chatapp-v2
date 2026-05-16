@@ -14,7 +14,7 @@ export const MessagePanelHeader = () => {
   const type = useSelector(selectType);
 
   const showCallPanel = isCalling || isCallInProgress;
-  const isRouteActive = activeConversationId === parseInt(routeId!);
+  const isRouteActive = activeConversationId === routeId!;
   if (!showCallPanel)
     return type === 'private' ? (
       <MessagePanelConversationHeader />

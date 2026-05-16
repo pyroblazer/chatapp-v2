@@ -17,7 +17,7 @@ export const MessagePanelGroupHeader = () => {
   const user = useContext(AuthContext).user!;
   const { id } = useParams();
   const group = useSelector((state: RootState) =>
-    selectGroupById(state, parseInt(id!))
+    selectGroupById(state, id!)
   );
   const dispatch = useDispatch<AppDispatch>();
   return (

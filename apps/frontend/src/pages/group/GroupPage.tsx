@@ -69,7 +69,7 @@ export const GroupPage = () => {
 
     const handleGroupRemoved = (payload: RemoveGroupUserMessagePayload) => {
       dispatch(removeGroup(payload.group));
-      if (id && parseInt(id) === payload.group.id) {
+      if (id && id === payload.group.id) {
         navigate('/groups');
       }
     };

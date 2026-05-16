@@ -22,13 +22,17 @@ async function runSeed() {
       logging: false,
     });
 
-    const { seedSuperuser } = await import('./superuser.seed');
-    const result = await seedSuperuser();
-
-    if (result.created) {
-      logger.log(`Superuser created: ${result.username} (${result.email})`);
+    if (process.env.ENVIRONMENT === 'production') {
+      logger.log('Skipping superuser seed in production environment');
     } else {
-      logger.log(`Superuser already exists: ${result.username}`);
+      const { seedSuperuser } = await import('./superuser.seed');
+      const result = await seedSuperuser();
+
+      if (result.created) {
+        logger.log(`Superuser created: ${result.username} (${result.email})`);
+      } else {
+        logger.log(`Superuser already exists: ${result.username}`);
+      }
     }
 
     await connection.close();

@@ -73,7 +73,6 @@ export class UserService implements IUserService {
         'user.username',
         'user.firstName',
         'user.lastName',
-        'user.email',
         'user.id',
         'user.profile',
       ])

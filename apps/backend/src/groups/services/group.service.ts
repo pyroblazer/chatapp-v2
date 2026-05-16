@@ -57,7 +57,7 @@ export class GroupService implements IGroupService {
       .getMany();
   }
 
-  findGroupById(id: number): Promise<Group> {
+  findGroupById(id: string): Promise<Group> {
     return this.groupRepository.findOne({
       where: { id },
       relations: [
@@ -95,7 +95,7 @@ export class GroupService implements IGroupService {
         'Cannot Transfer Owner to yourself',
       );
     const newOwner = await this.userService.findUser({ id: newOwnerId });
-    if (!newOwner) throw new UserNotFoundException();
+    if (!newOwner) throw new GroupOwnerTransferException('User not found');
     group.owner = newOwner;
     return this.groupRepository.save(group);
   }

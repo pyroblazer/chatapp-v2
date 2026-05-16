@@ -13,7 +13,7 @@ import {
 
 export const fetchMessagesThunk = createAsyncThunk(
   'messages/fetch',
-  (id: number) => {
+  (id: string) => {
     return getConversationMessages(id);
   }
 );

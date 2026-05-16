@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { Repository } from 'typeorm';
@@ -46,10 +46,12 @@ export class NotificationsService implements INotificationsService {
   }
 
   async markAsRead(notificationId: string, userId: string): Promise<void> {
-    await this.notificationRepo.update(
-      { id: notificationId, userId },
-      { read: true },
-    );
+    const notification = await this.notificationRepo.findOne({
+      where: { id: notificationId, userId },
+    });
+    if (!notification)
+      throw new HttpException('Notification not found', HttpStatus.NOT_FOUND);
+    await this.notificationRepo.update({ id: notificationId }, { read: true });
   }
 
   async markAllAsRead(userId: string): Promise<void> {

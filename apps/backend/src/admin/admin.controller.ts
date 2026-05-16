@@ -11,16 +11,28 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { SkipThrottle } from '@nestjs/throttler';
-import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import {
+  ApiBearerAuth,
+  ApiOperation,
+  ApiParam,
+  ApiQuery,
+  ApiResponse,
+  ApiTags,
+} from '@nestjs/swagger';
 import { AdminGuard } from './guards/admin.guard';
 import { Routes, Services } from '../utils/constants';
 import { AuthUser } from '../utils/decorators';
 import type { User } from '../utils/typeorm';
 import type { IAdminService } from './admin.interface';
 import type { IAuditService } from '../audit/audit.interface';
+import { ChangeRoleDto } from './dtos/ChangeRole.dto';
+import { CreateReportDto } from './dtos/CreateReport.dto';
+import { UpdateReportStatusDto } from './dtos/UpdateReportStatus.dto';
 
+@ApiTags('Admin')
+@ApiBearerAuth()
 @Controller(Routes.ADMIN)
-@UseGuards(JwtAuthGuard, AdminGuard)
+@UseGuards(AdminGuard)
 export class AdminController {
   constructor(
     @Inject(Services.ADMIN)
@@ -31,6 +43,10 @@ export class AdminController {
 
   @Get('users')
   @SkipThrottle()
+  @ApiOperation({ summary: 'List all users (admin)' })
+  @ApiQuery({ name: 'page', required: false })
+  @ApiQuery({ name: 'limit', required: false })
+  @ApiResponse({ status: 403, description: 'Admin access required' })
   async listUsers(
     @AuthUser() user: User,
     @Query('page') page?: string,
@@ -39,11 +55,15 @@ export class AdminController {
     const [users, total] = await this.adminService.listUsers(
       page ? parseInt(page, 10) : undefined,
       limit ? parseInt(limit, 10) : undefined,
+      user.role,
     );
     return { users, total };
   }
 
   @Patch('users/:id/ban')
+  @ApiOperation({ summary: 'Ban a user' })
+  @ApiParam({ name: 'id', description: 'User UUID' })
+  @ApiResponse({ status: 403, description: 'Admin access required' })
   async banUser(@AuthUser() user: User, @Param('id') userId: string) {
     await this.adminService.banUser(userId);
     this.auditService.logAction(user.id, 'BAN_USER', 'User', userId);
@@ -51,6 +71,9 @@ export class AdminController {
   }
 
   @Patch('users/:id/unban')
+  @ApiOperation({ summary: 'Unban a user' })
+  @ApiParam({ name: 'id' })
+  @ApiResponse({ status: 403, description: 'Admin access required' })
   async unbanUser(@AuthUser() user: User, @Param('id') userId: string) {
     await this.adminService.unbanUser(userId);
     this.auditService.logAction(user.id, 'UNBAN_USER', 'User', userId);
@@ -58,10 +81,13 @@ export class AdminController {
   }
 
   @Patch('users/:id/role')
+  @ApiOperation({ summary: 'Change user role' })
+  @ApiParam({ name: 'id' })
+  @ApiResponse({ status: 403, description: 'Admin access required' })
   async changeUserRole(
     @AuthUser() user: User,
     @Param('id') userId: string,
-    @Body() body: { role: 'USER' | 'MODERATOR' | 'ADMIN' },
+    @Body() body: ChangeRoleDto,
   ) {
     await this.adminService.changeUserRole(userId, body.role);
     this.auditService.logAction(user.id, 'CHANGE_ROLE', 'User', userId, {
@@ -71,6 +97,9 @@ export class AdminController {
   }
 
   @Delete('messages/:id')
+  @ApiOperation({ summary: 'Delete a message (admin)' })
+  @ApiParam({ name: 'id', description: 'Message UUID' })
+  @ApiResponse({ status: 403, description: 'Admin access required' })
   async deleteMessage(@AuthUser() user: User, @Param('id') messageId: string) {
     await this.adminService.deleteMessageAsAdmin(messageId, false);
     this.auditService.logAction(
@@ -83,6 +112,10 @@ export class AdminController {
   }
 
   @Delete('groups/:groupId/messages/:id')
+  @ApiOperation({ summary: 'Delete a group message (admin)' })
+  @ApiParam({ name: 'groupId' })
+  @ApiParam({ name: 'id', description: 'Message UUID' })
+  @ApiResponse({ status: 403, description: 'Admin access required' })
   async deleteGroupMessage(
     @AuthUser() user: User,
     @Param('groupId') groupId: string,
@@ -100,16 +133,9 @@ export class AdminController {
   }
 
   @Post('reports')
-  async createReport(
-    @AuthUser() user: User,
-    @Body()
-    body: {
-      reportedUserId?: string;
-      messageId?: string;
-      reason: string;
-      description?: string;
-    },
-  ) {
+  @ApiOperation({ summary: 'Create a report' })
+  @ApiResponse({ status: 403, description: 'Admin access required' })
+  async createReport(@AuthUser() user: User, @Body() body: CreateReportDto) {
     const report = await this.adminService.createReport(
       user.id,
       body.reportedUserId || null,
@@ -122,6 +148,11 @@ export class AdminController {
 
   @Get('reports')
   @SkipThrottle()
+  @ApiOperation({ summary: 'List reports (admin)' })
+  @ApiQuery({ name: 'status', required: false })
+  @ApiQuery({ name: 'page', required: false })
+  @ApiQuery({ name: 'limit', required: false })
+  @ApiResponse({ status: 403, description: 'Admin access required' })
   async listReports(
     @Query('status') status?: string,
     @Query('page') page?: string,
@@ -136,10 +167,13 @@ export class AdminController {
   }
 
   @Patch('reports/:id')
+  @ApiOperation({ summary: 'Update report status' })
+  @ApiParam({ name: 'id', description: 'Report UUID' })
+  @ApiResponse({ status: 403, description: 'Admin access required' })
   async updateReportStatus(
     @AuthUser() user: User,
     @Param('id') reportId: string,
-    @Body() body: { status: 'pending' | 'reviewed' | 'resolved' | 'dismissed' },
+    @Body() body: UpdateReportStatusDto,
   ) {
     await this.adminService.updateReportStatus(reportId, body.status);
     this.auditService.logAction(
@@ -154,6 +188,15 @@ export class AdminController {
 
   @Get('audit-logs')
   @SkipThrottle()
+  @ApiOperation({ summary: 'Get audit logs' })
+  @ApiQuery({ name: 'userId', required: false })
+  @ApiQuery({ name: 'action', required: false })
+  @ApiQuery({ name: 'entity', required: false })
+  @ApiQuery({ name: 'startDate', required: false })
+  @ApiQuery({ name: 'endDate', required: false })
+  @ApiQuery({ name: 'page', required: false })
+  @ApiQuery({ name: 'limit', required: false })
+  @ApiResponse({ status: 403, description: 'Admin access required' })
   async getAuditLogs(
     @Query('userId') userId?: string,
     @Query('action') action?: string,
@@ -163,7 +206,7 @@ export class AdminController {
     @Query('page') page?: string,
     @Query('limit') limit?: string,
   ) {
-    return this.auditService.getLogs({
+    const [logs, total] = await this.auditService.getLogs({
       userId,
       action,
       entity,
@@ -172,5 +215,6 @@ export class AdminController {
       page: page ? parseInt(page, 10) : undefined,
       limit: limit ? parseInt(limit, 10) : undefined,
     });
+    return { logs, total };
   }
 }

@@ -22,7 +22,7 @@ export const GroupSidebarContextMenu: FC = () => {
   const points = useSelector((state: RootState) => state.groups.points);
 
   const group = useSelector((state: RootState) =>
-    selectGroupById(state, parseInt(id!))
+    selectGroupById(state, id!)
   );
 
   const contextMenuGroup = useSelector(

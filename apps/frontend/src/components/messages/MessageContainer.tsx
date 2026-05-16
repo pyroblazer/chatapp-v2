@@ -31,10 +31,10 @@ export const MessageContainer = () => {
   const { id } = useParams();
   const dispatch = useDispatch<AppDispatch>();
   const conversationMessages = useSelector((state: RootState) =>
-    selectConversationMessage(state, parseInt(id!))
+    selectConversationMessage(state, id!)
   );
   const groupMessages = useSelector((state: RootState) =>
-    selectGroupMessage(state, parseInt(id!))
+    selectGroupMessage(state, id!)
   );
   const selectedType = useSelector((state: RootState) => selectType(state));
   const { showContextMenu } = useSelector(

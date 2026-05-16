@@ -22,12 +22,7 @@ import { ConversationMiddleware } from './middlewares/conversation.middleware';
       useClass: ConversationsService,
     },
   ],
-  exports: [
-    {
-      provide: Services.CONVERSATIONS,
-      useClass: ConversationsService,
-    },
-  ],
+  exports: [Services.CONVERSATIONS],
 })
 export class ConversationsModule implements NestModule {
   configure(consumer: MiddlewareConsumer) {

@@ -45,10 +45,10 @@ export const MessagePanel: FC<Props> = ({
   const { error } = useToast({ theme: 'dark' });
   const { attachments } = useSelector((state: RootState) => state.messagePanel);
   const conversation = useSelector((state: RootState) =>
-    selectConversationById(state, parseInt(routeId!))
+    selectConversationById(state, routeId!)
   );
   const group = useSelector((state: RootState) =>
-    selectGroupById(state, parseInt(routeId!))
+    selectGroupById(state, routeId!)
   );
   const selectedType = useSelector(
     (state: RootState) => state.selectedConversationType.type

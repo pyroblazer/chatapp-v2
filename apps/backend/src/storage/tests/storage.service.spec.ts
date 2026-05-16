@@ -90,8 +90,12 @@ describe('StorageService', () => {
     });
 
     it('uploadFile uploads via UTApi', async () => {
-      mockUploadFiles.mockResolvedValueOnce({ data: { ufsUrl: 'https://testappid.ufs.sh/f/bucket/file.txt' } });
-      await service.uploadFile('bucket', 'file.txt', Buffer.from('data'), { 'Content-Type': 'text/plain' });
+      mockUploadFiles.mockResolvedValueOnce({
+        data: { ufsUrl: 'https://testappid.ufs.sh/f/bucket/file.txt' },
+      });
+      await service.uploadFile('bucket', 'file.txt', Buffer.from('data'), {
+        'Content-Type': 'text/plain',
+      });
       expect(mockUploadFiles).toHaveBeenCalledTimes(1);
     });
 
@@ -101,8 +105,12 @@ describe('StorageService', () => {
     });
 
     it('getPresignedUrl returns cached ufsUrl when available', async () => {
-      mockUploadFiles.mockResolvedValueOnce({ data: { ufsUrl: 'https://custom.ufs.sh/f/bucket/cached.txt' } });
-      await service.uploadFile('bucket', 'cached.txt', Buffer.from('x'), { 'Content-Type': 'text/plain' });
+      mockUploadFiles.mockResolvedValueOnce({
+        data: { ufsUrl: 'https://custom.ufs.sh/f/bucket/cached.txt' },
+      });
+      await service.uploadFile('bucket', 'cached.txt', Buffer.from('x'), {
+        'Content-Type': 'text/plain',
+      });
       const url = await service.getPresignedUrl('bucket', 'cached.txt');
       expect(url).toBe('https://custom.ufs.sh/f/bucket/cached.txt');
     });
@@ -114,7 +122,9 @@ describe('StorageService', () => {
     });
 
     it('uploadWithPreview returns correct key paths for non-image file', async () => {
-      mockUploadFiles.mockResolvedValue({ data: { ufsUrl: 'https://testappid.ufs.sh/f/bucket/key' } });
+      mockUploadFiles.mockResolvedValue({
+        data: { ufsUrl: 'https://testappid.ufs.sh/f/bucket/key' },
+      });
       const file = {
         buffer: Buffer.from('pdf-data'),
         mimetype: 'application/pdf',
@@ -134,7 +144,12 @@ describe('StorageService', () => {
     });
 
     it('uploadFile writes to local filesystem', async () => {
-      await service.uploadFile('bucket', 'fallback.txt', Buffer.from('local-data'), { 'Content-Type': 'text/plain' });
+      await service.uploadFile(
+        'bucket',
+        'fallback.txt',
+        Buffer.from('local-data'),
+        { 'Content-Type': 'text/plain' },
+      );
       expect(mockUploadFiles).not.toHaveBeenCalled();
       const filePath = path.join(tmpDir, 'bucket', 'fallback.txt');
       const written = await fs.readFile(filePath);
@@ -142,13 +157,17 @@ describe('StorageService', () => {
     });
 
     it('getPresignedUrl returns local URL when file exists locally', async () => {
-      await service.uploadFile('bucket', 'local-key.txt', Buffer.from('x'), { 'Content-Type': 'text/plain' });
+      await service.uploadFile('bucket', 'local-key.txt', Buffer.from('x'), {
+        'Content-Type': 'text/plain',
+      });
       const url = await service.getPresignedUrl('bucket', 'local-key.txt');
       expect(url).toContain('local-key.txt');
     });
 
     it('getPresignedUrl throws NotFoundException when file not found anywhere', async () => {
-      await expect(service.getPresignedUrl('bucket', 'ghost.txt')).rejects.toThrow(NotFoundException);
+      await expect(
+        service.getPresignedUrl('bucket', 'ghost.txt'),
+      ).rejects.toThrow(NotFoundException);
     });
 
     it('deleteFile deletes from local filesystem', async () => {
@@ -168,8 +187,17 @@ describe('StorageService', () => {
 
       mockListFiles.mockResolvedValueOnce({ files: [] });
       await service.checkHealth();
-      mockUploadFiles.mockResolvedValueOnce({ data: { ufsUrl: 'https://testappid.ufs.sh/f/bucket/after-recovery.txt' } });
-      await service.uploadFile('bucket', 'after-recovery.txt', Buffer.from('r'), { 'Content-Type': 'text/plain' });
+      mockUploadFiles.mockResolvedValueOnce({
+        data: {
+          ufsUrl: 'https://testappid.ufs.sh/f/bucket/after-recovery.txt',
+        },
+      });
+      await service.uploadFile(
+        'bucket',
+        'after-recovery.txt',
+        Buffer.from('r'),
+        { 'Content-Type': 'text/plain' },
+      );
       expect(mockUploadFiles).toHaveBeenCalledTimes(1);
     });
   });
@@ -177,12 +205,16 @@ describe('StorageService', () => {
   describe('validation', () => {
     it('rejects files larger than 10MB', async () => {
       const bigFile = Buffer.alloc(11 * 1024 * 1024);
-      await expect(service.uploadFile('bucket', 'big.bin', bigFile)).rejects.toThrow(/exceeds maximum/);
+      await expect(
+        service.uploadFile('bucket', 'big.bin', bigFile),
+      ).rejects.toThrow(/exceeds maximum/);
     });
 
     it('rejects disallowed MIME types', async () => {
       await expect(
-        service.uploadFile('bucket', 'evil.exe', Buffer.from('x'), { 'Content-Type': 'application/x-msdownload' }),
+        service.uploadFile('bucket', 'evil.exe', Buffer.from('x'), {
+          'Content-Type': 'application/x-msdownload',
+        }),
       ).rejects.toThrow(/not allowed/);
     });
   });

@@ -60,7 +60,12 @@ describe('LocalStorageProvider', () => {
 
   describe('delete', () => {
     it('removes file and meta sidecar', async () => {
-      await provider.write('bucket', 'to-delete.txt', Buffer.from('z'), 'text/plain');
+      await provider.write(
+        'bucket',
+        'to-delete.txt',
+        Buffer.from('z'),
+        'text/plain',
+      );
       expect(await provider.exists('bucket', 'to-delete.txt')).toBe(true);
       await provider.delete('bucket', 'to-delete.txt');
       expect(await provider.exists('bucket', 'to-delete.txt')).toBe(false);
@@ -68,7 +73,9 @@ describe('LocalStorageProvider', () => {
     });
 
     it('does not throw when deleting non-existent file', async () => {
-      await expect(provider.delete('bucket', 'ghost.txt')).resolves.not.toThrow();
+      await expect(
+        provider.delete('bucket', 'ghost.txt'),
+      ).resolves.not.toThrow();
     });
   });
 

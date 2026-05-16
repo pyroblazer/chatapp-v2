@@ -44,10 +44,10 @@ export class WebsocketAdapter extends IoAdapter {
         }
 
         try {
-          const payload = jwt.verify(
-            token,
-            process.env.JWT_SECRET || 'dev-secret-change-me',
-          ) as {
+          const jwtSecret = process.env.JWT_SECRET;
+          if (!jwtSecret)
+            throw new Error('JWT_SECRET environment variable is required');
+          const payload = jwt.verify(token, jwtSecret) as {
             sub: string;
             username: string;
           };

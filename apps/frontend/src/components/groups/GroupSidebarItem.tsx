@@ -35,7 +35,7 @@ export const GroupSidebarItem: React.FC<Props> = ({ group, onContextMenu }) => {
     <ConversationSidebarItemStyle
       onClick={() => navigate(`/groups/${group.id}`)}
       onContextMenu={(e) => onContextMenu(e, group)}
-      selected={parseInt(id!) === group.id}
+      selected={id! === group.id}
     >
       {group.avatar ? (
         <img

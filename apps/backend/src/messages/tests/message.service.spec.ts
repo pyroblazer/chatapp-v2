@@ -132,7 +132,7 @@ describe('MessageService', () => {
           conversationId: 'conv-1',
           content: 'new content',
         }),
-      ).rejects.toThrow('Cannot Edit Message');
+      ).rejects.toThrow('Cannot edit message: insufficient permissions');
     });
   });
 });

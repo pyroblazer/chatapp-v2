@@ -17,7 +17,7 @@ export const ConversationChannelPage = () => {
   const [isRecipientTyping, setIsRecipientTyping] = useState(false);
 
   useEffect(() => {
-    const conversationId = parseInt(id!);
+    const conversationId = id!;
     dispatch(fetchMessagesThunk(conversationId));
   }, [id]);
 

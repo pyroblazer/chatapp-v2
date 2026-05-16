@@ -4,6 +4,7 @@ import { JwtModule } from '@nestjs/jwt';
 import { PassportModule } from '@nestjs/passport';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { UsersModule } from '../users/users.module';
+import { AuditModule } from '../audit/audit.module';
 import { Services } from '../utils/constants';
 import { RefreshToken } from '../utils/typeorm/entities/RefreshToken';
 import { AuthController } from './auth.controller';
@@ -14,10 +15,15 @@ import { JwtStrategy } from './strategies/jwt.strategy';
   imports: [
     ConfigModule,
     UsersModule,
+    AuditModule,
     PassportModule,
-    JwtModule.register({
-      secret: process.env.JWT_SECRET || 'dev-secret-change-me',
-      signOptions: { expiresIn: '15m' },
+    JwtModule.registerAsync({
+      useFactory: () => {
+        const secret = process.env.JWT_SECRET;
+        if (!secret)
+          throw new Error('JWT_SECRET environment variable is required');
+        return { secret, signOptions: { expiresIn: '15m' } };
+      },
     }),
     TypeOrmModule.forFeature([RefreshToken]),
   ],

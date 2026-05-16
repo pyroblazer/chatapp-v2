@@ -186,7 +186,11 @@ describe('RedisService', () => {
     it('blacklists token by setting key with TTL', async () => {
       mockSetex.mockResolvedValueOnce('OK');
       await service.blacklistToken('tok123', 300);
-      expect(mockSetex).toHaveBeenCalledWith('blacklist:token:tok123', 300, '1');
+      expect(mockSetex).toHaveBeenCalledWith(
+        'blacklist:token:tok123',
+        300,
+        '1',
+      );
     });
 
     it('does not throw when blacklisting fails', async () => {

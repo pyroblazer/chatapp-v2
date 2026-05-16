@@ -37,7 +37,7 @@ export const ConversationSidebarItem: React.FC<Props> = ({ conversation }) => {
     <>
       <ConversationSidebarItemStyle
         onClick={() => navigate(`/conversations/${conversation.id}`)}
-        selected={parseInt(id!) === conversation.id}
+        selected={id! === conversation.id}
       >
         <img
           src={

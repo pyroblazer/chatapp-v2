@@ -1,13 +1,19 @@
-import { Controller, Get, Inject, Query, UseGuards } from '@nestjs/common';
+import { Controller, Get, Inject, Query } from '@nestjs/common';
 import { SkipThrottle } from '@nestjs/throttler';
-import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import {
+  ApiBearerAuth,
+  ApiOperation,
+  ApiQuery,
+  ApiTags,
+} from '@nestjs/swagger';
 import { Routes, Services } from '../utils/constants';
 import { AuthUser } from '../utils/decorators';
 import type { User } from '../utils/typeorm';
 import type { ISearchService } from './search.interface';
 
+@ApiTags('Search')
+@ApiBearerAuth()
 @Controller(Routes.SEARCH)
-@UseGuards(JwtAuthGuard)
 export class SearchController {
   constructor(
     @Inject(Services.SEARCH)
@@ -16,6 +22,17 @@ export class SearchController {
 
   @Get()
   @SkipThrottle()
+  @ApiOperation({ summary: 'Search messages, users, and groups' })
+  @ApiQuery({ name: 'q', description: 'Search query', example: 'hello' })
+  @ApiQuery({
+    name: 'type',
+    required: false,
+    description: 'Search type',
+    enum: ['messages', 'users', 'groups'],
+    example: 'messages',
+  })
+  @ApiQuery({ name: 'limit', required: false, example: '20' })
+  @ApiQuery({ name: 'offset', required: false, example: '0' })
   async search(
     @AuthUser() user: User,
     @Query('q') query: string,

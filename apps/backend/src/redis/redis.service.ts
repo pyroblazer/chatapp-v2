@@ -152,7 +152,9 @@ export class RedisService implements OnModuleDestroy {
       const result = await this.exists(`blacklist:token:${token}`);
       return result === 1;
     } catch {
-      this.logger.warn('Failed to check token blacklist — treating as not blacklisted');
+      this.logger.warn(
+        'Failed to check token blacklist — treating as not blacklisted',
+      );
       return false;
     }
   }

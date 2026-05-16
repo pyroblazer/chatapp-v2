@@ -57,6 +57,7 @@ export type CreateMessageParams = {
   content?: string;
   attachments?: Attachment[];
   user: User;
+  parentMessageId?: string;
 };
 
 export type CreateMessageResponse = {
@@ -105,6 +106,7 @@ export type CreateGroupMessageParams = {
   attachments?: Attachment[];
   content: string;
   groupId: string;
+  parentMessageId?: string;
 };
 
 export type CreateGroupMessageResponse = {

@@ -5,9 +5,16 @@ import {
   HttpStatus,
   Inject,
   Param,
-  ParseIntPipe,
+  ParseUUIDPipe,
 } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
+import {
+  ApiBearerAuth,
+  ApiOperation,
+  ApiParam,
+  ApiResponse,
+  ApiTags,
+} from '@nestjs/swagger';
 import type { IConversationsService } from '../conversations/conversations';
 import { ConversationNotFoundException } from '../conversations/exceptions/ConversationNotFound';
 import type { IUserService } from '../users/interfaces/user';
@@ -15,6 +22,8 @@ import { Routes, Services } from '../utils/constants';
 import { AuthUser } from '../utils/decorators';
 import type { User } from '../utils/typeorm';
 
+@ApiTags('Conversations')
+@ApiBearerAuth()
 @Controller(Routes.EXISTS)
 export class ExistsController {
   constructor(
@@ -26,9 +35,12 @@ export class ExistsController {
   ) {}
 
   @Get('conversations/:recipientId')
+  @ApiOperation({ summary: 'Check if a conversation exists with a user' })
+  @ApiParam({ name: 'recipientId', description: 'Recipient user UUID' })
+  @ApiResponse({ status: 200 })
   async checkConversationExists(
     @AuthUser() user: User,
-    @Param('recipientId', ParseIntPipe) recipientId: number,
+    @Param('recipientId', ParseUUIDPipe) recipientId: string,
   ) {
     const conversation = await this.conversationsService.isCreated(
       recipientId,

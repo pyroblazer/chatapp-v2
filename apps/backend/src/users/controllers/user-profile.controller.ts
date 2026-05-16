@@ -45,9 +45,21 @@ export class UserProfilesController {
     schema: {
       type: 'object',
       properties: {
-        about: { type: 'string', description: 'About me text', example: 'Hello world!' },
-        avatar: { type: 'string', format: 'binary', description: 'Avatar image file' },
-        banner: { type: 'string', format: 'binary', description: 'Banner image file' },
+        about: {
+          type: 'string',
+          description: 'About me text',
+          example: 'Hello world!',
+        },
+        avatar: {
+          type: 'string',
+          format: 'binary',
+          description: 'Avatar image file',
+        },
+        banner: {
+          type: 'string',
+          format: 'binary',
+          description: 'Banner image file',
+        },
       },
     },
   })

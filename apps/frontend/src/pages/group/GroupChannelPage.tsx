@@ -27,7 +27,7 @@ export const GroupChannelPage = () => {
   );
 
   useEffect(() => {
-    const groupId = parseInt(id!);
+    const groupId = id!;
     dispatch(fetchGroupMessagesThunk(groupId));
   }, [id]);
 

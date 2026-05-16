@@ -3,9 +3,11 @@ import {
   Controller,
   Delete,
   Get,
+  HttpCode,
+  HttpStatus,
   Inject,
   Param,
-  ParseIntPipe,
+  ParseUUIDPipe,
   Post,
   Patch,
   UseInterceptors,
@@ -13,6 +15,14 @@ import {
 } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { FileFieldsInterceptor } from '@nestjs/platform-express';
+import {
+  ApiBearerAuth,
+  ApiConsumes,
+  ApiOperation,
+  ApiParam,
+  ApiResponse,
+  ApiTags,
+} from '@nestjs/swagger';
 import { SkipThrottle, Throttle } from '@nestjs/throttler';
 import { CreateMessageDto } from '../../messages/dtos/CreateMessage.dto';
 import { EditMessageDto } from '../../messages/dtos/EditMessage.dto';
@@ -23,6 +33,8 @@ import type { User } from '../../utils/typeorm';
 import type { Attachment } from '../../utils/types';
 import type { IGroupMessageService } from '../interfaces/group-messages';
 
+@ApiTags('Groups')
+@ApiBearerAuth()
 @Controller(Routes.GROUP_MESSAGES)
 export class GroupMessageController {
   constructor(
@@ -31,7 +43,12 @@ export class GroupMessageController {
     private readonly eventEmitter: EventEmitter2,
   ) {}
 
+  @ApiOperation({ summary: 'Send a message in a group' })
+  @ApiConsumes('multipart/form-data')
+  @ApiParam({ name: 'id', description: 'Group UUID' })
+  @ApiResponse({ status: 201 })
   @Throttle(5, 10)
+  @HttpCode(HttpStatus.CREATED)
   @UseInterceptors(
     FileFieldsInterceptor([
       {
@@ -44,7 +61,7 @@ export class GroupMessageController {
   async createGroupMessage(
     @AuthUser() user: User,
     @UploadedFiles() { attachments }: { attachments: Attachment[] },
-    @Param('id', ParseIntPipe) id: number,
+    @Param('id', ParseUUIDPipe) id: string,
     @Body() { content, parentMessageId }: CreateMessageDto,
   ) {
     if (!attachments && !content) throw new EmptyMessageException();
@@ -64,25 +81,32 @@ export class GroupMessageController {
         group: response.group,
       });
     }
-    return;
+    return response.message;
   }
 
+  @ApiOperation({ summary: 'Get all messages in a group' })
+  @ApiParam({ name: 'id', description: 'Group UUID' })
+  @ApiResponse({ status: 200 })
   @Get()
   @SkipThrottle()
   async getGroupMessages(
     @AuthUser() user: User,
-    @Param('id', ParseIntPipe) id: number,
+    @Param('id', ParseUUIDPipe) id: string,
   ) {
     const messages = await this.groupMessageService.getGroupMessages(id);
     return { id, messages };
   }
 
+  @ApiOperation({ summary: 'Delete a group message' })
+  @ApiParam({ name: 'id', description: 'Group UUID' })
+  @ApiParam({ name: 'messageId', description: 'Message UUID' })
+  @ApiResponse({ status: 200 })
   @Delete(':messageId')
   @SkipThrottle()
   async deleteGroupMessage(
     @AuthUser() user: User,
-    @Param('id', ParseIntPipe) groupId: number,
-    @Param('messageId', ParseIntPipe) messageId: number,
+    @Param('id', ParseUUIDPipe) groupId: string,
+    @Param('messageId', ParseUUIDPipe) messageId: string,
   ) {
     await this.groupMessageService.deleteGroupMessage({
       userId: user.id,
@@ -97,12 +121,16 @@ export class GroupMessageController {
     return { groupId, messageId };
   }
 
+  @ApiOperation({ summary: 'Edit a group message' })
+  @ApiParam({ name: 'id', description: 'Group UUID' })
+  @ApiParam({ name: 'messageId', description: 'Message UUID' })
+  @ApiResponse({ status: 200 })
   @Patch(':messageId')
   @SkipThrottle()
   async editGroupMessage(
     @AuthUser() { id: userId }: User,
-    @Param('id', ParseIntPipe) groupId: number,
-    @Param('messageId', ParseIntPipe) messageId: number,
+    @Param('id', ParseUUIDPipe) groupId: string,
+    @Param('messageId', ParseUUIDPipe) messageId: string,
     @Body() { content }: EditMessageDto,
   ) {
     const params = { userId, content, groupId, messageId };
@@ -111,12 +139,16 @@ export class GroupMessageController {
     return message;
   }
 
+  @ApiOperation({ summary: 'Get thread replies for a group message' })
+  @ApiParam({ name: 'id', description: 'Group UUID' })
+  @ApiParam({ name: 'messageId', description: 'Message UUID' })
+  @ApiResponse({ status: 200 })
   @Get(':messageId/thread')
   @SkipThrottle()
   async getGroupThreadReplies(
     @AuthUser() user: User,
-    @Param('id', ParseIntPipe) groupId: number,
-    @Param('messageId') messageId: string,
+    @Param('id', ParseUUIDPipe) groupId: string,
+    @Param('messageId', ParseUUIDPipe) messageId: string,
   ) {
     const replies = await this.groupMessageService.getGroupThreadReplies(
       messageId,

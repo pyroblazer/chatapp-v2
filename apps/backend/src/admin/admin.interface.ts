@@ -2,7 +2,11 @@ import type { Report } from './report.entity';
 import type { User } from '../utils/typeorm';
 
 export interface IAdminService {
-  listUsers(page?: number, limit?: number): Promise<[User[], number]>;
+  listUsers(
+    page?: number,
+    limit?: number,
+    callerRole?: string,
+  ): Promise<[User[], number]>;
   banUser(userId: string): Promise<void>;
   unbanUser(userId: string): Promise<void>;
   changeUserRole(

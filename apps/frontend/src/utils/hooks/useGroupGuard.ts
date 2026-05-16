@@ -10,7 +10,7 @@ export function useGroupGuard() {
 
   useEffect(() => {
     setLoading(true);
-    fetchGroupById(parseInt(id!))
+    fetchGroupById(id!)
       .catch((err) => {
         setError(err);
       })

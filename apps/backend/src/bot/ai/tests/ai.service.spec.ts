@@ -72,7 +72,11 @@ describe('AiService', () => {
         ok: true,
         json: async () => ({ message: { content: 'OK' } }),
       });
-      await service.generateResponse('llama3', [{ role: 'user', content: 'Hi' }], 'You are a helpful assistant.');
+      await service.generateResponse(
+        'llama3',
+        [{ role: 'user', content: 'Hi' }],
+        'You are a helpful assistant.',
+      );
       const body = JSON.parse(mockFetch.mock.calls[0][1].body);
       expect(body.messages[0].role).toBe('system');
       expect(body.messages[0].content).toBe('You are a helpful assistant.');
@@ -107,7 +111,9 @@ describe('AiService', () => {
       });
 
       const chunks: string[] = [];
-      for await (const chunk of service.generateStreamingResponse('llama3', [{ role: 'user', content: 'Hi' }])) {
+      for await (const chunk of service.generateStreamingResponse('llama3', [
+        { role: 'user', content: 'Hi' },
+      ])) {
         chunks.push(chunk);
       }
       expect(chunks).toContain('Hello');
@@ -118,7 +124,10 @@ describe('AiService', () => {
       mockFetch.mockResolvedValueOnce({ ok: false, status: 500 });
 
       const chunks: string[] = [];
-      for await (const chunk of service.generateStreamingResponse('llama3', [])) {
+      for await (const chunk of service.generateStreamingResponse(
+        'llama3',
+        [],
+      )) {
         chunks.push(chunk);
       }
       expect(chunks[0]).toContain('unavailable');
@@ -128,7 +137,10 @@ describe('AiService', () => {
       mockFetch.mockRejectedValueOnce(new Error('network fail'));
 
       const chunks: string[] = [];
-      for await (const chunk of service.generateStreamingResponse('llama3', [])) {
+      for await (const chunk of service.generateStreamingResponse(
+        'llama3',
+        [],
+      )) {
         chunks.push(chunk);
       }
       expect(chunks[0]).toContain('unavailable');
@@ -150,9 +162,9 @@ describe('AiService', () => {
   describe('buildContext', () => {
     it('includes recent messages that fit within token limit', () => {
       const messages = [
-        { role: 'user' as const, content: 'a'.repeat(400) },  // ~100 tokens
-        { role: 'assistant' as const, content: 'b'.repeat(400) },  // ~100 tokens
-        { role: 'user' as const, content: 'c'.repeat(400) },  // ~100 tokens
+        { role: 'user' as const, content: 'a'.repeat(400) }, // ~100 tokens
+        { role: 'assistant' as const, content: 'b'.repeat(400) }, // ~100 tokens
+        { role: 'user' as const, content: 'c'.repeat(400) }, // ~100 tokens
       ];
       const result = service.buildContext(messages, 250);
       expect(result.length).toBe(2);

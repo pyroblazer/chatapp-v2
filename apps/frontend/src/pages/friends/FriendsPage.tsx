@@ -42,6 +42,9 @@ export const FriendsPage = () => {
       dispatch(setOnlineFriends(friends));
       dispatch(setOfflineFriends());
     });
+    return () => {
+      socket.off('getOnlineFriends');
+    };
   }, []);
 
   return <FriendList />;

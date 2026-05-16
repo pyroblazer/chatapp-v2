@@ -27,7 +27,7 @@ export const GroupRecipientsSidebar = () => {
   const dispatch = useDispatch<AppDispatch>();
   const socket = useContext(SocketContext);
   const group = useSelector((state: RootState) =>
-    selectGroupById(state, parseInt(groupId!))
+    selectGroupById(state, groupId!)
   );
   const groupSidebarState = useSelector(
     (state: RootState) => state.groupSidebar

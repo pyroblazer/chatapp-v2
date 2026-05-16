@@ -1,13 +1,20 @@
 import {
   Controller,
   Param,
-  ParseIntPipe,
+  ParseUUIDPipe,
   Post,
   Body,
   Inject,
   Delete,
 } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
+import {
+  ApiBearerAuth,
+  ApiOperation,
+  ApiParam,
+  ApiResponse,
+  ApiTags,
+} from '@nestjs/swagger';
 import { SkipThrottle } from '@nestjs/throttler';
 import { Routes, Services } from '../../utils/constants';
 import { AuthUser } from '../../utils/decorators';
@@ -16,6 +23,8 @@ import { AddGroupRecipientDto } from '../dtos/AddGroupRecipient.dto';
 import type { IGroupRecipientService } from '../interfaces/group-recipient';
 
 @SkipThrottle()
+@ApiTags('Groups')
+@ApiBearerAuth()
 @Controller(Routes.GROUP_RECIPIENTS)
 export class GroupRecipientsController {
   constructor(
@@ -24,10 +33,14 @@ export class GroupRecipientsController {
     private eventEmitter: EventEmitter2,
   ) {}
 
+  @ApiOperation({ summary: 'Add a user to a group' })
+  @ApiParam({ name: 'id', description: 'Group UUID' })
+  @ApiResponse({ status: 201 })
+  @ApiResponse({ status: 400 })
   @Post()
   async addGroupRecipient(
     @AuthUser() { id: userId }: User,
-    @Param('id', ParseIntPipe) id: number,
+    @Param('id', ParseUUIDPipe) id: string,
     @Body() { username }: AddGroupRecipientDto,
   ) {
     const params = { id, userId, username };
@@ -42,10 +55,13 @@ export class GroupRecipientsController {
    * @param groupId the id of the group
    * @returns the updated Group that the user had left
    */
+  @ApiOperation({ summary: 'Leave a group' })
+  @ApiParam({ name: 'id', description: 'Group UUID' })
+  @ApiResponse({ status: 200 })
   @Delete('leave')
   async leaveGroup(
     @AuthUser() user: User,
-    @Param('id', ParseIntPipe) groupId: number,
+    @Param('id', ParseUUIDPipe) groupId: string,
   ) {
     const group = await this.groupRecipientService.leaveGroup({
       id: groupId,
@@ -55,11 +71,15 @@ export class GroupRecipientsController {
     return group;
   }
 
+  @ApiOperation({ summary: 'Remove a user from a group' })
+  @ApiParam({ name: 'id', description: 'Group UUID' })
+  @ApiParam({ name: 'userId', description: 'User UUID to remove' })
+  @ApiResponse({ status: 200 })
   @Delete(':userId')
   async removeGroupRecipient(
     @AuthUser() { id: issuerId }: User,
-    @Param('id', ParseIntPipe) id: number,
-    @Param('userId', ParseIntPipe) removeUserId: number,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Param('userId', ParseUUIDPipe) removeUserId: string,
   ) {
     const params = { issuerId, id, removeUserId };
     const response = await this.groupRecipientService.removeGroupRecipient(

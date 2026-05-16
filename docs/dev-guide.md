@@ -24,13 +24,16 @@
    - MinIO Console: http://localhost:9001
    - RabbitMQ Management: http://localhost:15672
 
-### Accessing the Superuser Account
+### Accessing the Superuser Account (Development Only)
+
+> **Warning:** These credentials are for local development only. Never use default credentials in production.
 
 After running `docker compose up`, a superuser account is automatically created via the seed script.
 
 **Default Credentials:**
 - Username: `admin`
 - Password: `changeme123!`
+- Email: `admin@chatapp.local`
 - Role: ADMIN (full access to all admin endpoints)
 
 **Logging In:**

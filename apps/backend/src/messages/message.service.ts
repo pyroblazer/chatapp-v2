@@ -4,7 +4,7 @@ import { instanceToPlain } from 'class-transformer';
 import { Repository } from 'typeorm';
 import type { IConversationsService } from '../conversations/conversations';
 import { ConversationNotFoundException } from '../conversations/exceptions/ConversationNotFound';
-import { FriendNotFoundException } from '../friends/exceptions/FriendNotFound';
+
 import type { IFriendsService } from '../friends/friends';
 import type { IMessageAttachmentsService } from '../message-attachments/message-attachments';
 import { buildFindMessageParams } from '../utils/builders';
@@ -40,13 +40,14 @@ export class MessageService implements IMessageService {
       creator.id,
       recipient.id,
     );
-    if (!isFriends) throw new FriendNotFoundException();
+    if (!isFriends)
+      throw new CannotCreateMessageException(
+        'You must be friends to send messages',
+      );
     if (creator.id !== user.id && recipient.id !== user.id)
       throw new CannotCreateMessageException();
 
-    const parentMessageId = (params as any).parentMessageId as
-      | string
-      | undefined;
+    const { parentMessageId } = params;
 
     const message = this.messageRepository.create({
       content,
@@ -72,10 +73,10 @@ export class MessageService implements IMessageService {
     return { message: savedMessage, conversation: updated };
   }
 
-  getMessages(conversationId: number): Promise<Message[]> {
+  getMessages(conversationId: string): Promise<Message[]> {
     return this.messageRepository.find({
       relations: ['author', 'attachments', 'author.profile'],
-      where: { conversation: { id: conversationId as any } },
+      where: { conversation: { id: conversationId } },
       order: { createdAt: 'DESC' },
     });
   }
@@ -127,7 +128,10 @@ export class MessageService implements IMessageService {
       ],
     });
     if (!messageDB)
-      throw new HttpException('Cannot Edit Message', HttpStatus.BAD_REQUEST);
+      throw new HttpException(
+        'Cannot edit message: insufficient permissions',
+        HttpStatus.FORBIDDEN,
+      );
     messageDB.content = params.content;
     return this.messageRepository.save(messageDB);
   }

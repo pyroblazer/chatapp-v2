@@ -8,8 +8,7 @@ export class LocalStorageProvider {
   constructor() {
     this.uploadDir =
       process.env.LOCAL_STORAGE_DIR || path.join(process.cwd(), 'uploads');
-    this.baseUrl =
-      process.env.LOCAL_STORAGE_BASE_URL || '/api/storage/local';
+    this.baseUrl = process.env.LOCAL_STORAGE_BASE_URL || '/api/storage/local';
   }
 
   private resolvePath(bucket: string, key: string): string {
@@ -33,7 +32,10 @@ export class LocalStorageProvider {
     await fs.writeFile(filePath, data);
 
     if (mimeType) {
-      await fs.writeFile(this.metaPath(bucket, key), JSON.stringify({ mimeType }));
+      await fs.writeFile(
+        this.metaPath(bucket, key),
+        JSON.stringify({ mimeType }),
+      );
     }
   }
 

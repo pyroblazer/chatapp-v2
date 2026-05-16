@@ -89,4 +89,34 @@ export class AuthService implements IAuthService {
   async revokeRefreshToken(tokenHash: string) {
     await this.refreshTokenRepo.update({ tokenHash }, { revoked: true });
   }
+
+  async revokeAllUserTokens(userId: string) {
+    await this.refreshTokenRepo.update(
+      { userId, revoked: false },
+      { revoked: true },
+    );
+  }
+
+  async changePassword(
+    userId: string,
+    currentPassword: string,
+    newPassword: string,
+  ) {
+    const user = await this.userService.findUser(
+      { id: userId },
+      { selectAll: true },
+    );
+    if (!user) throw new HttpException('User not found', HttpStatus.NOT_FOUND);
+
+    const isValid = await compareHash(currentPassword, user.password);
+    if (!isValid)
+      throw new HttpException(
+        'Current password is incorrect',
+        HttpStatus.UNAUTHORIZED,
+      );
+
+    const hashed = await hashPassword(newPassword);
+    await this.userService.saveUser({ ...user, password: hashed });
+    await this.revokeAllUserTokens(userId);
+  }
 }

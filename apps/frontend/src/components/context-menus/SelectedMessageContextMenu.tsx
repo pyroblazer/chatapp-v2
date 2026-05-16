@@ -23,7 +23,7 @@ export const SelectedMessageContextMenu = () => {
   );
 
   const deleteMessage = () => {
-    const id = parseInt(routeId!);
+    const id = routeId!;
     if (!message) return;
     const messageId = message.id;
     const thunk = conversationType === 'private'

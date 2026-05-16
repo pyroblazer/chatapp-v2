@@ -22,7 +22,7 @@ export const MessagePanelConversationHeader = () => {
 
   const dispatch = useDispatch();
   const conversation = useSelector((state: RootState) =>
-    selectConversationById(state, parseInt(id!))
+    selectConversationById(state, id!)
   );
 
   const recipient = getRecipientFromConversation(conversation, user);

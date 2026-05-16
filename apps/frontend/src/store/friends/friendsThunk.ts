@@ -25,20 +25,20 @@ export const createFriendRequestThunk = createAsyncThunk(
 
 export const cancelFriendRequestThunk = createAsyncThunk(
   'friends/request/cancel',
-  (id: number) => cancelFriendRequestAPI(id)
+  (id: string) => cancelFriendRequestAPI(id)
 );
 
 export const acceptFriendRequestThunk = createAsyncThunk(
   'friends/request/accept',
-  (id: number) => acceptFriendRequestAPI(id)
+  (id: string) => acceptFriendRequestAPI(id)
 );
 
 export const rejectFriendRequestThunk = createAsyncThunk(
   'friends/request/reject',
-  (id: number) => rejectFriendRequestAPI(id)
+  (id: string) => rejectFriendRequestAPI(id)
 );
 
 export const removeFriendThunk = createAsyncThunk(
   'friends/remove',
-  (id: number) => removeFriendAPI(id)
+  (id: string) => removeFriendAPI(id)
 );

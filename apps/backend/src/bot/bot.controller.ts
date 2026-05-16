@@ -3,25 +3,33 @@ import {
   Controller,
   Delete,
   Get,
+  HttpCode,
   HttpException,
   HttpStatus,
   Param,
   Patch,
   Post,
   Query,
-  UseGuards,
 } from '@nestjs/common';
-import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import {
+  ApiBearerAuth,
+  ApiOperation,
+  ApiParam,
+  ApiTags,
+} from '@nestjs/swagger';
 import { AuthUser } from '../utils/decorators';
 import type { CreateBotParams } from './bot.service';
 import { BotService } from './bot.service';
+import { SendBotMessageDto } from './dtos/SendBotMessage.dto';
 
+@ApiTags('Bots')
+@ApiBearerAuth()
 @Controller('bots')
 export class BotController {
   constructor(private readonly botService: BotService) {}
 
   @Post()
-  @UseGuards(JwtAuthGuard)
+  @ApiOperation({ summary: 'Create a new bot' })
   async createBot(
     @AuthUser() user: { id: string },
     @Body() body: CreateBotParams,
@@ -30,17 +38,21 @@ export class BotController {
   }
 
   @Get()
+  @ApiOperation({ summary: 'List all bots' })
   async getBots() {
     return this.botService.getBots();
   }
 
   @Get(':id')
+  @ApiOperation({ summary: 'Get a bot by ID' })
+  @ApiParam({ name: 'id' })
   async getBotById(@Param('id') id: string) {
     return this.botService.getBotById(id);
   }
 
   @Patch(':id')
-  @UseGuards(JwtAuthGuard)
+  @ApiOperation({ summary: 'Update a bot' })
+  @ApiParam({ name: 'id' })
   async updateBot(
     @Param('id') id: string,
     @AuthUser() user: { id: string },
@@ -50,14 +62,16 @@ export class BotController {
   }
 
   @Delete(':id')
-  @UseGuards(JwtAuthGuard)
+  @ApiOperation({ summary: 'Delete a bot' })
+  @ApiParam({ name: 'id' })
   async deleteBot(@Param('id') id: string, @AuthUser() user: { id: string }) {
     await this.botService.deleteBot(id, user.id);
-    return { status: 'ok' };
+    return { success: true };
   }
 
   @Post(':id/conversations')
-  @UseGuards(JwtAuthGuard)
+  @ApiOperation({ summary: 'Start a conversation with a bot' })
+  @ApiParam({ name: 'id', description: 'Bot UUID' })
   async startConversation(
     @Param('id') botId: string,
     @AuthUser() user: { id: string },
@@ -66,11 +80,13 @@ export class BotController {
   }
 
   @Post('conversations/:conversationId/messages')
-  @UseGuards(JwtAuthGuard)
+  @HttpCode(HttpStatus.CREATED)
+  @ApiOperation({ summary: 'Send a message to a bot' })
+  @ApiParam({ name: 'conversationId' })
   async sendMessage(
     @Param('conversationId') conversationId: string,
     @AuthUser() user: { id: string },
-    @Body() body: { content: string },
+    @Body() body: SendBotMessageDto,
   ) {
     if (!body.content?.trim()) {
       throw new HttpException('Content is required', HttpStatus.BAD_REQUEST);
@@ -79,7 +95,8 @@ export class BotController {
   }
 
   @Get('conversations/:conversationId/messages')
-  @UseGuards(JwtAuthGuard)
+  @ApiOperation({ summary: 'Get messages in a bot conversation' })
+  @ApiParam({ name: 'conversationId' })
   async getConversationMessages(
     @Param('conversationId') conversationId: string,
     @AuthUser() user: { id: string },
@@ -88,7 +105,7 @@ export class BotController {
   }
 
   @Get('conversations')
-  @UseGuards(JwtAuthGuard)
+  @ApiOperation({ summary: 'Get all bot conversations for the user' })
   async getUserConversations(@AuthUser() user: { id: string }) {
     return this.botService.getUserConversations(user.id);
   }

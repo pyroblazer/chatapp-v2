@@ -3,10 +3,10 @@ import type { AuthenticatedSocket } from '../utils/interfaces';
 import { RedisService } from '../redis/redis.service';
 
 export interface IGatewaySessionManager {
-  getUserSocket(id: number): AuthenticatedSocket | undefined;
-  setUserSocket(id: number, socket: AuthenticatedSocket): void;
-  removeUserSocket(id: number): void;
-  getSockets(): Map<number, AuthenticatedSocket>;
+  getUserSocket(id: string): AuthenticatedSocket | undefined;
+  setUserSocket(id: string, socket: AuthenticatedSocket): void;
+  removeUserSocket(id: string): void;
+  getSockets(): Map<string, AuthenticatedSocket>;
   setUserOnline(userId: string, socketId: string): Promise<void>;
   setUserOffline(userId: string, socketId: string): Promise<void>;
   getOnlineUsers(): Promise<Record<string, string>>;
@@ -16,7 +16,7 @@ export interface IGatewaySessionManager {
 @Injectable()
 export class GatewaySessionManager implements IGatewaySessionManager {
   private readonly logger = new Logger(GatewaySessionManager.name);
-  private readonly sessions: Map<number, AuthenticatedSocket> = new Map();
+  private readonly sessions: Map<string, AuthenticatedSocket> = new Map();
   private readonly PRESENCE_KEY = 'presence:online';
   private redisAvailable = false;
 
@@ -31,34 +31,30 @@ export class GatewaySessionManager implements IGatewaySessionManager {
     }
   }
 
-  getUserSocket(id: number): AuthenticatedSocket | undefined {
+  getUserSocket(id: string): AuthenticatedSocket | undefined {
     return this.sessions.get(id);
   }
 
-  setUserSocket(userId: number, socket: AuthenticatedSocket): void {
+  setUserSocket(userId: string, socket: AuthenticatedSocket): void {
     this.sessions.set(userId, socket);
     if (this.redisAvailable && this.redisService && socket.user) {
-      this.setUserOnline(String(socket.user.id), socket.id).catch(
-        (err: unknown) => {
-          this.logger.warn('Failed to set user online in Redis', err);
-        },
-      );
+      this.setUserOnline(socket.user.id, socket.id).catch((err: unknown) => {
+        this.logger.warn('Failed to set user online in Redis', err);
+      });
     }
   }
 
-  removeUserSocket(userId: number): void {
+  removeUserSocket(userId: string): void {
     const socket = this.sessions.get(userId);
     if (this.redisAvailable && this.redisService && socket?.user) {
-      this.setUserOffline(String(socket.user.id), socket.id).catch(
-        (err: unknown) => {
-          this.logger.warn('Failed to set user offline in Redis', err);
-        },
-      );
+      this.setUserOffline(socket.user.id, socket.id).catch((err: unknown) => {
+        this.logger.warn('Failed to set user offline in Redis', err);
+      });
     }
     this.sessions.delete(userId);
   }
 
-  getSockets(): Map<number, AuthenticatedSocket> {
+  getSockets(): Map<string, AuthenticatedSocket> {
     return this.sessions;
   }
 
@@ -92,7 +88,7 @@ export class GatewaySessionManager implements IGatewaySessionManager {
       // Fallback to in-memory sessions
       const result: Record<string, string> = {};
       this.sessions.forEach((socket, userId) => {
-        result[String(userId)] = socket.id;
+        result[userId] = socket.id;
       });
       return result;
     }
@@ -107,7 +103,7 @@ export class GatewaySessionManager implements IGatewaySessionManager {
     if (!this.redisAvailable || !this.redisService) {
       // Fallback: check in-memory sessions
       for (const [id] of this.sessions) {
-        if (String(id) === userId) return true;
+        if (id === userId) return true;
       }
       return false;
     }

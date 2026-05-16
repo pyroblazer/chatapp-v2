@@ -31,7 +31,7 @@ export class BlockedUsersService implements IBlockedUsersService {
     ]);
     if (!user) throw new HttpException('User not found', HttpStatus.NOT_FOUND);
     if (!target)
-      throw new HttpException('Target user not found', HttpStatus.NOT_FOUND);
+      throw new HttpException('Target user not found', HttpStatus.BAD_REQUEST);
     if (target.id === userId)
       throw new HttpException('Cannot block yourself', HttpStatus.BAD_REQUEST);
     const alreadyBlocked = user.blockedUsers.some((u) => u.id === target.id);
@@ -48,7 +48,9 @@ export class BlockedUsersService implements IBlockedUsersService {
       relations: ['blockedUsers'],
     });
     if (!user) throw new HttpException('User not found', HttpStatus.NOT_FOUND);
-    user.blockedUsers = user.blockedUsers.filter((u) => u.username !== username);
+    user.blockedUsers = user.blockedUsers.filter(
+      (u) => u.username !== username,
+    );
     await this.userRepository.save(user);
   }
 }

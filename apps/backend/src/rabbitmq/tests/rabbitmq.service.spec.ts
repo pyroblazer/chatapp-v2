@@ -10,7 +10,11 @@ const mockConnect = amqp.connect as jest.Mock;
 const mockChannel = {
   prefetch: jest.fn().mockResolvedValue(undefined),
   assertExchange: jest.fn().mockResolvedValue(undefined),
-  assertQueue: jest.fn().mockResolvedValue({ queue: 'test-queue', messageCount: 0, consumerCount: 0 }),
+  assertQueue: jest.fn().mockResolvedValue({
+    queue: 'test-queue',
+    messageCount: 0,
+    consumerCount: 0,
+  }),
   bindQueue: jest.fn().mockResolvedValue(undefined),
   sendToQueue: jest.fn().mockReturnValue(true),
   consume: jest.fn().mockResolvedValue({ consumerTag: 'ctag-1' }),
@@ -42,7 +46,11 @@ describe('RabbitMQService', () => {
     jest.clearAllMocks();
     mockChannel.prefetch.mockResolvedValue(undefined);
     mockChannel.assertExchange.mockResolvedValue(undefined);
-    mockChannel.assertQueue.mockResolvedValue({ queue: 'test-queue', messageCount: 0, consumerCount: 0 });
+    mockChannel.assertQueue.mockResolvedValue({
+      queue: 'test-queue',
+      messageCount: 0,
+      consumerCount: 0,
+    });
     mockChannel.bindQueue.mockResolvedValue(undefined);
     mockChannel.sendToQueue.mockReturnValue(true);
     mockChannel.consume.mockResolvedValue({ consumerTag: 'ctag-1' });
@@ -99,13 +107,18 @@ describe('RabbitMQService', () => {
     it('registers consumer when channel available', async () => {
       const handler = jest.fn().mockResolvedValue(undefined);
       await service.consume('test-queue', handler);
-      expect(mockChannel.consume).toHaveBeenCalledWith('test-queue', expect.any(Function));
+      expect(mockChannel.consume).toHaveBeenCalledWith(
+        'test-queue',
+        expect.any(Function),
+      );
     });
 
     it('does not throw when channel is null', async () => {
       (service as any).channel = null;
       const handler = jest.fn();
-      await expect(service.consume('test-queue', handler)).resolves.not.toThrow();
+      await expect(
+        service.consume('test-queue', handler),
+      ).resolves.not.toThrow();
     });
 
     it('acks message after successful handler', async () => {
@@ -124,7 +137,9 @@ describe('RabbitMQService', () => {
     });
 
     it('retries message on handler failure (retryCount < 3)', async () => {
-      const handler = jest.fn().mockRejectedValue(new Error('processing failed'));
+      const handler = jest
+        .fn()
+        .mockRejectedValue(new Error('processing failed'));
       await service.consume('test-queue', handler);
 
       const consumeCallback = mockChannel.consume.mock.calls[0][1];
@@ -165,9 +180,19 @@ describe('RabbitMQService', () => {
   describe('assertQueue', () => {
     it('asserts queue with DLX when channel available', async () => {
       await service.assertQueue('my-queue');
-      expect(mockChannel.assertExchange).toHaveBeenCalledWith('my-queue.dlx', 'direct', { durable: true });
-      expect(mockChannel.assertQueue).toHaveBeenCalledWith('my-queue.dlq', { durable: true });
-      expect(mockChannel.bindQueue).toHaveBeenCalledWith('my-queue.dlq', 'my-queue.dlx', 'my-queue');
+      expect(mockChannel.assertExchange).toHaveBeenCalledWith(
+        'my-queue.dlx',
+        'direct',
+        { durable: true },
+      );
+      expect(mockChannel.assertQueue).toHaveBeenCalledWith('my-queue.dlq', {
+        durable: true,
+      });
+      expect(mockChannel.bindQueue).toHaveBeenCalledWith(
+        'my-queue.dlq',
+        'my-queue.dlx',
+        'my-queue',
+      );
     });
 
     it('does not throw when channel is null', async () => {
@@ -179,8 +204,16 @@ describe('RabbitMQService', () => {
   describe('bindQueue', () => {
     it('binds queue to exchange when channel available', async () => {
       await service.bindQueue('my-queue', 'my-exchange', 'routing.key');
-      expect(mockChannel.assertExchange).toHaveBeenCalledWith('my-exchange', 'direct', { durable: true });
-      expect(mockChannel.bindQueue).toHaveBeenCalledWith('my-queue', 'my-exchange', 'routing.key');
+      expect(mockChannel.assertExchange).toHaveBeenCalledWith(
+        'my-exchange',
+        'direct',
+        { durable: true },
+      );
+      expect(mockChannel.bindQueue).toHaveBeenCalledWith(
+        'my-queue',
+        'my-exchange',
+        'routing.key',
+      );
     });
 
     it('does not throw when channel is null', async () => {
