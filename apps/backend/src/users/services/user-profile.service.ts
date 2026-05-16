@@ -37,7 +37,7 @@ export class UserProfileService implements IUserProfile {
       user.profile.avatar = await this.updateAvatar(params.avatar);
     if (params.banner)
       user.profile.banner = await this.updateBanner(params.banner);
-    if (params.about) user.profile.about = params.about;
+    if (params.about !== undefined) user.profile.about = params.about;
     return this.userRepository.save(user);
   }
 

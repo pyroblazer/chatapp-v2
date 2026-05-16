@@ -2,7 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { ConversationsController } from '../conversations.controller';
 import { Services } from '../../utils/constants';
-import { mockConversationsService } from '../../__mocks__';
+import { mockConversationsService, mockUserService } from '../../__mocks__';
 
 describe('ConversationsController', () => {
   let controller: ConversationsController;
@@ -16,6 +16,10 @@ describe('ConversationsController', () => {
           useValue: mockConversationsService,
         },
         { provide: EventEmitter2, useValue: { emit: jest.fn() } },
+        {
+          provide: Services.USERS,
+          useValue: mockUserService,
+        },
       ],
     }).compile();
 

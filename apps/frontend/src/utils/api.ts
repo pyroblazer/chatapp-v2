@@ -50,6 +50,8 @@ export const setOnAuthFailure = (cb: () => void) => {
   onAuthFailureCallback = cb;
 };
 
+let refreshPromise: Promise<any> | null = null;
+
 axiosClient.interceptors.request.use((config) => {
   if (accessToken) {
     config.headers.Authorization = `Bearer ${accessToken}`;
@@ -68,7 +70,12 @@ axiosClient.interceptors.response.use(
     if (error.response?.status === 401 && !originalRequest._retry && !isRefreshCall && !isAuthEndpoint) {
       originalRequest._retry = true;
       try {
-        const { data } = await axiosClient.post('/auth/refresh');
+        if (!refreshPromise) {
+          refreshPromise = axiosClient
+            .post('/auth/refresh')
+            .finally(() => { refreshPromise = null; });
+        }
+        const { data } = await refreshPromise;
         setAccessToken(data.accessToken);
         originalRequest.headers.Authorization = `Bearer ${data.accessToken}`;
         return axiosClient(originalRequest);
@@ -151,7 +158,7 @@ export const postGroupMessage = ({ id, content }: CreateMessageParams) =>
   axiosClient.post(`/groups/${id}/messages`, { content }, config);
 
 export const searchUsers = (query: string) =>
-  axiosClient.get<User[]>(`/users/search?query=${query}`, config);
+  axiosClient.get<User[]>(`/users/search?query=${encodeURIComponent(query)}`, config);
 
 export const createGroup = (params: CreateGroupParams) =>
   axiosClient.post(`/groups`, params, config);
@@ -233,7 +240,7 @@ export const completeUserProfile = (data: FormData) =>
   });
 
 export const checkUsernameExists = (username: string) =>
-  axiosClient.get(`/users/check?username=${username}`, config);
+  axiosClient.get(`/users/check?username=${encodeURIComponent(username)}`, config);
 
 export const getBlockedUsers = () =>
   axiosClient.get('/users/blocked', config);
