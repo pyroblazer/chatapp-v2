@@ -31,7 +31,7 @@ export class ConversationsService implements IConversationsService {
     private readonly friendsService: IFriendsService,
   ) {}
 
-  async getConversations(id: number): Promise<Conversation[]> {
+  async getConversations(id: string): Promise<Conversation[]> {
     return this.conversationRepository
       .createQueryBuilder('conversation')
       .leftJoinAndSelect('conversation.lastMessageSent', 'lastMessageSent')
@@ -47,7 +47,7 @@ export class ConversationsService implements IConversationsService {
       .getMany();
   }
 
-  async findById(id: number) {
+  async findById(id: string) {
     return this.conversationRepository.findOne({
       where: { id },
       relations: [
@@ -60,7 +60,7 @@ export class ConversationsService implements IConversationsService {
     });
   }
 
-  async isCreated(userId: number, recipientId: number) {
+  async isCreated(userId: string, recipientId: string) {
     return this.conversationRepository.findOne({
       where: [
         {
@@ -78,7 +78,11 @@ export class ConversationsService implements IConversationsService {
   async createConversation(creator: User, params: CreateConversationParams) {
     const { username, message: content } = params;
     const recipient = await this.userService.findUser({ username });
-    if (!recipient) throw new UserNotFoundException();
+    if (!recipient)
+      throw new CreateConversationException(
+        'Recipient user not found',
+        HttpStatus.NOT_FOUND,
+      );
     if (creator.id === recipient.id)
       throw new CreateConversationException(
         'Cannot create Conversation with yourself',
@@ -87,7 +91,10 @@ export class ConversationsService implements IConversationsService {
       creator.id,
       recipient.id,
     );
-    if (!isFriends) throw new CreateConversationException('You must be friends with this user');
+    if (!isFriends)
+      throw new CreateConversationException(
+        'You must be friends with this user',
+      );
     const exists = await this.isCreated(creator.id, recipient.id);
     if (exists) throw new ConversationExistsException();
     const newConversation = this.conversationRepository.create({
