@@ -36,8 +36,8 @@ import { AuditModule } from './audit/audit.module';
 import { BotModule } from './bot/bot.module';
 import { BlockedUsersModule } from './blocked-users/blocked-users.module';
 
-let envFilePath = '.env.development';
-if (process.env.ENVIRONMENT === 'PRODUCTION') envFilePath = '.env.production';
+let envFilePath = ['.env.development', '.env'];
+if (process.env.ENVIRONMENT === 'PRODUCTION') envFilePath = ['.env.production', '.env'];
 
 @Module({
   imports: [

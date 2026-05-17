@@ -124,10 +124,7 @@ export const createMessage = (
     type === 'private'
       ? `/conversations/${id}/messages`
       : `/groups/${id}/messages`;
-  return axiosClient.post(url, data, {
-    headers: { 'Content-Type': 'multipart/form-data' },
-    ...config,
-  });
+  return axiosClient.post(url, data, config);
 };
 
 export const postNewConversation = (data: CreateConversationParams) =>
@@ -233,11 +230,7 @@ export const checkConversationOrCreate = (recipientId: string) =>
   axiosClient.get<Conversation>(`/exists/conversations/${recipientId}`, config);
 
 export const completeUserProfile = (data: FormData) =>
-  axiosClient.post('/users/profiles', data, {
-    headers: {
-      'Content-Type': 'multipart/form-data',
-    },
-  });
+  axiosClient.post('/users/profiles', data, config);
 
 export const checkUsernameExists = (username: string) =>
   axiosClient.get(`/users/check?username=${encodeURIComponent(username)}`, config);
@@ -252,10 +245,7 @@ export const unblockUser = (username: string) =>
   axiosClient.delete(`/users/blocked/${username}`, config);
 
 export const updateUserProfile = (data: FormData) =>
-  axiosClient.patch<User>('/users/profiles', data, {
-    ...config,
-    headers: { 'Content-Type': 'multipart/form-data' },
-  });
+  axiosClient.patch<User>('/users/profiles', data, config);
 
 export const updateStatusMessage = (data: UpdateStatusParams) =>
   axiosClient.patch('/users/presence/status', data, config);

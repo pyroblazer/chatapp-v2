@@ -43,7 +43,7 @@ export class StorageService implements OnModuleInit, OnModuleDestroy {
   private readonly uploadedFiles: Map<string, string> = new Map();
 
   constructor() {
-    const token = process.env.UPLOADTHING_TOKEN || '';
+    const token = process.env.UPLOADTHING_TOKEN || process.env.UPLOADTHING_SECRET || '';
     this.utApi = new UTApi(token ? { token } : undefined);
     this.appId = process.env.UPLOADTHING_APP_ID || '';
     this.localStorage = new LocalStorageProvider();
