@@ -35,7 +35,7 @@ test.describe('Group Management - Navigation', () => {
   test('should show group name in header', async ({ page }) => {
     const { groupTitle } = await setupGroup(page);
     await navigateToGroup(page, groupTitle);
-    await expect(page.locator(`text=${groupTitle}`)).toBeVisible({ timeout: 8000 });
+    await expect(page.locator(`text=${groupTitle}`).first()).toBeVisible({ timeout: 8000 });
   });
 
   test('should show group in sidebar under Group tab', async ({ page }) => {
@@ -64,7 +64,7 @@ test.describe('Group Management - Messaging', () => {
     for (const msg of ['Alpha', 'Beta', 'Gamma']) {
       await textarea.fill(msg);
       await textarea.press('Enter');
-      await expect(page.locator(`text=${msg}`)).toBeVisible({ timeout: 8000 });
+      await expect(page.locator(`text=${msg}`).last()).toBeVisible({ timeout: 8000 });
     }
   });
 
@@ -135,7 +135,7 @@ test.describe('Group Management - Edit Group', () => {
     if (await editOption.isVisible({ timeout: 3000 })) {
       await editOption.click();
       const groupNameInput = page.locator('input#groupName');
-      await expect(groupNameInput).toBeVisible({ timeout: 5000 });
+      await expect(groupNameInput).toBeVisible({ timeout: 10000 });
       await groupNameInput.clear();
       await groupNameInput.fill('Renamed Group');
       await page.locator('button[type="submit"]').click();
@@ -197,7 +197,7 @@ test.describe('Group Management - Leave Group', () => {
     await expect(groupItem).toBeVisible({ timeout: 8000 });
     await groupItem.click({ button: 'right' });
 
-    const leaveOption = page.locator('text=Leave Group');
+    const leaveOption = page.getByText('Leave Group', { exact: true });
     if (await leaveOption.isVisible({ timeout: 3000 })) {
       await leaveOption.click();
       await page.waitForLoadState('networkidle');

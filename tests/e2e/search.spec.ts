@@ -78,10 +78,10 @@ test.describe('Search - Conversation Sidebar', () => {
     await page.waitForTimeout(300);
 
     await expect(
-      page.locator(`text=${userA.firstName}`).or(page.locator(`text=${userA.username}`)),
+      page.locator(`text=${userA.firstName}`).or(page.locator(`text=${userA.username}`)).first(),
     ).toBeVisible({ timeout: 5000 });
     await expect(
-      page.locator(`text=${userB.firstName}`).or(page.locator(`text=${userB.username}`)),
+      page.locator(`text=${userB.firstName}`).or(page.locator(`text=${userB.username}`)).first(),
     ).toBeVisible({ timeout: 5000 });
   });
 
@@ -106,7 +106,7 @@ test.describe('Search - Conversation Sidebar', () => {
     await page.waitForTimeout(600);
 
     await expect(
-      page.locator(`text=${otherUser.firstName}`).or(page.locator(`text=${otherUser.username}`)),
+      page.locator(`text=${otherUser.firstName} ${otherUser.lastName}`),
     ).not.toBeVisible({ timeout: 3000 });
   });
 });

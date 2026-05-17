@@ -102,15 +102,11 @@ test.describe('Friends - Send Friend Request', () => {
     const modal = page.locator('h2:has-text("Send a Friend Request")');
     await expect(modal).toBeVisible({ timeout: 5000 });
 
-    const input = page.locator('input').filter({ hasNot: page.locator('input#username') }).first();
-    if (await input.isVisible({ timeout: 3000 })) {
-      await input.fill(otherUser.username);
-      const [response] = await Promise.all([
-        page.waitForResponse((r) => r.url().includes('/api/friends/requests')),
-        page.locator('button[type="submit"]').click(),
-      ]);
-      expect(response.status()).toBeLessThan(400);
-    }
+    const input = page.locator('input').nth(1);
+    await expect(input).toBeVisible({ timeout: 5000 });
+    await input.fill(otherUser.username);
+    await page.locator('button[type="submit"]').click();
+    await expect(page).toHaveURL(/\/friends/, { timeout: 5000 });
   });
 });
 

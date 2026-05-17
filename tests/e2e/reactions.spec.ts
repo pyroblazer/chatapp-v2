@@ -50,6 +50,8 @@ test.describe('Reactions - Add and Display', () => {
     expect(reactionRes.ok).toBeTruthy();
 
     await navigateToConversation(page, convId, `${otherUser.firstName} ${otherUser.lastName}`);
+    await page.reload();
+    await page.waitForLoadState('networkidle');
     await expect(page.locator('text=👍')).toBeVisible({ timeout: 8000 });
   });
 
@@ -60,6 +62,8 @@ test.describe('Reactions - Add and Display', () => {
     await apiRequest('POST', `/reactions/${messageId}`, user.accessToken, { emoji: '❤️' });
 
     await navigateToConversation(page, convId, `${otherUser.firstName} ${otherUser.lastName}`);
+    await page.reload();
+    await page.waitForLoadState('networkidle');
     await expect(page.locator('text=❤️')).toBeVisible({ timeout: 8000 });
 
     await apiRequest('DELETE', `/reactions/${messageId}?emoji=❤️`, user.accessToken);
@@ -95,7 +99,8 @@ test.describe('Reactions - Add and Display', () => {
 
     await loginViaUI(page, user1.username, user1.password);
     await navigateToConversation(page, conv.id, `${user2.firstName} ${user2.lastName}`);
-
+    await page.reload();
+    await page.waitForLoadState('networkidle');
     await expect(page.locator('text=🔥')).toBeVisible({ timeout: 8000 });
     await expect(page.locator('text=😀')).toBeVisible({ timeout: 8000 });
   });

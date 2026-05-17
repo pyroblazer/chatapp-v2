@@ -97,7 +97,7 @@ test.describe('Groups - Group Details', () => {
     expect(groupRes.ok).toBeTruthy();
 
     await navigateToGroup(page, 'Header Display Group');
-    await expect(page.locator('text=Header Display Group')).toBeVisible({ timeout: 8000 });
+    await expect(page.locator('text=Header Display Group').first()).toBeVisible({ timeout: 8000 });
   });
 
   test('should show sent message after navigating to group', async ({ page }) => {

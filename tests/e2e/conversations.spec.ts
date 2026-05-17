@@ -209,10 +209,10 @@ test.describe('Conversations - Search', () => {
     await page.waitForTimeout(300);
 
     await expect(
-      page.locator(`text=${userA.firstName}`).or(page.locator(`text=${userA.username}`)),
+      page.locator(`text=${userA.firstName}`).or(page.locator(`text=${userA.username}`)).first(),
     ).toBeVisible({ timeout: 5000 });
     await expect(
-      page.locator(`text=${userB.firstName}`).or(page.locator(`text=${userB.username}`)),
+      page.locator(`text=${userB.firstName}`).or(page.locator(`text=${userB.username}`)).first(),
     ).toBeVisible({ timeout: 5000 });
   });
 });

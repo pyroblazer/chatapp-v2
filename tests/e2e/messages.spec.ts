@@ -49,7 +49,7 @@ test.describe('Messages - Send', () => {
     for (const msg of ['First message', 'Second message', 'Third message']) {
       await textarea.fill(msg);
       await textarea.press('Enter');
-      await expect(page.locator(`text=${msg}`)).toBeVisible({ timeout: 8000 });
+      await expect(page.locator(`text=${msg}`).last()).toBeVisible({ timeout: 8000 });
     }
   });
 

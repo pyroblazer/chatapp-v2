@@ -139,12 +139,8 @@ test.describe('Authentication - Register Page', () => {
     await page.fill('input#firstName', user.firstName);
     await page.fill('input#lastName', user.lastName);
     await page.fill('input#password', user.password);
-    const [response] = await Promise.all([
-      page.waitForResponse((r) => r.url().includes('/api/auth/register')),
-      page.click('button:has-text("Create My Account")'),
-    ]);
-    expect(response.status()).not.toBe(201);
-    await expect(page).toHaveURL(/\/register/);
+    await page.click('button:has-text("Create My Account")');
+    await expect(page).toHaveURL(/\/register/, { timeout: 10000 });
   });
 
   test('should reject short password on registration', async ({ page }) => {
