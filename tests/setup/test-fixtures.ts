@@ -28,41 +28,62 @@ export function resetCounters() {
 
 const BASE_URL = process.env.BASE_URL || 'http://localhost:80';
 
-export async function registerUserViaAPI(user: TestUser): Promise<TestUser> {
-  const res = await fetch(`${BASE_URL}/api/auth/register`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      username: user.username,
-      password: user.password,
-      firstName: user.firstName,
-      lastName: user.lastName,
-    }),
-  });
-  if (!res.ok) {
-    const text = await res.text();
-    throw new Error(`Register failed (${res.status}): ${text}`);
+async function withRetry<T>(fn: () => Promise<T>, maxAttempts = 6): Promise<T> {
+  let lastError: Error = new Error('Max retry attempts exceeded');
+  for (let i = 0; i < maxAttempts; i++) {
+    try {
+      return await fn();
+    } catch (err: any) {
+      lastError = err;
+      if (i < maxAttempts - 1 && err.message?.includes('429')) {
+        await new Promise((r) => setTimeout(r, 500 * Math.pow(2, i)));
+        continue;
+      }
+      throw err;
+    }
   }
-  const data = await res.json();
-  return { ...user, accessToken: data.accessToken };
+  throw lastError;
+}
+
+export async function registerUserViaAPI(user: TestUser): Promise<TestUser> {
+  return withRetry(async () => {
+    const res = await fetch(`${BASE_URL}/api/auth/register`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        username: user.username,
+        password: user.password,
+        firstName: user.firstName,
+        lastName: user.lastName,
+      }),
+    });
+    if (!res.ok) {
+      const text = await res.text();
+      throw new Error(`Register failed (${res.status}): ${text}`);
+    }
+    const data = await res.json();
+    return { ...user, accessToken: data.accessToken };
+  });
 }
 
 export async function loginViaAPI(
   username: string,
   password: string,
 ): Promise<{ accessToken: string; setCookie: string }> {
-  const res = await fetch(`${BASE_URL}/api/auth/login`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ username, password }),
+  return withRetry(async () => {
+    const res = await fetch(`${BASE_URL}/api/auth/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username, password }),
+    });
+    if (!res.ok) {
+      const text = await res.text();
+      throw new Error(`Login failed (${res.status}): ${text}`);
+    }
+    const data = await res.json();
+    const setCookie = res.headers.get('set-cookie') || '';
+    return { accessToken: data.accessToken, setCookie };
   });
-  if (!res.ok) {
-    const text = await res.text();
-    throw new Error(`Login failed (${res.status}): ${text}`);
-  }
-  const data = await res.json();
-  const setCookie = res.headers.get('set-cookie') || '';
-  return { accessToken: data.accessToken, setCookie };
 }
 
 export async function loginViaUI(page: Page, username: string, password: string) {
