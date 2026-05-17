@@ -128,7 +128,18 @@ export class StorageService implements OnModuleInit, OnModuleDestroy {
     file: Buffer | Express.Multer.File,
     metadata?: FileMetadata,
   ): Promise<void> {
-    const buffer = Buffer.isBuffer(file) ? file : file.buffer;
+    let buffer: Buffer;
+    if (Buffer.isBuffer(file)) {
+      buffer = file;
+    } else if (file.buffer) {
+      buffer = file.buffer;
+    } else {
+      // Disk storage fallback (Bun/Docker Multer may use disk instead of memory)
+      const fs = await import('fs/promises');
+      const filePath = (file as any).path || (file as any).filepath;
+      if (!filePath) throw new Error('File has no buffer or path');
+      buffer = await fs.readFile(filePath);
+    }
     const mimeType =
       metadata?.['Content-Type'] || (file as Express.Multer.File).mimetype;
 

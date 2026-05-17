@@ -1,6 +1,5 @@
 import { useContext, useEffect, useState } from 'react';
 import { MoonLoader } from 'react-spinners';
-import { Edit } from 'akar-icons';
 import { UserBanner } from '../../components/settings/profile/UserBanner';
 import { OverlayStyle, Page } from '../../utils/styles';
 import {
@@ -34,7 +33,6 @@ export const SettingsProfilePage = () => {
   const [bannerSourceCopy, setBannerSourceCopy] = useState(bannerSource);
   const [about, setAbout] = useState(user?.profile?.about || '');
   const [aboutCopy, setAboutCopy] = useState(about);
-  const [isEditing, setIsEditing] = useState(false);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
@@ -52,7 +50,6 @@ export const SettingsProfilePage = () => {
     setAboutCopy(about);
     setBannerSourceCopy(bannerSource);
     setAvatarSourceCopy(avatarSource);
-    setIsEditing(false);
     setAvatarFile(undefined);
     setBannerFile(undefined);
     URL.revokeObjectURL(bannerSourceCopy);
@@ -73,7 +70,6 @@ export const SettingsProfilePage = () => {
       setBannerFile(undefined);
       setAvatarFile(undefined);
       updateAuthUser(updatedUser);
-      setIsEditing(false);
     } catch (err: any) {
       toast.error(err?.response?.data?.message || err?.message || 'Failed to update profile');
     } finally {
@@ -108,16 +104,9 @@ export const SettingsProfilePage = () => {
           <ProfileAboutSection>
             <ProfileAboutSectionHeader>
               <label htmlFor="about">About Me</label>
-              <Edit
-                cursor="pointer"
-                strokeWidth={2}
-                size={28}
-                onClick={() => setIsEditing(!isEditing)}
-              />
             </ProfileAboutSectionHeader>
             <ProfileDescriptionField
               maxLength={200}
-              disabled={!isEditing}
               value={aboutCopy}
               onChange={(e) => setAboutCopy(e.target.value)}
             />
