@@ -60,10 +60,17 @@ test.describe('Group Management - Messaging', () => {
     const { groupTitle } = await setupGroup(page);
     await navigateToGroup(page, groupTitle);
     const textarea = page.locator('textarea');
+    await expect(textarea).toBeVisible({ timeout: 10000 });
 
     for (const msg of ['Alpha', 'Beta', 'Gamma']) {
       await textarea.fill(msg);
-      await textarea.press('Enter');
+      await Promise.all([
+        page.waitForResponse(
+          (resp) => resp.url().includes('/messages') && resp.request().method() === 'POST' && resp.status() === 201,
+          { timeout: 10000 },
+        ),
+        textarea.press('Enter'),
+      ]);
       await expect(page.locator(`text=${msg}`).last()).toBeVisible({ timeout: 8000 });
     }
   });
