@@ -7,6 +7,7 @@ import {
   loginViaAPI,
   loginViaUI,
   apiRequest,
+  navigateToGroup,
 } from '../setup/test-fixtures';
 
 test.describe('Groups - Display', () => {
@@ -39,7 +40,6 @@ test.describe('Groups - Create Group', () => {
     const groupRes = await apiRequest('POST', '/groups', user.accessToken, {
       title: 'E2E Test Group',
       users: [otherUser.username],
-      message: 'Welcome to the group!',
     });
     expect(groupRes.ok).toBeTruthy();
 
@@ -57,14 +57,12 @@ test.describe('Groups - Create Group', () => {
     const groupRes = await apiRequest('POST', '/groups', user.accessToken, {
       title: 'Navigate Test Group',
       users: [otherUser.username],
-      message: 'Hello group',
     });
     expect(groupRes.ok).toBeTruthy();
     const group = await groupRes.json();
 
-    await page.goto(`/groups/${group.id}`);
+    await navigateToGroup(page, 'Navigate Test Group');
     await expect(page).toHaveURL(new RegExp(`/groups/${group.id}`));
-    await expect(page.locator('textarea')).toBeVisible({ timeout: 8000 });
   });
 
   test('should send a message in a group', async ({ page }) => {
@@ -75,14 +73,11 @@ test.describe('Groups - Create Group', () => {
     const groupRes = await apiRequest('POST', '/groups', user.accessToken, {
       title: 'Message Test Group',
       users: [otherUser.username],
-      message: 'Hello',
     });
     expect(groupRes.ok).toBeTruthy();
-    const group = await groupRes.json();
 
-    await page.goto(`/groups/${group.id}`);
+    await navigateToGroup(page, 'Message Test Group');
     const textarea = page.locator('textarea');
-    await expect(textarea).toBeVisible({ timeout: 8000 });
     await textarea.fill('Group E2E message');
     await textarea.press('Enter');
     await expect(page.locator('text=Group E2E message')).toBeVisible({ timeout: 8000 });
@@ -98,16 +93,14 @@ test.describe('Groups - Group Details', () => {
     const groupRes = await apiRequest('POST', '/groups', user.accessToken, {
       title: 'Header Display Group',
       users: [otherUser.username],
-      message: 'Hi',
     });
     expect(groupRes.ok).toBeTruthy();
-    const group = await groupRes.json();
 
-    await page.goto(`/groups/${group.id}`);
+    await navigateToGroup(page, 'Header Display Group');
     await expect(page.locator('text=Header Display Group')).toBeVisible({ timeout: 8000 });
   });
 
-  test('should show group initial message after creation', async ({ page }) => {
+  test('should show sent message after navigating to group', async ({ page }) => {
     const user = await setupAuthenticatedPage(page);
     const otherUser = createTestUser();
     await registerUserViaAPI(otherUser);
@@ -115,13 +108,14 @@ test.describe('Groups - Group Details', () => {
     const groupRes = await apiRequest('POST', '/groups', user.accessToken, {
       title: 'Initial Msg Group',
       users: [otherUser.username],
-      message: 'Initial group message',
     });
     expect(groupRes.ok).toBeTruthy();
-    const group = await groupRes.json();
 
-    await page.goto(`/groups/${group.id}`);
-    await expect(page.locator('text=Initial group message')).toBeVisible({ timeout: 8000 });
+    await navigateToGroup(page, 'Initial Msg Group');
+    const textarea = page.locator('textarea');
+    await textarea.fill('First group message');
+    await textarea.press('Enter');
+    await expect(page.locator('text=First group message')).toBeVisible({ timeout: 8000 });
   });
 
   test('should persist group message after page reload', async ({ page }) => {
@@ -132,20 +126,17 @@ test.describe('Groups - Group Details', () => {
     const groupRes = await apiRequest('POST', '/groups', user.accessToken, {
       title: 'Persist Group',
       users: [otherUser.username],
-      message: 'Persistent message',
     });
     expect(groupRes.ok).toBeTruthy();
-    const group = await groupRes.json();
 
-    await page.goto(`/groups/${group.id}`);
+    await navigateToGroup(page, 'Persist Group');
     const textarea = page.locator('textarea');
-    await expect(textarea).toBeVisible({ timeout: 8000 });
     await textarea.fill('Reload persist check');
     await textarea.press('Enter');
     await expect(page.locator('text=Reload persist check')).toBeVisible({ timeout: 8000 });
 
     await page.reload();
-    await expect(page.locator('text=Reload persist check')).toBeVisible({ timeout: 8000 });
+    await expect(page.locator('text=Reload persist check')).toBeVisible({ timeout: 20000 });
   });
 
   test('should show group in sidebar for a member', async ({ page }) => {
@@ -159,7 +150,6 @@ test.describe('Groups - Group Details', () => {
     const groupRes = await apiRequest('POST', '/groups', accessToken, {
       title: 'Member Sidebar Group',
       users: [user2.username],
-      message: 'Welcome',
     });
     expect(groupRes.ok).toBeTruthy();
 

@@ -1,10 +1,11 @@
 import { MiddlewareConsumer, Module, NestModule } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const passport = require('passport');
 import { ImageStorageModule } from '../image-storage/image-storage.module';
 import { MessageAttachmentsModule } from '../message-attachments/message-attachments.module';
 import { UsersModule } from '../users/users.module';
 import { Services } from '../utils/constants';
-import { isAuthorized } from '../utils/helpers';
 import { Group, GroupMessage } from '../utils/typeorm';
 import { GroupMessageController } from './controllers/group-messages.controller';
 import { GroupRecipientsController } from './controllers/group-recipients.controller';
@@ -44,6 +45,8 @@ import { GroupService } from './services/group.service';
 })
 export class GroupModule implements NestModule {
   configure(consumer: MiddlewareConsumer) {
-    consumer.apply(isAuthorized, GroupMiddleware).forRoutes('groups/:id');
+    consumer
+      .apply(passport.authenticate('jwt', { session: false }), GroupMiddleware)
+      .forRoutes('groups/:id');
   }
 }

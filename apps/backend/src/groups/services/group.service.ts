@@ -46,7 +46,7 @@ export class GroupService implements IGroupService {
     return this.groupRepository
       .createQueryBuilder('group')
       .leftJoinAndSelect('group.users', 'user')
-      .where('user.id IN (:users)', { users: [params.userId] })
+      .where('user.id IN (:...users)', { users: [params.userId] })
       .leftJoinAndSelect('group.users', 'users')
       .leftJoinAndSelect('group.creator', 'creator')
       .leftJoinAndSelect('group.owner', 'owner')

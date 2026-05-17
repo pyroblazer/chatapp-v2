@@ -68,7 +68,6 @@ export const MessagePanel: FC<Props> = ({
     if (!routeId) return;
     if (!trimmedContent && !attachments.length) return;
     const formData = new FormData();
-    formData.append('id', routeId);
     trimmedContent && formData.append('content', trimmedContent);
     attachments.forEach((attachment) =>
       formData.append('attachments', attachment.file)

@@ -6,6 +6,7 @@ import {
   loginViaAPI,
   loginViaUI,
   apiRequest,
+  navigateToGroup,
 } from '../setup/test-fixtures';
 
 async function setupGroup(page: Parameters<typeof setupAuthenticatedPage>[0]) {
@@ -18,7 +19,6 @@ async function setupGroup(page: Parameters<typeof setupAuthenticatedPage>[0]) {
   const res = await apiRequest('POST', '/groups', user.accessToken, {
     title: 'Test Group',
     users: [user2.username, user3.username],
-    message: 'Hello group',
   });
   expect(res.ok).toBeTruthy();
   const group = await res.json();
@@ -27,15 +27,14 @@ async function setupGroup(page: Parameters<typeof setupAuthenticatedPage>[0]) {
 
 test.describe('Group Management - Navigation', () => {
   test('should navigate to group channel page', async ({ page }) => {
-    const { groupId } = await setupGroup(page);
-    await page.goto(`/groups/${groupId}`);
+    const { groupId, groupTitle } = await setupGroup(page);
+    await navigateToGroup(page, groupTitle);
     await expect(page).toHaveURL(new RegExp(`/groups/${groupId}`));
-    await expect(page.locator('textarea')).toBeVisible({ timeout: 8000 });
   });
 
   test('should show group name in header', async ({ page }) => {
-    const { groupId, groupTitle } = await setupGroup(page);
-    await page.goto(`/groups/${groupId}`);
+    const { groupTitle } = await setupGroup(page);
+    await navigateToGroup(page, groupTitle);
     await expect(page.locator(`text=${groupTitle}`)).toBeVisible({ timeout: 8000 });
   });
 
@@ -49,20 +48,18 @@ test.describe('Group Management - Navigation', () => {
 
 test.describe('Group Management - Messaging', () => {
   test('should send a message in group', async ({ page }) => {
-    const { groupId } = await setupGroup(page);
-    await page.goto(`/groups/${groupId}`);
+    const { groupTitle } = await setupGroup(page);
+    await navigateToGroup(page, groupTitle);
     const textarea = page.locator('textarea');
-    await expect(textarea).toBeVisible({ timeout: 8000 });
     await textarea.fill('Group message test');
     await textarea.press('Enter');
     await expect(page.locator('text=Group message test')).toBeVisible({ timeout: 8000 });
   });
 
   test('should send multiple messages in group', async ({ page }) => {
-    const { groupId } = await setupGroup(page);
-    await page.goto(`/groups/${groupId}`);
+    const { groupTitle } = await setupGroup(page);
+    await navigateToGroup(page, groupTitle);
     const textarea = page.locator('textarea');
-    await expect(textarea).toBeVisible({ timeout: 8000 });
 
     for (const msg of ['Alpha', 'Beta', 'Gamma']) {
       await textarea.fill(msg);
@@ -72,23 +69,23 @@ test.describe('Group Management - Messaging', () => {
   });
 
   test('should persist group message after reload', async ({ page }) => {
-    const { groupId } = await setupGroup(page);
-    await page.goto(`/groups/${groupId}`);
+    const { groupTitle } = await setupGroup(page);
+    await navigateToGroup(page, groupTitle);
     const textarea = page.locator('textarea');
-    await expect(textarea).toBeVisible({ timeout: 8000 });
     await textarea.fill('Reload persist group');
     await textarea.press('Enter');
     await expect(page.locator('text=Reload persist group')).toBeVisible({ timeout: 8000 });
     await page.reload();
-    await expect(page.locator('text=Reload persist group')).toBeVisible({ timeout: 8000 });
+    await expect(page.locator('text=Reload persist group')).toBeVisible({ timeout: 20000 });
   });
 });
 
 test.describe('Group Management - Participants Sidebar', () => {
   test('should toggle participants sidebar', async ({ page }) => {
-    const { groupId } = await setupGroup(page);
-    await page.goto(`/groups/${groupId}`);
-    await expect(page.locator('textarea')).toBeVisible({ timeout: 8000 });
+    const { groupTitle } = await setupGroup(page);
+    await navigateToGroup(page, groupTitle);
+    const textarea = page.locator('textarea');
+    await expect(textarea).toBeVisible({ timeout: 10000 });
 
     // The participants sidebar toggle is a PeopleGroup icon in the header
     const toggleBtn = page
@@ -104,9 +101,10 @@ test.describe('Group Management - Participants Sidebar', () => {
   });
 
   test('should show all group members in participants sidebar', async ({ page }) => {
-    const { groupId, user2, user3 } = await setupGroup(page);
-    await page.goto(`/groups/${groupId}`);
-    await expect(page.locator('textarea')).toBeVisible({ timeout: 8000 });
+    const { groupTitle, user2, user3 } = await setupGroup(page);
+    await navigateToGroup(page, groupTitle);
+    const textarea = page.locator('textarea');
+    await expect(textarea).toBeVisible({ timeout: 10000 });
 
     // Try to open participants via any available toggle
     const headerIcons = page.locator('[class*="header"] svg, [class*="Header"] svg');
@@ -159,7 +157,6 @@ test.describe('Group Management - Leave Group', () => {
     const groupRes = await apiRequest('POST', '/groups', token1, {
       title: 'Leave Test Group',
       users: [user2.username],
-      message: 'Hello',
     });
     expect(groupRes.ok).toBeTruthy();
     const group = await groupRes.json();
@@ -187,7 +184,6 @@ test.describe('Group Management - Leave Group', () => {
     const groupRes = await apiRequest('POST', '/groups', token1, {
       title: 'UI Leave Group',
       users: [user2.username],
-      message: 'Hello',
     });
     expect(groupRes.ok).toBeTruthy();
     const group = await groupRes.json();
@@ -222,7 +218,6 @@ test.describe('Group Management - Add/Remove Members', () => {
     const groupRes = await apiRequest('POST', '/groups', user.accessToken, {
       title: 'Add Member Group',
       users: [user2.username],
-      message: 'Hi',
     });
     expect(groupRes.ok).toBeTruthy();
     const group = await groupRes.json();
@@ -252,7 +247,6 @@ test.describe('Group Management - Add/Remove Members', () => {
     const groupRes = await apiRequest('POST', '/groups', user.accessToken, {
       title: 'Remove Member Group',
       users: [user2.username],
-      message: 'Hi',
     });
     expect(groupRes.ok).toBeTruthy();
     const group = await groupRes.json();

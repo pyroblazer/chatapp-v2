@@ -47,7 +47,7 @@ export class FriendRequestController {
   @ApiResponse({ status: 201 })
   @ApiResponse({ status: 400 })
   @ApiResponse({ status: 429 })
-  @Throttle(3, 10)
+  @Throttle(parseInt(process.env.FRIEND_THROTTLE_LIMIT || '3', 10), parseInt(process.env.FRIEND_THROTTLE_TTL || '10', 10))
   @HttpCode(HttpStatus.CREATED)
   @Post()
   async createFriendRequest(
@@ -63,7 +63,7 @@ export class FriendRequestController {
   @ApiOperation({ summary: 'Accept a friend request' })
   @ApiParam({ name: 'id', description: 'Friend request UUID' })
   @ApiResponse({ status: 200 })
-  @Throttle(3, 10)
+  @Throttle(parseInt(process.env.FRIEND_THROTTLE_LIMIT || '3', 10), parseInt(process.env.FRIEND_THROTTLE_TTL || '10', 10))
   @Patch(':id/accept')
   async acceptFriendRequest(
     @AuthUser() { id: userId }: User,
@@ -80,7 +80,7 @@ export class FriendRequestController {
   @ApiOperation({ summary: 'Cancel a friend request' })
   @ApiParam({ name: 'id', description: 'Friend request UUID' })
   @ApiResponse({ status: 200 })
-  @Throttle(3, 10)
+  @Throttle(parseInt(process.env.FRIEND_THROTTLE_LIMIT || '3', 10), parseInt(process.env.FRIEND_THROTTLE_TTL || '10', 10))
   @Delete(':id/cancel')
   async cancelFriendRequest(
     @AuthUser() { id: userId }: User,
@@ -97,7 +97,7 @@ export class FriendRequestController {
   @ApiOperation({ summary: 'Reject a friend request' })
   @ApiParam({ name: 'id', description: 'Friend request UUID' })
   @ApiResponse({ status: 200 })
-  @Throttle(3, 10)
+  @Throttle(parseInt(process.env.FRIEND_THROTTLE_LIMIT || '3', 10), parseInt(process.env.FRIEND_THROTTLE_TTL || '10', 10))
   @Patch(':id/reject')
   async rejectFriendRequest(
     @AuthUser() { id: userId }: User,

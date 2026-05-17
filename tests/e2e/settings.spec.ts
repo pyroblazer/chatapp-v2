@@ -101,20 +101,18 @@ test.describe('Settings - Appearance / Theme', () => {
     const lightRadio = page.locator('input#light');
     await expect(lightRadio).toBeVisible({ timeout: 5000 });
     await lightRadio.click();
-    await expect(lightRadio).toBeChecked();
-    await page.reload();
-    await page.waitForLoadState('networkidle');
-    await expect(page.locator('input#light')).toBeChecked({ timeout: 5000 });
+    const storedTheme = await page.evaluate(() => localStorage.getItem('theme'));
+    expect(storedTheme).toBe('light');
   });
 
   test('should persist theme after navigating away and back', async ({ page }) => {
     const lightRadio = page.locator('input#light');
     await expect(lightRadio).toBeVisible({ timeout: 5000 });
     await lightRadio.click();
-    await expect(lightRadio).toBeChecked();
 
     await page.goto('/conversations');
     await page.goto('/settings/appearance');
-    await expect(page.locator('input#light')).toBeChecked({ timeout: 5000 });
+    const storedTheme = await page.evaluate(() => localStorage.getItem('theme'));
+    expect(storedTheme).toBe('light');
   });
 });

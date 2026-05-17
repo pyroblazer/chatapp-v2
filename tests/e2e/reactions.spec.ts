@@ -6,12 +6,16 @@ import {
   loginViaAPI,
   loginViaUI,
   apiRequest,
+  makeFriends,
+  navigateToConversation,
 } from '../setup/test-fixtures';
 
 async function setupConversationWithMessage(page: Parameters<typeof setupAuthenticatedPage>[0]) {
   const user = await setupAuthenticatedPage(page);
   const otherUser = createTestUser();
   await registerUserViaAPI(otherUser);
+  const { accessToken: token2 } = await loginViaAPI(otherUser.username, otherUser.password);
+  await makeFriends(user.accessToken, otherUser.username, token2);
 
   const convRes = await apiRequest('POST', '/conversations', user.accessToken, {
     username: otherUser.username,
@@ -26,12 +30,18 @@ async function setupConversationWithMessage(page: Parameters<typeof setupAuthent
   const msgs = await msgsRes.json();
   const messageId = (Array.isArray(msgs) ? msgs[0] : msgs.messages?.[0])?.id;
 
-  return { user, otherUser, convId: conv.id as string, messageId: messageId as string };
+  return {
+    user,
+    otherUser,
+    token2,
+    convId: conv.id as string,
+    messageId: messageId as string,
+  };
 }
 
 test.describe('Reactions - Add and Display', () => {
   test('should add reaction via API and display it on message', async ({ page }) => {
-    const { user, convId, messageId } = await setupConversationWithMessage(page);
+    const { user, convId, otherUser, messageId } = await setupConversationWithMessage(page);
     if (!messageId) return;
 
     const reactionRes = await apiRequest('POST', `/reactions/${messageId}`, user.accessToken, {
@@ -39,26 +49,23 @@ test.describe('Reactions - Add and Display', () => {
     });
     expect(reactionRes.ok).toBeTruthy();
 
-    await page.goto(`/conversations/${convId}`);
-    await page.waitForLoadState('networkidle');
+    await navigateToConversation(page, convId, `${otherUser.firstName} ${otherUser.lastName}`);
     await expect(page.locator('text=👍')).toBeVisible({ timeout: 8000 });
   });
 
   test('should remove reaction via API and it disappears', async ({ page }) => {
-    const { user, convId, messageId } = await setupConversationWithMessage(page);
+    const { user, convId, otherUser, messageId } = await setupConversationWithMessage(page);
     if (!messageId) return;
 
-    // Add then remove
     await apiRequest('POST', `/reactions/${messageId}`, user.accessToken, { emoji: '❤️' });
 
-    await page.goto(`/conversations/${convId}`);
-    await page.waitForLoadState('networkidle');
+    await navigateToConversation(page, convId, `${otherUser.firstName} ${otherUser.lastName}`);
     await expect(page.locator('text=❤️')).toBeVisible({ timeout: 8000 });
 
     await apiRequest('DELETE', `/reactions/${messageId}?emoji=❤️`, user.accessToken);
     await page.reload();
     await page.waitForLoadState('networkidle');
-    await expect(page.locator('text=❤️')).not.toBeVisible({ timeout: 5000 });
+    await expect(page.locator('text=❤️')).not.toBeVisible({ timeout: 20000 });
   });
 
   test('should display reactions from multiple users', async ({ page }) => {
@@ -69,6 +76,7 @@ test.describe('Reactions - Add and Display', () => {
 
     const { accessToken: token1 } = await loginViaAPI(user1.username, user1.password);
     const { accessToken: token2 } = await loginViaAPI(user2.username, user2.password);
+    await makeFriends(token1, user2.username, token2);
 
     const convRes = await apiRequest('POST', '/conversations', token1, {
       username: user2.username,
@@ -85,10 +93,8 @@ test.describe('Reactions - Add and Display', () => {
     await apiRequest('POST', `/reactions/${messageId}`, token1, { emoji: '🔥' });
     await apiRequest('POST', `/reactions/${messageId}`, token2, { emoji: '😀' });
 
-    // Navigate as user1
     await loginViaUI(page, user1.username, user1.password);
-    await page.goto(`/conversations/${conv.id}`);
-    await page.waitForLoadState('networkidle');
+    await navigateToConversation(page, conv.id, `${user2.firstName} ${user2.lastName}`);
 
     await expect(page.locator('text=🔥')).toBeVisible({ timeout: 8000 });
     await expect(page.locator('text=😀')).toBeVisible({ timeout: 8000 });

@@ -47,7 +47,7 @@ export class GroupMessageController {
   @ApiConsumes('multipart/form-data')
   @ApiParam({ name: 'id', description: 'Group UUID' })
   @ApiResponse({ status: 201 })
-  @Throttle(5, 10)
+  @Throttle(parseInt(process.env.MSG_THROTTLE_LIMIT || '5', 10), parseInt(process.env.MSG_THROTTLE_TTL || '10', 10))
   @HttpCode(HttpStatus.CREATED)
   @UseInterceptors(
     FileFieldsInterceptor([

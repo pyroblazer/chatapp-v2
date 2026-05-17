@@ -3,7 +3,9 @@ import {
   createTestUser,
   setupAuthenticatedPage,
   registerUserViaAPI,
+  loginViaAPI,
   apiRequest,
+  makeFriends,
 } from '../setup/test-fixtures';
 
 test.describe('Search - Conversation Sidebar', () => {
@@ -16,6 +18,11 @@ test.describe('Search - Conversation Sidebar', () => {
     userBeta.firstName = 'Betaqqqq';
     await registerUserViaAPI(userAlpha);
     await registerUserViaAPI(userBeta);
+
+    const { accessToken: tokenA } = await loginViaAPI(userAlpha.username, userAlpha.password);
+    const { accessToken: tokenB } = await loginViaAPI(userBeta.username, userBeta.password);
+    await makeFriends(user.accessToken, userAlpha.username, tokenA);
+    await makeFriends(user.accessToken, userBeta.username, tokenB);
 
     await apiRequest('POST', '/conversations', user.accessToken, {
       username: userAlpha.username,
@@ -44,6 +51,10 @@ test.describe('Search - Conversation Sidebar', () => {
     const userB = createTestUser();
     await registerUserViaAPI(userA);
     await registerUserViaAPI(userB);
+    const { accessToken: tA } = await loginViaAPI(userA.username, userA.password);
+    const { accessToken: tB } = await loginViaAPI(userB.username, userB.password);
+    await makeFriends(user.accessToken, userA.username, tA);
+    await makeFriends(user.accessToken, userB.username, tB);
 
     await apiRequest('POST', '/conversations', user.accessToken, {
       username: userA.username,
@@ -60,27 +71,26 @@ test.describe('Search - Conversation Sidebar', () => {
     const searchInput = page.locator('input[placeholder="Search for Conversations"]');
     await expect(searchInput).toBeVisible({ timeout: 5000 });
 
-    // Type to filter
     await searchInput.fill(userA.username);
     await page.waitForTimeout(600);
 
-    // Clear search
     await searchInput.clear();
     await page.waitForTimeout(300);
 
-    // Both conversations should be visible again
-    await expect(page.locator(`text=${userA.firstName}`).or(page.locator(`text=${userA.username}`))).toBeVisible({
-      timeout: 5000,
-    });
-    await expect(page.locator(`text=${userB.firstName}`).or(page.locator(`text=${userB.username}`))).toBeVisible({
-      timeout: 5000,
-    });
+    await expect(
+      page.locator(`text=${userA.firstName}`).or(page.locator(`text=${userA.username}`)),
+    ).toBeVisible({ timeout: 5000 });
+    await expect(
+      page.locator(`text=${userB.firstName}`).or(page.locator(`text=${userB.username}`)),
+    ).toBeVisible({ timeout: 5000 });
   });
 
   test('should show no results for gibberish query', async ({ page }) => {
     const user = await setupAuthenticatedPage(page);
     const otherUser = createTestUser();
     await registerUserViaAPI(otherUser);
+    const { accessToken: token2 } = await loginViaAPI(otherUser.username, otherUser.password);
+    await makeFriends(user.accessToken, otherUser.username, token2);
 
     await apiRequest('POST', '/conversations', user.accessToken, {
       username: otherUser.username,
@@ -95,10 +105,9 @@ test.describe('Search - Conversation Sidebar', () => {
     await searchInput.fill('xyznonexistentxyz123456');
     await page.waitForTimeout(600);
 
-    // The other user's name should not be visible
-    await expect(page.locator(`text=${otherUser.firstName}`).or(page.locator(`text=${otherUser.username}`))).not.toBeVisible({
-      timeout: 3000,
-    });
+    await expect(
+      page.locator(`text=${otherUser.firstName}`).or(page.locator(`text=${otherUser.username}`)),
+    ).not.toBeVisible({ timeout: 3000 });
   });
 });
 

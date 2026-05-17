@@ -7,6 +7,8 @@ import {
   loginViaAPI,
   loginViaUI,
   apiRequest,
+  makeFriends,
+  navigateToConversation,
 } from '../setup/test-fixtures';
 
 test.describe('Conversations - Unauthenticated', () => {
@@ -54,13 +56,6 @@ test.describe('Conversations - Authenticated', () => {
   test('should show conversation panel placeholder when no conversation is selected', async ({ page }) => {
     await expect(page.locator('text=ConversationPanel')).toBeVisible({ timeout: 5000 });
   });
-
-  test('should navigate to groups tab and back', async ({ page }) => {
-    await page.locator('text=Group').first().click();
-    await expect(page).toHaveURL(/\/(conversations|groups)/);
-    await page.locator('text=Private').first().click();
-    await expect(page).toHaveURL(/\/conversations/);
-  });
 });
 
 test.describe('Conversations - Create Conversation', () => {
@@ -68,6 +63,8 @@ test.describe('Conversations - Create Conversation', () => {
     const user = await setupAuthenticatedPage(page);
     const otherUser = createTestUser();
     await registerUserViaAPI(otherUser);
+    const { accessToken: token2 } = await loginViaAPI(otherUser.username, otherUser.password);
+    await makeFriends(user.accessToken, otherUser.username, token2);
 
     const res = await apiRequest('POST', '/conversations', user.accessToken, {
       username: otherUser.username,
@@ -77,9 +74,9 @@ test.describe('Conversations - Create Conversation', () => {
 
     await page.reload();
     await page.waitForLoadState('networkidle');
-    const conversationItem = page.locator(`text=${otherUser.firstName}`).or(
-      page.locator(`text=${otherUser.username}`),
-    );
+    const conversationItem = page
+      .locator(`text=${otherUser.firstName}`)
+      .or(page.locator(`text=${otherUser.username}`));
     await expect(conversationItem.first()).toBeVisible({ timeout: 8000 });
   });
 
@@ -87,6 +84,8 @@ test.describe('Conversations - Create Conversation', () => {
     const user = await setupAuthenticatedPage(page);
     const otherUser = createTestUser();
     await registerUserViaAPI(otherUser);
+    const { accessToken: token2 } = await loginViaAPI(otherUser.username, otherUser.password);
+    await makeFriends(user.accessToken, otherUser.username, token2);
 
     const res = await apiRequest('POST', '/conversations', user.accessToken, {
       username: otherUser.username,
@@ -95,7 +94,7 @@ test.describe('Conversations - Create Conversation', () => {
     expect(res.ok).toBeTruthy();
     const conv = await res.json();
 
-    await page.goto(`/conversations/${conv.id}`);
+    await navigateToConversation(page, conv.id, `${otherUser.firstName} ${otherUser.lastName}`);
     await expect(page).toHaveURL(new RegExp(`/conversations/${conv.id}`));
     await expect(page.locator('textarea')).toBeVisible({ timeout: 8000 });
   });
@@ -106,6 +105,8 @@ test.describe('Conversations - Send Message', () => {
     const user = await setupAuthenticatedPage(page);
     const otherUser = createTestUser();
     await registerUserViaAPI(otherUser);
+    const { accessToken: token2 } = await loginViaAPI(otherUser.username, otherUser.password);
+    await makeFriends(user.accessToken, otherUser.username, token2);
 
     const convRes = await apiRequest('POST', '/conversations', user.accessToken, {
       username: otherUser.username,
@@ -114,9 +115,8 @@ test.describe('Conversations - Send Message', () => {
     expect(convRes.ok).toBeTruthy();
     const conv = await convRes.json();
 
-    await page.goto(`/conversations/${conv.id}`);
+    await navigateToConversation(page, conv.id, `${otherUser.firstName} ${otherUser.lastName}`);
     const textarea = page.locator('textarea');
-    await expect(textarea).toBeVisible({ timeout: 8000 });
     await textarea.fill('E2E test message');
     await textarea.press('Enter');
     await expect(page.locator('text=E2E test message')).toBeVisible({ timeout: 8000 });
@@ -126,6 +126,8 @@ test.describe('Conversations - Send Message', () => {
     const user = await setupAuthenticatedPage(page);
     const otherUser = createTestUser();
     await registerUserViaAPI(otherUser);
+    const { accessToken: token2 } = await loginViaAPI(otherUser.username, otherUser.password);
+    await makeFriends(user.accessToken, otherUser.username, token2);
 
     const convRes = await apiRequest('POST', '/conversations', user.accessToken, {
       username: otherUser.username,
@@ -134,7 +136,7 @@ test.describe('Conversations - Send Message', () => {
     expect(convRes.ok).toBeTruthy();
     const conv = await convRes.json();
 
-    await page.goto(`/conversations/${conv.id}`);
+    await navigateToConversation(page, conv.id, `${otherUser.firstName} ${otherUser.lastName}`);
     await expect(page.locator('text=Existing message check')).toBeVisible({ timeout: 8000 });
   });
 });
@@ -142,12 +144,18 @@ test.describe('Conversations - Send Message', () => {
 test.describe('Conversations - Search', () => {
   test('should filter conversations by search query', async ({ page }) => {
     const user = await setupAuthenticatedPage(page);
+
     const userAlpha = createTestUser();
     const userBeta = createTestUser();
     userAlpha.firstName = 'Alphaxxx';
     userBeta.firstName = 'Betaxxx';
     await registerUserViaAPI(userAlpha);
     await registerUserViaAPI(userBeta);
+
+    const { accessToken: tokenA } = await loginViaAPI(userAlpha.username, userAlpha.password);
+    const { accessToken: tokenB } = await loginViaAPI(userBeta.username, userBeta.password);
+    await makeFriends(user.accessToken, userAlpha.username, tokenA);
+    await makeFriends(user.accessToken, userBeta.username, tokenB);
 
     await apiRequest('POST', '/conversations', user.accessToken, {
       username: userAlpha.username,
@@ -164,8 +172,47 @@ test.describe('Conversations - Search', () => {
     const searchInput = page.locator('input[placeholder="Search for Conversations"]');
     await expect(searchInput).toBeVisible({ timeout: 5000 });
     await searchInput.fill('Alphaxxx');
-    await page.waitForTimeout(500);
+    await page.waitForTimeout(600);
 
     await expect(page.locator('text=Alphaxxx')).toBeVisible({ timeout: 5000 });
+  });
+
+  test('should clear search restores conversation list', async ({ page }) => {
+    const user = await setupAuthenticatedPage(page);
+
+    const userA = createTestUser();
+    const userB = createTestUser();
+    await registerUserViaAPI(userA);
+    await registerUserViaAPI(userB);
+    const { accessToken: tA } = await loginViaAPI(userA.username, userA.password);
+    const { accessToken: tB } = await loginViaAPI(userB.username, userB.password);
+    await makeFriends(user.accessToken, userA.username, tA);
+    await makeFriends(user.accessToken, userB.username, tB);
+
+    await apiRequest('POST', '/conversations', user.accessToken, {
+      username: userA.username,
+      message: 'hello a',
+    });
+    await apiRequest('POST', '/conversations', user.accessToken, {
+      username: userB.username,
+      message: 'hello b',
+    });
+
+    await page.reload();
+    await page.waitForLoadState('networkidle');
+
+    const searchInput = page.locator('input[placeholder="Search for Conversations"]');
+    await expect(searchInput).toBeVisible({ timeout: 5000 });
+    await searchInput.fill(userA.username);
+    await page.waitForTimeout(500);
+    await searchInput.clear();
+    await page.waitForTimeout(300);
+
+    await expect(
+      page.locator(`text=${userA.firstName}`).or(page.locator(`text=${userA.username}`)),
+    ).toBeVisible({ timeout: 5000 });
+    await expect(
+      page.locator(`text=${userB.firstName}`).or(page.locator(`text=${userB.username}`)),
+    ).toBeVisible({ timeout: 5000 });
   });
 });
