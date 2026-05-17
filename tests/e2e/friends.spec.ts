@@ -102,10 +102,10 @@ test.describe('Friends - Send Friend Request', () => {
     const modal = page.locator('h2:has-text("Send a Friend Request")');
     await expect(modal).toBeVisible({ timeout: 5000 });
 
-    const input = page.locator('input').nth(1);
+    const input = page.locator('input').first();
     await expect(input).toBeVisible({ timeout: 5000 });
     await input.fill(otherUser.username);
-    await page.locator('button[type="submit"]').click();
+    await page.locator('button:has-text("Send")').click();
     await expect(page).toHaveURL(/\/friends/, { timeout: 5000 });
   });
 });

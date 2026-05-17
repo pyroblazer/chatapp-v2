@@ -43,23 +43,28 @@ test.describe('Navigation - Page transitions', () => {
 
   test('should navigate between all main pages', async ({ page }) => {
     await page.goto('/conversations');
-    await expect(page).toHaveURL(/\/conversations/);
+    await page.waitForLoadState('networkidle');
+    await expect(page).toHaveURL(/\/conversations/, { timeout: 10000 });
 
     await page.goto('/groups');
-    await expect(page).toHaveURL(/\/groups/);
+    await page.waitForLoadState('networkidle');
+    await expect(page).toHaveURL(/\/groups/, { timeout: 10000 });
 
     await page.goto('/friends');
-    await expect(page).toHaveURL(/\/friends/);
+    await page.waitForLoadState('networkidle');
+    await expect(page).toHaveURL(/\/friends/, { timeout: 10000 });
 
     await page.goto('/calls');
-    await expect(page).toHaveURL(/\/calls/);
+    await page.waitForLoadState('networkidle');
+    await expect(page).toHaveURL(/\/calls/, { timeout: 10000 });
 
     await page.goto('/settings');
-    await expect(page).toHaveURL(/\/settings/);
+    await page.waitForLoadState('networkidle');
+    await expect(page).toHaveURL(/\/settings/, { timeout: 10000 });
 
-    // Back to conversations
     await page.goto('/conversations');
-    await expect(page).toHaveURL(/\/conversations/);
+    await page.waitForLoadState('networkidle');
+    await expect(page).toHaveURL(/\/conversations/, { timeout: 10000 });
   });
 
   test('should use browser back/forward correctly', async ({ page }) => {

@@ -122,12 +122,11 @@ test.describe('Group Management - Participants Sidebar', () => {
 
 test.describe('Group Management - Edit Group', () => {
   test('should edit group title via context menu', async ({ page }) => {
-    const { groupId } = await setupGroup(page);
-    await page.goto('/groups');
-    await page.locator('text=Group').first().click();
+    const { groupTitle } = await setupGroup(page);
+    await navigateToGroup(page, groupTitle);
 
     // Right-click the group in the sidebar
-    const groupItem = page.locator('text=Test Group').first();
+    const groupItem = page.locator(`text=${groupTitle}`).first();
     await expect(groupItem).toBeVisible({ timeout: 8000 });
     await groupItem.click({ button: 'right' });
 
@@ -138,8 +137,8 @@ test.describe('Group Management - Edit Group', () => {
       await expect(groupNameInput).toBeVisible({ timeout: 10000 });
       await groupNameInput.clear();
       await groupNameInput.fill('Renamed Group');
-      await page.locator('button[type="submit"]').click();
-      await expect(page.locator('text=Renamed Group')).toBeVisible({ timeout: 8000 });
+      await page.locator('button:has-text("Save")').click();
+      await expect(page.locator('text=Renamed Group').first()).toBeVisible({ timeout: 8000 });
     }
   });
 });

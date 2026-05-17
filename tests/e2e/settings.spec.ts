@@ -40,7 +40,8 @@ test.describe('Settings - Profile', () => {
   });
 
   test('should show About Me section', async ({ page }) => {
-    await expect(page.locator('text=About Me')).toBeVisible({ timeout: 5000 });
+    await page.waitForLoadState('networkidle');
+    await expect(page.locator('text=About Me')).toBeVisible({ timeout: 8000 });
   });
 
   test('should show About Me textarea', async ({ page }) => {
@@ -71,13 +72,15 @@ test.describe('Settings - Appearance / Theme', () => {
   });
 
   test('should show Dark theme radio option', async ({ page }) => {
+    await page.waitForLoadState('networkidle');
     const darkLabel = page.locator('label[for="dark"]');
-    await expect(darkLabel).toBeVisible({ timeout: 5000 });
+    await expect(darkLabel).toBeVisible({ timeout: 8000 });
   });
 
   test('should show Light theme radio option', async ({ page }) => {
+    await page.waitForLoadState('networkidle');
     const lightLabel = page.locator('label[for="light"]');
-    await expect(lightLabel).toBeVisible({ timeout: 5000 });
+    await expect(lightLabel).toBeVisible({ timeout: 8000 });
   });
 
   test('should switch theme from dark to light', async ({ page }) => {

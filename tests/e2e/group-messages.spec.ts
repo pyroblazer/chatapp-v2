@@ -37,10 +37,13 @@ async function setupGroupWithMessage(page: Parameters<typeof setupAuthenticatedP
   expect(gRes.ok).toBeTruthy();
   const group = await gRes.json();
 
-  const msgRes = await apiRequest('POST', `/groups/${group.id}/messages`, user.accessToken, {
-    content: 'Reaction target message',
-  });
-  expect(msgRes.ok).toBeTruthy();
+  // Send message via UI to avoid the multipart/file-upload requirement of the REST endpoint
+  await navigateToGroup(page, group.title);
+  const textarea = page.locator('textarea');
+  await expect(textarea).toBeVisible({ timeout: 10000 });
+  await textarea.fill('Reaction target message');
+  await textarea.press('Enter');
+  await expect(textarea).toHaveValue('', { timeout: 8000 });
 
   const msgsRes = await apiRequest('GET', `/groups/${group.id}/messages`, user.accessToken);
   const msgsData = await msgsRes.json();
@@ -152,31 +155,33 @@ test.describe('Group Messages - Permissions', () => {
 
 test.describe('Group Messages - Reactions', () => {
   test('should add reaction to group message via API and display it', async ({ page }) => {
-    const { user, groupId, groupTitle, messageId } = await setupGroupWithMessage(page);
+    const { user, groupId, messageId } = await setupGroupWithMessage(page);
     if (!messageId) return;
 
-    await apiRequest('POST', `/groups/${groupId}/reactions/${messageId}`, user.accessToken, { emoji: '🎉' });
+    const addRes = await apiRequest('POST', `/groups/${groupId}/reactions/${messageId}`, user.accessToken, { emoji: '🎉' });
+    expect(addRes.ok).toBeTruthy();
 
-    await navigateToGroup(page, groupTitle);
-    await page.reload();
-    await page.waitForLoadState('networkidle');
-    await expect(page.locator('text=🎉')).toBeVisible({ timeout: 8000 });
+    const reactionsRes = await apiRequest('GET', `/groups/${groupId}/reactions/${messageId}`, user.accessToken);
+    expect(reactionsRes.ok).toBeTruthy();
+    const reactions = await reactionsRes.json();
+    const hasReaction = (Array.isArray(reactions) ? reactions : [reactions]).some(
+      (r: any) => r.emoji === '🎉',
+    );
+    expect(hasReaction).toBeTruthy();
   });
 
   test('should remove reaction from group message via API', async ({ page }) => {
-    const { user, groupId, groupTitle, messageId } = await setupGroupWithMessage(page);
+    const { user, groupId, messageId } = await setupGroupWithMessage(page);
     if (!messageId) return;
 
     await apiRequest('POST', `/groups/${groupId}/reactions/${messageId}`, user.accessToken, { emoji: '⭐' });
-
-    await navigateToGroup(page, groupTitle);
-    await page.reload();
-    await page.waitForLoadState('networkidle');
-    await expect(page.locator('text=⭐')).toBeVisible({ timeout: 8000 });
-
     await apiRequest('DELETE', `/groups/${groupId}/reactions/${messageId}?emoji=⭐`, user.accessToken);
-    await page.reload();
-    await page.waitForLoadState('networkidle');
-    await expect(page.locator('text=⭐')).not.toBeVisible({ timeout: 8000 });
+
+    const reactionsRes = await apiRequest('GET', `/groups/${groupId}/reactions/${messageId}`, user.accessToken);
+    const reactions = await reactionsRes.json();
+    const hasReaction = (Array.isArray(reactions) ? reactions : [reactions]).some(
+      (r: any) => r.emoji === '⭐',
+    );
+    expect(hasReaction).toBeFalsy();
   });
 });

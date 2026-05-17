@@ -12,7 +12,7 @@ let userCounter = 0;
 
 export function createTestUser(overrides: Partial<TestUser> = {}): TestUser {
   userCounter++;
-  const shortId = Date.now().toString(36).slice(-5);
+  const shortId = Date.now().toString(36).slice(-5) + Math.random().toString(36).slice(2, 5);
   return {
     username: `u${shortId}${userCounter}`,
     password: 'TestPass123!',
