@@ -1,0 +1,14 @@
+name: Render Heartbeat
+
+on:
+  schedule:
+    - cron: '0 8 * * *'  # daily at 08:00 UTC
+  workflow_dispatch:
+
+jobs:
+  heartbeat:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping backend
+        run: |
+          curl -sf https://chatapp-v2-backend.onrender.com/api/health || echo "Backend ping failed"
