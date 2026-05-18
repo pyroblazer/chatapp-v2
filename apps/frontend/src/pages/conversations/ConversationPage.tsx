@@ -11,6 +11,11 @@ import {
 } from '../../store/conversationSlice';
 import { addMessage, deleteMessage } from '../../store/messages/messageSlice';
 import { updateType } from '../../store/selectedSlice';
+import {
+  clearConversationUnread,
+  fetchAllConversationUnreadCountsThunk,
+  incrementConversationUnread,
+} from '../../store/unreadSlice';
 import { SocketContext } from '../../utils/context/SocketContext';
 import { Conversation, MessageEventPayload } from '../../utils/types';
 
@@ -30,7 +35,12 @@ export const ConversationPage = () => {
 
   useEffect(() => {
     dispatch(updateType('private'));
-    dispatch(fetchConversationsThunk());
+    dispatch(fetchConversationsThunk()).then((result) => {
+      if (fetchConversationsThunk.fulfilled.match(result)) {
+        const ids = result.payload.data.map((c: Conversation) => c.id);
+        dispatch(fetchAllConversationUnreadCountsThunk(ids));
+      }
+    });
   }, []);
 
   useEffect(() => {
@@ -38,6 +48,9 @@ export const ConversationPage = () => {
       const { conversation, message } = payload;
       dispatch(addMessage(payload));
       dispatch(updateConversation(conversation));
+      if (id !== conversation.id) {
+        dispatch(incrementConversationUnread(conversation.id));
+      }
     });
     socket.on('onConversation', (payload: Conversation) => {
       dispatch(addConversation(payload));
@@ -45,11 +58,15 @@ export const ConversationPage = () => {
     socket.on('onMessageDelete', (payload) => {
       dispatch(deleteMessage(payload));
     });
+    socket.on('onMessageRead', (payload: { conversationId: string }) => {
+      dispatch(clearConversationUnread(payload.conversationId));
+    });
     return () => {
       socket.off('connected');
       socket.off('onMessage');
       socket.off('onConversation');
       socket.off('onMessageDelete');
+      socket.off('onMessageRead');
     };
   }, [id]);
 

@@ -9,6 +9,7 @@ import {
   editGroupMessage,
   fetchGroupMessagesThunk,
 } from '../../store/groupMessageSlice';
+import { clearGroupUnread } from '../../store/unreadSlice';
 import { GroupMessageType } from '../../utils/types';
 import { GroupRecipientsSidebar } from '../../components/sidebars/group-recipients/GroupRecipientsSidebar';
 import { EditGroupModal } from '../../components/modals/EditGroupModal';
@@ -29,6 +30,7 @@ export const GroupChannelPage = () => {
   useEffect(() => {
     const groupId = id!;
     dispatch(fetchGroupMessagesThunk(groupId));
+    dispatch(clearGroupUnread(groupId));
   }, [id]);
 
   useEffect(() => {

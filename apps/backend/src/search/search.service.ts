@@ -49,7 +49,7 @@ export class SearchService implements ISearchService {
       .where("to_tsvector('english', m.content) @@ to_tsquery(:query)", {
         query: sanitizedQuery,
       })
-      .andWhere('m.conversation_id IN (:...conversationIds)', {
+      .andWhere('m.conversationId IN (:...conversationIds)', {
         conversationIds,
       })
       .orderBy('m.created_at', 'DESC')

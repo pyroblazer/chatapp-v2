@@ -13,6 +13,7 @@ import systemMessageReducer from './system-messages/systemMessagesSlice';
 import settingsReducer from './settings/settingsSlice';
 import callReducer from './call/callSlice';
 import blockedUsersReducer from './blockedUsersSlice';
+import unreadReducer from './unreadSlice';
 
 export const store = configureStore({
   reducer: {
@@ -30,6 +31,7 @@ export const store = configureStore({
     settings: settingsReducer,
     call: callReducer,
     blockedUsers: blockedUsersReducer,
+    unread: unreadReducer,
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({ serializableCheck: false }),

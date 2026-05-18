@@ -115,6 +115,19 @@ export const getConversationMessages = (conversationId: string) =>
     config
   );
 
+export const getConversationUnreadCount = (id: string) =>
+  axiosClient.get<{ conversationId: string; unreadCount: number }>(
+    `/conversations/${id}/read-receipts`,
+    config
+  );
+
+export const markConversationAsRead = (id: string) =>
+  axiosClient.post<{ conversationId: string; read: boolean }>(
+    `/conversations/${id}/read-receipts`,
+    {},
+    config
+  );
+
 export const createMessage = (
   id: string,
   type: ConversationType,

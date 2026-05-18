@@ -7,6 +7,8 @@ import { ConversationChannelPageStyle } from '../../utils/styles';
 import { AppDispatch } from '../../store';
 import { editMessage } from '../../store/messages/messageSlice';
 import { fetchMessagesThunk } from '../../store/messages/messageThunk';
+import { clearConversationUnread } from '../../store/unreadSlice';
+import { markConversationAsRead } from '../../utils/api';
 
 export const ConversationChannelPage = () => {
   const { id } = useParams();
@@ -19,6 +21,8 @@ export const ConversationChannelPage = () => {
   useEffect(() => {
     const conversationId = id!;
     dispatch(fetchMessagesThunk(conversationId));
+    dispatch(clearConversationUnread(conversationId));
+    markConversationAsRead(conversationId).catch(() => {});
   }, [id]);
 
   useEffect(() => {

@@ -114,6 +114,7 @@ export const ConversationSidebarContainer = styled.div`
 `;
 
 export const ConversationSidebarItemStyle = styled.div<ConversationSidebarItemProps>`
+  position: relative;
   display: flex;
   align-items: center;
   gap: 20px;
@@ -535,6 +536,7 @@ export const ConversationTabStyle = styled.section`
 `;
 
 export const ConversationTabItemStyle = styled.section<ConversationSelectedProps>`
+  position: relative;
   cursor: pointer;
   user-select: none;
   font-size: 12px;

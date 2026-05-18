@@ -35,7 +35,7 @@ export class ReadReceiptsService implements IReadReceiptsService {
         'rr.message_id = m.id AND rr.user_id = :userId',
         { userId },
       )
-      .where('m.conversation_id = :conversationId', { conversationId })
+      .where('m.conversationId = :conversationId', { conversationId })
       .andWhere('rr.id IS NULL')
       .getMany();
 
@@ -59,7 +59,7 @@ export class ReadReceiptsService implements IReadReceiptsService {
         'rr.message_id = m.id AND rr.user_id = :userId',
         { userId },
       )
-      .where('m.conversation_id = :conversationId', { conversationId })
+      .where('m.conversationId = :conversationId', { conversationId })
       .andWhere('rr.id IS NULL')
       .getCount();
 

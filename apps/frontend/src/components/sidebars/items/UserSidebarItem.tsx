@@ -2,8 +2,9 @@ import { FC } from 'react';
 import { useSelector } from 'react-redux';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { RootState } from '../../../store';
-import { getUserSidebarIcon } from '../../../utils/helpers';
+import { getUserSidebarIcon, formatBadgeCount } from '../../../utils/helpers';
 import { IconBadge, UserSidebarItemStyle } from '../../../utils/styles';
+import { selectTotalUnread } from '../../../store/unreadSlice';
 import { UserSidebarItemType } from '../../../utils/types';
 
 type Props = {
@@ -16,6 +17,8 @@ export const UserSidebarItem: FC<Props> = ({ item }) => {
   const friendRequests = useSelector(
     (state: RootState) => state.friends.friendRequests
   );
+  const totalUnread = useSelector(selectTotalUnread);
+  const badgeText = formatBadgeCount(totalUnread);
   const Icon = getUserSidebarIcon(item.id);
   const ICON_SIZE = 30;
   const STROKE_WIDTH = 2;
@@ -35,6 +38,9 @@ export const UserSidebarItem: FC<Props> = ({ item }) => {
         <IconBadge>
           {friendRequests.length > 9 ? '10+' : friendRequests.length}
         </IconBadge>
+      )}
+      {item.id === 'conversations' && badgeText && (
+        <IconBadge>{badgeText}</IconBadge>
       )}
     </UserSidebarItemStyle>
   );

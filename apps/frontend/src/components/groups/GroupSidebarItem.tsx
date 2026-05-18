@@ -1,8 +1,11 @@
+import { useSelector } from 'react-redux';
 import { useNavigate, useParams } from 'react-router-dom';
 import { CDN_URL } from '../../utils/constants';
-import { ConversationSidebarItemStyle } from '../../utils/styles';
+import { ConversationSidebarItemStyle, IconBadge } from '../../utils/styles';
 import { ContextMenuEvent, Group } from '../../utils/types';
 import { PeopleGroup } from 'akar-icons';
+import { RootState } from '../../store';
+import { formatBadgeCount } from '../../utils/helpers';
 
 import styles from './index.module.scss';
 
@@ -16,6 +19,10 @@ export const GroupSidebarItem: React.FC<Props> = ({ group, onContextMenu }) => {
   const MAX_TITLE_LENGTH = 20;
   const MAX_MESSAGE_LENGTH = 50;
   const navigate = useNavigate();
+  const unreadCount = useSelector(
+    (state: RootState) => state.unread.groupCounts[group.id] ?? 0
+  );
+  const badgeText = formatBadgeCount(unreadCount);
 
   const getTransformedTitle = () => {
     if (!group.title) {
@@ -54,6 +61,7 @@ export const GroupSidebarItem: React.FC<Props> = ({ group, onContextMenu }) => {
           {group.lastMessageSent?.content}
         </span>
       </div>
+      {badgeText && <IconBadge>{badgeText}</IconBadge>}
     </ConversationSidebarItemStyle>
   );
 };

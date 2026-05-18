@@ -12,6 +12,7 @@ import {
   updateGroup,
 } from '../../store/groupSlice';
 import { updateType } from '../../store/selectedSlice';
+import { incrementGroupUnread } from '../../store/unreadSlice';
 import { AuthContext } from '../../utils/context/AuthContext';
 import { SocketContext } from '../../utils/context/SocketContext';
 import {
@@ -49,6 +50,9 @@ export const GroupPage = () => {
       const { group } = payload;
       dispatch(addGroupMessage(payload));
       dispatch(updateGroup({ type: UpdateGroupAction.NEW_MESSAGE, group }));
+      if (id !== group.id) {
+        dispatch(incrementGroupUnread(group.id));
+      }
     };
 
     const handleGroupCreate = (payload: Group) => {

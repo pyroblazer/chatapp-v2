@@ -82,20 +82,23 @@ export const getSettingSidebarIcon = (id: SettingsSidebarRouteType) => {
   }
 };
 
+const fullName = (u?: User) =>
+  u ? `${u.firstName ?? ''} ${u.lastName ?? ''}`.trim() || u.username || 'Unknown' : 'Unknown';
+
 export const getFriendRequestDetails = (
   { receiver, sender }: FriendRequest,
   user?: User
 ): FriendRequestDetailsType =>
-  user?.id === receiver.id
+  user?.id === receiver?.id
     ? {
         status: 'Incoming Friend Request',
-        displayName: `${sender.firstName} ${sender.lastName}`,
+        displayName: fullName(sender),
         user: sender,
         incoming: true,
       }
     : {
         status: 'Outgoing Friend Request',
-        displayName: `${receiver.firstName} ${receiver.lastName}`,
+        displayName: fullName(receiver),
         user: receiver,
         incoming: false,
       };
@@ -107,3 +110,9 @@ export const getUserFriendInstance = (
   authenticatedUser?.id === selectedFriend?.sender.id
     ? selectedFriend?.receiver
     : selectedFriend?.sender;
+
+export const formatBadgeCount = (count: number): string => {
+  if (count <= 0) return '';
+  if (count > 99) return '99+';
+  return String(count);
+};

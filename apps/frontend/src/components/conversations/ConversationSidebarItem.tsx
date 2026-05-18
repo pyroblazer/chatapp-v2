@@ -1,13 +1,16 @@
 import { useContext } from 'react';
+import { useSelector } from 'react-redux';
 import { useNavigate, useParams } from 'react-router-dom';
 import { CDN_URL } from '../../utils/constants';
 import { AuthContext } from '../../utils/context/AuthContext';
-import { getRecipientFromConversation } from '../../utils/helpers';
+import { getRecipientFromConversation, formatBadgeCount } from '../../utils/helpers';
 import {
   ConversationSidebarItemDetails,
   ConversationSidebarItemStyle,
+  IconBadge,
 } from '../../utils/styles';
 import { Conversation } from '../../utils/types';
+import { RootState } from '../../store';
 import defaultAvatar from '../../__assets__/default_avatar.jpg';
 
 import styles from './index.module.scss';
@@ -22,6 +25,10 @@ export const ConversationSidebarItem: React.FC<Props> = ({ conversation }) => {
   const { user } = useContext(AuthContext);
   const navigate = useNavigate();
   const recipient = getRecipientFromConversation(conversation, user);
+  const unreadCount = useSelector(
+    (state: RootState) => state.unread.conversationCounts[conversation.id] ?? 0
+  );
+  const badgeText = formatBadgeCount(unreadCount);
   const lastMessageContent = () => {
     const { lastMessageSent } = conversation;
     if (lastMessageSent && lastMessageSent.content)
@@ -56,6 +63,7 @@ export const ConversationSidebarItem: React.FC<Props> = ({ conversation }) => {
             {lastMessageContent()}
           </span>
         </ConversationSidebarItemDetails>
+        {badgeText && <IconBadge>{badgeText}</IconBadge>}
       </ConversationSidebarItemStyle>
     </>
   );
