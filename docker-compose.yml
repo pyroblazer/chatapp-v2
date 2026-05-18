@@ -76,6 +76,7 @@ services:
       - RABBITMQ_PASSWORD=${RABBITMQ_PASSWORD:-chatapp_secret}
       - UPLOADTHING_TOKEN=${UPLOADTHING_TOKEN}
       - UPLOADTHING_APP_ID=${UPLOADTHING_APP_ID}
+      - UPLOADTHING_SECRET=${UPLOADTHING_SECRET}
       - LOCAL_STORAGE_DIR=/app/uploads
       - LOCAL_STORAGE_BASE_URL=/api/storage/local
       - OLLAMA_HOST=http://ollama:11434

@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { FriendsModule } from '../friends/friends.module';
+import { NotificationsModule } from '../notifications/notifications.module';
 import { UsersModule } from '../users/users.module';
 import { Services } from '../utils/constants';
 import { Friend } from '../utils/typeorm/entities/Friend';
@@ -13,6 +14,7 @@ import { FriendRequestService } from './friend-requests.service';
     TypeOrmModule.forFeature([Friend, FriendRequest]),
     UsersModule,
     FriendsModule,
+    NotificationsModule,
   ],
   controllers: [FriendRequestController],
   providers: [

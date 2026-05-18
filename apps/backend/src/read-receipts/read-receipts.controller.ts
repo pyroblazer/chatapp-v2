@@ -1,4 +1,4 @@
-import { Controller, Get, Inject, Param, Post } from '@nestjs/common';
+import { Controller, Get, Inject, Param, ParseUUIDPipe, Post } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { SkipThrottle } from '@nestjs/throttler';
 import {
@@ -27,7 +27,7 @@ export class ReadReceiptsController {
   @ApiParam({ name: 'id', description: 'Conversation UUID' })
   async markConversationAsRead(
     @AuthUser() user: User,
-    @Param('id') conversationId: string,
+    @Param('id', ParseUUIDPipe) conversationId: string,
   ) {
     await this.readReceiptsService.markConversationAsRead(
       conversationId,
@@ -46,7 +46,7 @@ export class ReadReceiptsController {
   @ApiParam({ name: 'id', description: 'Conversation UUID' })
   async getUnreadCount(
     @AuthUser() user: User,
-    @Param('id') conversationId: string,
+    @Param('id', ParseUUIDPipe) conversationId: string,
   ) {
     const unreadCount = await this.readReceiptsService.getUnreadCount(
       conversationId,

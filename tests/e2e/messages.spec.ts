@@ -47,8 +47,13 @@ test.describe('Messages - Send', () => {
     await expect(textarea).toBeVisible({ timeout: 10000 });
 
     for (const msg of ['First message', 'Second message', 'Third message']) {
-      await textarea.fill(msg);
-      await textarea.press('Enter');
+      await Promise.all([
+        page.waitForResponse(
+          (resp) => resp.url().includes('/messages') && resp.request().method() === 'POST',
+          { timeout: 10000 }
+        ),
+        textarea.fill(msg).then(() => textarea.press('Enter')),
+      ]);
       await expect(page.locator(`text=${msg}`).last()).toBeVisible({ timeout: 8000 });
     }
   });

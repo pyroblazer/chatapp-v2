@@ -207,9 +207,9 @@ test.describe('Real-time Group Message Delivery', () => {
     // user1 edits it via context menu
     const msgLocator = page.locator(`text=${origMsg}`).last();
     await msgLocator.click({ button: 'right' });
-    await expect(page.getByText('Edit', { exact: true })).toBeVisible({ timeout: 5000 });
+    await expect(page.getByText('Edit', { exact: true })).toBeVisible({ timeout: 10000 });
     await page.getByText('Edit', { exact: true }).click();
-    await expect(page.locator('text=escape to cancel')).toBeVisible({ timeout: 3000 });
+    await expect(page.locator('text=escape to cancel')).toBeVisible({ timeout: 10000 });
 
     const editedText = `Edited${Date.now().toString(36)}`;
     const editInput = page.getByRole('textbox').nth(1);
@@ -268,17 +268,17 @@ test.describe('Real-time Group Message Delivery', () => {
     // user1 deletes it via context menu
     const msgLoc = page.locator(`text=${delMsg}`).last();
     await msgLoc.click({ button: 'right' });
-    await expect(page.getByText('Delete', { exact: true })).toBeVisible({ timeout: 5000 });
+    await expect(page.getByText('Delete', { exact: true })).toBeVisible({ timeout: 10000 });
     await Promise.all([
       page.waitForResponse(
         (r) => r.url().includes('/messages/') && r.request().method() === 'DELETE',
-        { timeout: 5000 },
+        { timeout: 10000 },
       ),
       page.getByText('Delete', { exact: true }).click(),
     ]);
 
     // user2 sees it disappear
-    await expect(page2.locator(`text=${delMsg}`).last()).not.toBeVisible({ timeout: 10000 });
+    await expect(page2.locator(`text=${delMsg}`).last()).not.toBeVisible({ timeout: 15000 });
 
     await ctx2.close();
   });

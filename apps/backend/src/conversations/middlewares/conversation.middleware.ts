@@ -23,6 +23,9 @@ export class ConversationMiddleware implements NestMiddleware {
     const { id: userId } = req.user;
     const id = req.params.id;
     if (!id) throw new InvalidConversationIdException();
+    const UUID_REGEX =
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (!UUID_REGEX.test(id)) throw new InvalidConversationIdException();
     const isReadable = await this.conversationService.hasAccess({ id, userId });
     if (isReadable) next();
     else throw new ConversationNotFoundException();

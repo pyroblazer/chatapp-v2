@@ -10,8 +10,6 @@ import {
 import {
   BiMicrophone,
   BiMicrophoneOff,
-  BiVideo,
-  BiVideoOff,
 } from 'react-icons/bi';
 import { ImPhoneHangUp } from 'react-icons/im';
 import { SocketContext } from '../../utils/context/SocketContext';
@@ -22,7 +20,6 @@ export const ConversationAudioCall = () => {
   const remoteAudioRef = useRef<HTMLAudioElement>(null);
   const socket = useContext(SocketContext);
   const [microphoneEnabled, setMicrophoneEnabled] = useState(true);
-  const [videoEnabled, setVideoEnabled] = useState(true);
   const { localStream, remoteStream, caller, receiver } = useSelector(
     (state: RootState) => state.call
   );
@@ -38,19 +35,16 @@ export const ConversationAudioCall = () => {
     }
   }, [remoteStream]);
 
-  const toggleMicrophone = () =>
-    localStream &&
-    setMicrophoneEnabled((prev) => {
-      localStream.getAudioTracks()[0].enabled = !prev;
-      return !prev;
-    });
+  const toggleMicrophone = () => {
+    if (!localStream) return;
+    const audioTracks = localStream.getAudioTracks();
+    if (audioTracks.length === 0) return;
 
-  const toggleVideo = () =>
-    localStream &&
-    setVideoEnabled((prev) => {
-      localStream.getVideoTracks()[0].enabled = !prev;
+    setMicrophoneEnabled((prev) => {
+      audioTracks[0].enabled = !prev;
       return !prev;
     });
+  };
 
   const closeCall = () => {
     socket.emit(WebsocketEvents.VOICE_CALL_HANG_UP, { caller, receiver });
@@ -72,13 +66,6 @@ export const ConversationAudioCall = () => {
         )}
       </MediaContainer>
       <VideoContainerActionButtons>
-        <div>
-          {videoEnabled ? (
-            <BiVideo onClick={toggleVideo} />
-          ) : (
-            <BiVideoOff onClick={toggleVideo} />
-          )}
-        </div>
         <div>
           {microphoneEnabled ? (
             <BiMicrophone onClick={toggleMicrophone} />

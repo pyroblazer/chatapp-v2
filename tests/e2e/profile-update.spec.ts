@@ -12,11 +12,7 @@ test.describe('Profile - Update', () => {
     await setupAuthenticatedPage(page);
     await page.goto('/settings/profile');
 
-    // The About Me section has a label + SVG edit icon in the same container.
-    // Click the SVG icon next to the "About Me" label to enable editing.
     await expect(page.locator('text=About Me')).toBeVisible({ timeout: 8000 });
-    await page.locator('text=About Me').locator('xpath=../..').locator('svg').click();
-
     const textarea = page.locator('textarea');
     await expect(textarea).toBeEnabled({ timeout: 5000 });
     await textarea.clear();

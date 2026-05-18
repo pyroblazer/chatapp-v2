@@ -53,7 +53,7 @@ test.describe('Group Edge Cases - Ownership Transfer', () => {
     await registerUserViaAPI(user3);
 
     const { accessToken: token1 } = await loginViaAPI(user1.username, user1.password);
-    const { accessToken: token2 } = await loginViaAPI(user2.username, user1.password);
+    const { accessToken: token2 } = await loginViaAPI(user2.username, user2.password);
     const { accessToken: token3 } = await loginViaAPI(user3.username, user3.password);
 
     const groupRes = await apiRequest('POST', '/groups', token1, {

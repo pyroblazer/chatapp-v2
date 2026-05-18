@@ -15,6 +15,8 @@ import {
 } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { FileFieldsInterceptor } from '@nestjs/platform-express';
+import { diskStorage } from 'multer';
+import { tmpdir } from 'os';
 import {
   ApiBearerAuth,
   ApiConsumes,
@@ -50,12 +52,16 @@ export class MessageController {
   @Throttle(parseInt(process.env.MSG_THROTTLE_LIMIT || '5', 10), parseInt(process.env.MSG_THROTTLE_TTL || '10', 10))
   @HttpCode(HttpStatus.CREATED)
   @UseInterceptors(
-    FileFieldsInterceptor([
+    FileFieldsInterceptor(
+      [{ name: 'attachments', maxCount: 5 }],
       {
-        name: 'attachments',
-        maxCount: 5,
+        storage: diskStorage({
+          destination: (_req, _file, cb) => cb(null, tmpdir()),
+          filename: (_req, file, cb) =>
+            cb(null, `chatapp-${Date.now()}-${file.originalname}`),
+        }),
       },
-    ]),
+    ),
   )
   @Post()
   async createMessage(

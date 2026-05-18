@@ -67,9 +67,9 @@ test.describe('Block Effects - Conversation Visibility', () => {
     const convList = page.locator('.conversation-sidebar, [class*="sidebar"]');
     const nameInSidebar = page.locator(`text=${user2.firstName} ${user2.lastName}`).first();
     // Either the conversation appears or the empty state - just verify the page loads
-    await expect(page.locator('textarea, text=No conversations').first()).toBeVisible({
-      timeout: 10000,
-    });
+    await expect(
+      page.locator('textarea').first().or(page.locator('text=No conversations'))
+    ).toBeVisible({ timeout: 10000 });
   });
 });
 

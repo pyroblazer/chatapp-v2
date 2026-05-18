@@ -77,10 +77,15 @@ export const callSlice = createSlice({
       state.receiver = undefined;
       state.callType = undefined;
     },
-    initiateCallState: (state, action: PayloadAction<CallInitiatePayload>) => ({
-      ...state,
-      ...action.payload,
-    }),
+    initiateCallState: (state, action: PayloadAction<CallInitiatePayload>) => {
+      state.localStream = action.payload.localStream;
+      state.isCalling = action.payload.isCalling;
+      state.activeConversationId = action.payload.activeConversationId;
+      state.caller = action.payload.caller;
+      state.receiver = action.payload.receiver;
+      state.callType = action.payload.callType;
+      state.isReceivingCall = false;
+    },
   },
 });
 

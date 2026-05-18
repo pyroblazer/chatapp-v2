@@ -1,0 +1,15 @@
+services:
+  - type: web
+    name: chatapp-backend
+    runtime: node
+    buildCommand: cd apps/backend && bun install && bun run build
+    startCommand: cd apps/backend && bun run start:prod
+    healthCheckPath: /health
+    autoDeploy: false
+    plan: free
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 3001
+    region: oregon

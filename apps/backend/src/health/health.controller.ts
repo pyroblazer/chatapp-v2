@@ -7,6 +7,7 @@ import { RedisService } from '../redis/redis.service';
 import { RabbitMQService } from '../rabbitmq/rabbitmq.service';
 import { StorageService } from '../storage/storage.service';
 import { AiService } from '../bot/ai/ai.service';
+import { KafkaService } from '../kafka/kafka.service';
 
 @ApiTags('Health')
 @Controller('health')
@@ -18,6 +19,7 @@ export class HealthController {
     @Optional() private readonly rabbitMQService?: RabbitMQService,
     @Optional() private readonly storageService?: StorageService,
     @Optional() private readonly aiService?: AiService,
+    @Optional() private readonly kafkaService?: KafkaService,
   ) {}
 
   @Public()
@@ -80,6 +82,16 @@ export class HealthController {
       services.ollama = 'down';
     }
     if (services.ollama === 'down' && overallStatus !== 'down') {
+      overallStatus = 'degraded';
+    }
+
+    // Check Kafka (non-critical)
+    if (this.kafkaService) {
+      services.kafka = this.kafkaService.isAvailable() ? 'up' : 'down';
+    } else {
+      services.kafka = 'down';
+    }
+    if (services.kafka === 'down' && overallStatus !== 'down') {
       overallStatus = 'degraded';
     }
 

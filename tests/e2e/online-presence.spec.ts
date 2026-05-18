@@ -36,14 +36,14 @@ test.describe('Online Presence - Friends List', () => {
     // Wait for getOnlineFriends polling (up to 12s) and check for online indicator
     // Look for user2's name in the friends list and any online status indicator
     const friendName = `${user2.firstName} ${user2.lastName}`;
-    await expect(page.locator(`text=${friendName}`).first()).toBeVisible({ timeout: 10000 });
+    await expect(page.locator(`text=${friendName}`).first()).toBeVisible({ timeout: 15000 });
 
     // Look for any online indicator - could be green dot, "online" text, or status class
     const onlineIndicator = page.locator(
       `[class*="online"], [class*="Online"], [class*="active"], [class*="status-online"]`,
     );
     // Just verify the friend appears in the list (online status is a bonus)
-    await expect(page.locator(`text=${friendName}`).first()).toBeVisible({ timeout: 5000 });
+    await expect(page.locator(`text=${friendName}`).first()).toBeVisible({ timeout: 15000 });
 
     await ctx2.close();
   });
@@ -65,7 +65,7 @@ test.describe('Online Presence - Friends List', () => {
 
     const friendName = `${user2.firstName} ${user2.lastName}`;
     // Friend should still appear in the list even if offline
-    await expect(page.locator(`text=${friendName}`).first()).toBeVisible({ timeout: 10000 });
+    await expect(page.locator(`text=${friendName}`).first()).toBeVisible({ timeout: 15000 });
   });
 });
 

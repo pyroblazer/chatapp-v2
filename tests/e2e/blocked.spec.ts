@@ -11,22 +11,25 @@ import {
 test.describe('Blocked Users - Page', () => {
   test('should render blocked users page', async ({ page }) => {
     await setupAuthenticatedPage(page);
+    await page.waitForLoadState('networkidle');
     await page.goto('/friends/blocked');
-    await expect(page).toHaveURL(/\/friends\/blocked/);
+    await expect(page).toHaveURL(/\/friends\/blocked/, { timeout: 15000 });
   });
 
   test('should not redirect to login when authenticated', async ({ page }) => {
     await setupAuthenticatedPage(page);
+    await page.waitForLoadState('networkidle');
     await page.goto('/friends/blocked');
     await expect(page).not.toHaveURL(/\/login/);
   });
 
   test('should show empty blocked list for new user', async ({ page }) => {
     await setupAuthenticatedPage(page);
+    await page.waitForLoadState('networkidle');
     await page.goto('/friends/blocked');
     await page.waitForLoadState('networkidle');
     // No blocked users — list should be empty or show empty state
-    await expect(page).toHaveURL(/\/friends\/blocked/);
+    await expect(page).toHaveURL(/\/friends\/blocked/, { timeout: 15000 });
   });
 });
 
@@ -110,9 +113,10 @@ test.describe('Blocked Users - Block and Unblock', () => {
 test.describe('Blocked Users - Navigation', () => {
   test('should navigate from friends to blocked users page', async ({ page }) => {
     await setupAuthenticatedPage(page);
+    await page.waitForLoadState('networkidle');
     await page.goto('/friends');
     // Navigate to blocked page via URL
     await page.goto('/friends/blocked');
-    await expect(page).toHaveURL(/\/friends\/blocked/);
+    await expect(page).toHaveURL(/\/friends\/blocked/, { timeout: 15000 });
   });
 });

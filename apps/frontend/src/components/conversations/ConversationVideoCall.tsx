@@ -37,19 +37,27 @@ export const ConversationVideoCall = () => {
     }
   }, [remoteStream]);
 
-  const toggleMicrophone = () =>
-    localStream &&
-    setMicrophoneEnabled((prev) => {
-      localStream.getAudioTracks()[0].enabled = !prev;
-      return !prev;
-    });
+  const toggleMicrophone = () => {
+    if (!localStream) return;
+    const audioTracks = localStream.getAudioTracks();
+    if (audioTracks.length === 0) return;
 
-  const toggleVideo = () =>
-    localStream &&
-    setVideoEnabled((prev) => {
-      localStream.getVideoTracks()[0].enabled = !prev;
+    setMicrophoneEnabled((prev) => {
+      audioTracks[0].enabled = !prev;
       return !prev;
     });
+  };
+
+  const toggleVideo = () => {
+    if (!localStream) return;
+    const videoTracks = localStream.getVideoTracks();
+    if (videoTracks.length === 0) return;
+
+    setVideoEnabled((prev) => {
+      videoTracks[0].enabled = !prev;
+      return !prev;
+    });
+  };
 
   const closeCall = () => {
     socket.emit('videoCallHangUp', { caller, receiver });

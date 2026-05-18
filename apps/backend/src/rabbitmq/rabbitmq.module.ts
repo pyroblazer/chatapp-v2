@@ -1,6 +1,7 @@
 import { DynamicModule, Global, Module } from '@nestjs/common';
 import { Services } from '../utils/constants';
 import { RabbitMQService } from './rabbitmq.service';
+import { RabbitMQController } from './rabbitmq.controller';
 
 export interface RabbitMQModuleOptions {
   host?: string;
@@ -24,6 +25,7 @@ export class RabbitMQModule {
 
     return {
       module: RabbitMQModule,
+      controllers: [RabbitMQController],
       providers: [
         {
           provide: Services.RABBITMQ_SERVICE,

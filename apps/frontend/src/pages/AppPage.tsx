@@ -55,16 +55,27 @@ export const AppPage = () => {
       config: {
         iceServers: [
           {
-            url: 'stun:stun.l.google.com:19302',
+            urls: 'stun:stun.l.google.com:19302',
           },
           {
-            url: 'stun:stun1.l.google.com:19302',
+            urls: 'stun:stun1.l.google.com:19302',
+          },
+          {
+            urls: 'turn:free.expressturn.com:3478',
+            username: '000000002094437945',
+            credential: 'kXzUEtrPK7lkqvYvG90kT3R6L5s=',
           },
         ],
       },
     });
     dispatch(setPeer(newPeer));
-  }, [user]);
+
+    return () => {
+      if (newPeer && !newPeer.destroyed) {
+        newPeer.destroy();
+      }
+    };
+  }, [user, dispatch]);
 
   useFriendRequestReceived();
   useVideoCall();

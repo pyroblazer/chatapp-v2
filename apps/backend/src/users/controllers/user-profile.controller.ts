@@ -17,6 +17,8 @@ import {
   ApiBody,
 } from '@nestjs/swagger';
 import { FileFieldsInterceptor } from '@nestjs/platform-express';
+import { diskStorage } from 'multer';
+import { tmpdir } from 'os';
 import { Routes, Services, UserProfileFileFields } from '../../utils/constants';
 import { AuthUser } from '../../utils/decorators';
 import type { User } from '../../utils/typeorm';
@@ -65,7 +67,15 @@ export class UserProfilesController {
   })
   @ApiResponse({ status: 200, description: 'Profile updated' })
   @Patch()
-  @UseInterceptors(FileFieldsInterceptor(UserProfileFileFields))
+  @UseInterceptors(
+    FileFieldsInterceptor(UserProfileFileFields, {
+      storage: diskStorage({
+        destination: (_req, _file, cb) => cb(null, tmpdir()),
+        filename: (_req, file, cb) =>
+          cb(null, `chatapp-${Date.now()}-${file.originalname}`),
+      }),
+    }),
+  )
   async updateUserProfile(
     @AuthUser() user: User,
     @UploadedFiles()

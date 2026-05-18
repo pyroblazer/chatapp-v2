@@ -97,6 +97,8 @@ export const MessagePanel: FC<Props> = ({
               'The recipient is not in your friends list or they may have blocked you.',
           })
         );
+      } else {
+        error('Failed to send message. Please try again.');
       }
     }
   };

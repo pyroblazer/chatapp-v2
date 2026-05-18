@@ -1,6 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
 import {
-  ArrayNotEmpty,
   IsArray,
   IsOptional,
   IsString,
@@ -26,6 +25,5 @@ export class CreateGroupDto {
   @IsOptional()
   @IsArray()
   @IsString({ each: true })
-  @ArrayNotEmpty()
   users: string[];
 }

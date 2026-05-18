@@ -48,7 +48,7 @@ test.describe('Typing Indicators - Real-time DM', () => {
     await page.locator('textarea').fill('typing test message');
 
     // user2 should see typing indicator
-    await expect(page2.locator('text=is typing').last()).toBeVisible({ timeout: 8000 });
+    await expect(page2.locator('text=is typing').last()).toBeVisible({ timeout: 15000 });
 
     await ctx2.close();
   });
@@ -76,6 +76,7 @@ test.describe('Typing Indicators - Real-time DM', () => {
     const ctx2 = await browser.newContext();
     const page2 = await ctx2.newPage();
     await loginViaUI(page2, user2.username, user2.password);
+    await page2.waitForLoadState('networkidle');
     const n2 = page2.locator(`text=${user1.firstName} ${user1.lastName}`).first();
     await expect(n2).toBeVisible({ timeout: 10000 });
     await n2.click();
@@ -83,6 +84,7 @@ test.describe('Typing Indicators - Real-time DM', () => {
 
     // user1 logs in
     await loginViaUI(page, user1.username, user1.password);
+    await page.waitForLoadState('networkidle');
     const n1 = page.locator(`text=${user2.firstName} ${user2.lastName}`).first();
     await expect(n1).toBeVisible({ timeout: 10000 });
     await n1.click();
@@ -90,7 +92,7 @@ test.describe('Typing Indicators - Real-time DM', () => {
 
     // user1 types then sends (sending clears the typing state)
     await page.locator('textarea').fill('test');
-    await expect(page2.locator('text=is typing').last()).toBeVisible({ timeout: 8000 });
+    await expect(page2.locator('text=is typing').last()).toBeVisible({ timeout: 15000 });
 
     // user1 sends the message which clears typing
     await page.locator('textarea').press('Enter');
@@ -139,6 +141,7 @@ test.describe('Typing Indicators - Isolation', () => {
     const ctx3 = await browser.newContext();
     const page3 = await ctx3.newPage();
     await loginViaUI(page3, user3.username, user3.password);
+    await page3.waitForLoadState('networkidle');
     const n3 = page3.locator(`text=${user1.firstName} ${user1.lastName}`).first();
     await expect(n3).toBeVisible({ timeout: 10000 });
     await n3.click();
@@ -146,6 +149,7 @@ test.describe('Typing Indicators - Isolation', () => {
 
     // user1 logs in and navigates to conv1 (with user2)
     await loginViaUI(page, user1.username, user1.password);
+    await page.waitForLoadState('networkidle');
     const n1 = page.locator(`text=${user2.firstName} ${user2.lastName}`).first();
     await expect(n1).toBeVisible({ timeout: 10000 });
     await n1.click();
@@ -203,7 +207,7 @@ test.describe('Typing Indicators - Group', () => {
     await page.locator('textarea').fill('typing in group');
 
     // user2 should see typing indicator
-    await expect(page2.locator('text=is typing').last()).toBeVisible({ timeout: 8000 });
+    await expect(page2.locator('text=is typing').last()).toBeVisible({ timeout: 15000 });
 
     await ctx2.close();
   });

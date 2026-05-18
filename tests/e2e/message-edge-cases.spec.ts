@@ -74,9 +74,11 @@ test.describe('Message Edge Cases - Validation', () => {
     expect(convRes.ok).toBeTruthy();
     const conv = await convRes.json();
 
-    // Send empty message (no content, no attachments)
-    const emptyRes = await apiRequest('POST', `/conversations/${conv.id}/messages`, token1, {
-      content: '',
+    // Send empty message (no content, no attachments) as multipart
+    const emptyRes = await fetch(`${process.env.BASE_URL || 'http://localhost:80'}/api/conversations/${conv.id}/messages`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token1}` },
+      body: new FormData(),
     });
     expect(emptyRes.ok).toBeFalsy();
     expect(emptyRes.status).toBe(400);

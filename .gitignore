@@ -4,6 +4,7 @@ node_modules/
 # Build output
 apps/backend/dist/
 apps/frontend/build/
+apps/frontend/dist/
 
 # Environment files
 .env
@@ -13,6 +14,8 @@ apps/frontend/build/
 
 # Claude Code
 CLAUDE.md
+commit.md
+need-to-augment.md
 
 # IDE
 .idea/
@@ -40,8 +43,14 @@ docker-data/
 # Vercel
 .vercel
 
-# npm lock files (project uses bun)
+# npm/pnpm lock files (project uses bun)
 package-lock.json
+pnpm-lock.yaml
+pnpm-workspace.yaml
+
+# Generated docs
+IMPLEMENTATION_PLAN.md
+DEPLOYMENT.md
 
 # Playwright
 playwright-report/

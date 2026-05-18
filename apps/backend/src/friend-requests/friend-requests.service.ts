@@ -3,6 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { FriendAlreadyExists } from '../friends/exceptions/FriendAlreadyExists';
 import type { IFriendsService } from '../friends/friends';
+import type { INotificationsService } from '../notifications/notifications.interface';
 import { UserNotFoundException } from '../users/exceptions/UserNotFound';
 import type { IUserService } from '../users/interfaces/user';
 import { Services } from '../utils/constants';
@@ -30,6 +31,8 @@ export class FriendRequestService implements IFriendRequestService {
     private readonly userService: IUserService,
     @Inject(Services.FRIENDS_SERVICE)
     private readonly friendsService: IFriendsService,
+    @Inject(Services.NOTIFICATIONS)
+    private readonly notificationsService: INotificationsService,
   ) {}
 
   getFriendRequests(id: string): Promise<FriendRequest[]> {
@@ -68,7 +71,15 @@ export class FriendRequestService implements IFriendRequestService {
       receiver,
       status: 'pending',
     });
-    return this.friendRequestRepository.save(friend);
+    const saved = await this.friendRequestRepository.save(friend);
+    await this.notificationsService.createNotification(
+      receiver.id,
+      'FRIEND_REQUEST',
+      'New Friend Request',
+      `${sender.firstName} ${sender.lastName} sent you a friend request`,
+      { friendRequestId: saved.id, senderId: sender.id },
+    );
+    return saved;
   }
 
   async accept({ id, userId }: FriendRequestParams) {

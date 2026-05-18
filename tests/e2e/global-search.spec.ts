@@ -25,6 +25,8 @@ test.describe('Global Search - Messages', () => {
     });
     expect(convRes.ok).toBeTruthy();
 
+    await new Promise(r => setTimeout(r, 500));
+
     const searchRes = await apiRequest('GET', `/search?q=${uniqueContent}&type=messages`, token1);
     expect(searchRes.ok).toBeTruthy();
     const data = await searchRes.json();
@@ -46,6 +48,8 @@ test.describe('Global Search - Users', () => {
 
     const { accessToken: token1 } = await loginViaAPI(user1.username, user1.password);
 
+    await new Promise(r => setTimeout(r, 500));
+
     const searchRes = await apiRequest('GET', `/search?q=${user2.username}&type=users`, token1);
     expect(searchRes.ok).toBeTruthy();
     const data = await searchRes.json();
@@ -62,6 +66,8 @@ test.describe('Global Search - Users', () => {
     await registerUserViaAPI(user2);
 
     const { accessToken: token1 } = await loginViaAPI(user1.username, user1.password);
+
+    await new Promise(r => setTimeout(r, 500));
 
     const searchRes = await apiRequest(
       'GET',
@@ -88,6 +94,8 @@ test.describe('Global Search - Groups', () => {
       users: [],
     });
     expect(groupRes.ok).toBeTruthy();
+
+    await new Promise(r => setTimeout(r, 500));
 
     const searchRes = await apiRequest('GET', `/search?q=${uniqueTitle}&type=groups`, accessToken);
     expect(searchRes.ok).toBeTruthy();

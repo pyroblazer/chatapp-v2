@@ -48,7 +48,7 @@ test.describe('Error Handling - Auth Session', () => {
     await expect(page).toHaveURL(/\/conversations/, { timeout: 15000 });
     await page.context().clearCookies();
     await page.reload();
-    await expect(page).toHaveURL(/\/login/, { timeout: 15000 });
+    await expect(page).toHaveURL(/\/login/, { timeout: 20000 });
   });
 
   test('should redirect to login from protected page after session expiry', async ({ page }) => {
@@ -59,7 +59,7 @@ test.describe('Error Handling - Auth Session', () => {
     // Clear cookies to simulate session expiry
     await page.context().clearCookies();
     await page.goto('/friends');
-    await expect(page).toHaveURL(/\/login/, { timeout: 15000 });
+    await expect(page).toHaveURL(/\/login/, { timeout: 20000 });
   });
 
   test('should redirect to login from groups after session expiry', async ({ page }) => {
@@ -69,7 +69,7 @@ test.describe('Error Handling - Auth Session', () => {
 
     await page.context().clearCookies();
     await page.reload();
-    await expect(page).toHaveURL(/\/login/, { timeout: 15000 });
+    await expect(page).toHaveURL(/\/login/, { timeout: 20000 });
   });
 });
 

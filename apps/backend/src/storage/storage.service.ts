@@ -128,18 +128,7 @@ export class StorageService implements OnModuleInit, OnModuleDestroy {
     file: Buffer | Express.Multer.File,
     metadata?: FileMetadata,
   ): Promise<void> {
-    let buffer: Buffer;
-    if (Buffer.isBuffer(file)) {
-      buffer = file;
-    } else if (file.buffer) {
-      buffer = file.buffer;
-    } else {
-      // Disk storage fallback (Bun/Docker Multer may use disk instead of memory)
-      const fs = await import('fs/promises');
-      const filePath = (file as any).path || (file as any).filepath;
-      if (!filePath) throw new Error('File has no buffer or path');
-      buffer = await fs.readFile(filePath);
-    }
+    const buffer = await this.toBuffer(file);
     const mimeType =
       metadata?.['Content-Type'] || (file as Express.Multer.File).mimetype;
 
@@ -147,36 +136,32 @@ export class StorageService implements OnModuleInit, OnModuleDestroy {
 
     const customId = `${bucket}/${key}`;
 
-    if (this.available) {
-      try {
-        const utFile = new UTFile([buffer], key, {
-          type: mimeType || 'application/octet-stream',
-          customId,
-        });
+    // UploadThing upload is required — errors propagate to abort the calling operation
+    const utFile = new UTFile([buffer], key, {
+      type: mimeType || 'application/octet-stream',
+      customId,
+    });
 
-        const result = await this.utApi.uploadFiles(utFile);
+    const result = await this.utApi.uploadFiles(utFile);
 
-        if (result && typeof result === 'object' && 'data' in result) {
-          const data = (result as any).data;
-          if (data?.ufsUrl) {
-            this.uploadedFiles.set(customId, data.ufsUrl);
-          }
-        } else if (result && typeof result === 'object' && 'ufsUrl' in result) {
-          this.uploadedFiles.set(customId, (result as any).ufsUrl);
-        }
-
-        this.logger.debug(`File uploaded to UploadThing: ${customId}`);
-        return;
-      } catch (error) {
-        this.available = false;
-        this.logger.warn(
-          `UploadThing upload failed, falling back to local: ${error.message}`,
-        );
+    if (result && typeof result === 'object' && 'data' in result) {
+      const data = (result as any).data;
+      if (data?.ufsUrl) {
+        this.uploadedFiles.set(customId, data.ufsUrl);
       }
+    } else if (result && typeof result === 'object' && 'ufsUrl' in result) {
+      this.uploadedFiles.set(customId, (result as any).ufsUrl);
     }
 
-    await this.localStorage.write(bucket, key, buffer, mimeType);
-    this.logger.debug(`File uploaded locally: ${bucket}/${key}`);
+    this.logger.debug(`File uploaded to UploadThing: ${customId}`);
+
+    // Cache to local disk for fast first-display — failure here is non-fatal
+    try {
+      await this.localStorage.write(bucket, key, buffer, mimeType);
+      this.logger.debug(`File cached locally: ${bucket}/${key}`);
+    } catch (cacheErr) {
+      this.logger.warn(`Local cache write failed (non-fatal): ${cacheErr.message}`);
+    }
   }
 
   async uploadWithPreview(
@@ -188,10 +173,14 @@ export class StorageService implements OnModuleInit, OnModuleDestroy {
     const originalKey = `original/${key}`;
     const previewKey = `preview/${key}`;
 
-    await this.uploadFile(bucket, originalKey, file, metadata);
+    // Read the file buffer once so disk temp files are only read once then cleaned up
+    const fileBuffer = await this.toBuffer(file);
 
-    if (file.mimetype && file.mimetype.startsWith('image/')) {
-      const previewBuffer = await sharp(file.buffer)
+    await this.uploadFile(bucket, originalKey, fileBuffer, metadata);
+
+    const mimeType = metadata?.['Content-Type'] || file.mimetype;
+    if (mimeType && mimeType.startsWith('image/')) {
+      const previewBuffer = await sharp(fileBuffer)
         .resize(300)
         .jpeg({ quality: 80 })
         .toBuffer();
@@ -199,6 +188,13 @@ export class StorageService implements OnModuleInit, OnModuleDestroy {
         'Content-Type': 'image/jpeg',
         ...metadata,
       });
+    }
+
+    // Remove temp disk file written by multer diskStorage
+    const tempPath = (file as any).path || (file as any).filepath;
+    if (tempPath) {
+      const { unlink } = await import('fs/promises');
+      await unlink(tempPath).catch(() => {});
     }
 
     return { originalKey, previewKey };
@@ -254,22 +250,55 @@ export class StorageService implements OnModuleInit, OnModuleDestroy {
   }
 
   async getFile(bucket: string, key: string): Promise<Buffer | null> {
-    if (this.available) {
+    // Local disk cache — fast path for recently uploaded files
+    const cached = await this.localStorage.read(bucket, key);
+    if (cached) return cached;
+
+    // UploadThing CDN — authoritative source for refreshes / other devices
+    if (this.appId) {
       try {
         const url = `https://${this.appId}.ufs.sh/f/${bucket}/${key}`;
         const response = await fetch(url);
         if (response.ok) {
-          return Buffer.from(await response.arrayBuffer());
+          const data = Buffer.from(await response.arrayBuffer());
+          // Re-cache locally so the next request is a fast local hit
+          await this.localStorage.write(bucket, key, data).catch(() => {});
+          return data;
         }
       } catch {
-        // Fall through to local
+        // CDN unreachable — fall through to return null
       }
     }
 
-    return this.localStorage.read(bucket, key);
+    return null;
   }
 
   getDefaultBucket(): string {
     return this.defaultBucket;
+  }
+
+  private async toBuffer(file: Buffer | Express.Multer.File): Promise<Buffer> {
+    if (Buffer.isBuffer(file)) return file;
+
+    const multerFile = file as Express.Multer.File;
+
+    // Prefer disk path (Bun's multer may use disk even when memoryStorage is set)
+    const filePath = (multerFile as any).path || (multerFile as any).filepath;
+    if (filePath) {
+      const { readFile } = await import('fs/promises');
+      return readFile(filePath);
+    }
+
+    const buf = multerFile.buffer;
+    if (buf != null) {
+      if (Buffer.isBuffer(buf)) return buf;
+      // ArrayBuffer.isView covers Uint8Array and all other TypedArrays across realms
+      if (ArrayBuffer.isView(buf)) return Buffer.from(buf.buffer, buf.byteOffset, buf.byteLength);
+      // Blob / File (Bun native)
+      if (typeof (buf as any).arrayBuffer === 'function')
+        return Buffer.from(await (buf as any).arrayBuffer());
+    }
+
+    throw new Error('Multer file has no readable buffer or path');
   }
 }
