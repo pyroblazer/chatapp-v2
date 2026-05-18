@@ -1,165 +1,91 @@
-import { Injectable, OnModuleDestroy, Logger } from '@nestjs/common';
-import Redis from 'ioredis';
+import { Injectable, OnModuleDestroy } from '@nestjs/common';
+import { Redis } from 'ioredis';
+
+function buildRedisClient(): Redis {
+  const restUrl = process.env.UPSTASH_REDIS_REST_URL;
+  const restToken = process.env.UPSTASH_REDIS_REST_TOKEN;
+
+  if (restUrl && restToken) {
+    // Upstash: derive host from REST URL (https://<host>) and connect via ioredis + TLS
+    const host = restUrl.replace(/^https?:\/\//, '');
+    return new Redis({ host, port: 6379, password: restToken, tls: {} });
+  }
+
+  // Local Docker fallback
+  const host = process.env.REDIS_HOST || 'localhost';
+  const port = Number(process.env.REDIS_PORT || 6379);
+  const password = process.env.REDIS_PASSWORD || undefined;
+  const tls = process.env.REDIS_TLS === 'true' ? {} : undefined;
+  return new Redis({ host, port, password, tls });
+}
 
 @Injectable()
 export class RedisService implements OnModuleDestroy {
-  private readonly logger = new Logger(RedisService.name);
-  private readonly client: Redis;
-  private connected = false;
+  private client: Redis;
 
   constructor() {
-    this.client = new Redis({
-      host: process.env.REDIS_HOST || 'localhost',
-      port: parseInt(process.env.REDIS_PORT || '6379', 10),
-      password: process.env.REDIS_PASSWORD || undefined,
-      retryStrategy: (times) => {
-        const delay = Math.min(times * 50, 2000);
-        return delay;
-      },
-    });
+    this.client = buildRedisClient();
 
     this.client.on('connect', () => {
-      this.connected = true;
-      this.logger.log('Redis client connected');
-    });
-
-    this.client.on('ready', () => {
-      this.connected = true;
+      console.log('Redis client connected');
     });
 
     this.client.on('error', (err) => {
-      this.connected = false;
-      this.logger.error('Redis client error', err);
-    });
-
-    this.client.on('close', () => {
-      this.connected = false;
+      console.error('Redis client error:', err);
     });
   }
 
-  isAvailable(): boolean {
-    return this.connected;
-  }
-
-  getClient(): Redis {
-    return this.client;
-  }
-
-  async get(key: string): Promise<string | null> {
-    try {
-      return await this.client.get(key);
-    } catch {
-      this.logger.warn(`Redis GET failed for key: ${key}`);
-      return null;
+  async set(key: string, value: any, ttl?: number): Promise<void> {
+    const strValue = JSON.stringify(value);
+    if (ttl) {
+      await this.client.setex(key, ttl, strValue);
+    } else {
+      await this.client.set(key, strValue);
     }
   }
 
-  async set(key: string, value: string): Promise<string> {
-    try {
-      return await this.client.set(key, value);
-    } catch {
-      this.logger.warn(`Redis SET failed for key: ${key}`);
-      return 'OK';
-    }
+  async get<T>(key: string): Promise<T | null> {
+    const value = await this.client.get(key);
+    return value ? JSON.parse(value) : null;
   }
 
-  async del(key: string): Promise<number> {
-    try {
-      return await this.client.del(key);
-    } catch {
-      this.logger.warn(`Redis DEL failed for key: ${key}`);
-      return 0;
-    }
+  async del(key: string): Promise<void> {
+    await this.client.del(key);
   }
 
-  async exists(key: string): Promise<number> {
-    try {
-      return await this.client.exists(key);
-    } catch {
-      this.logger.warn(`Redis EXISTS failed for key: ${key}`);
-      return 0;
-    }
+  async incr(key: string): Promise<number> {
+    return this.client.incr(key);
   }
 
-  async setEx(key: string, value: string, ttlSeconds: number): Promise<string> {
-    try {
-      return await this.client.setex(key, ttlSeconds, value);
-    } catch {
-      this.logger.warn(`Redis SETEX failed for key: ${key}`);
-      return 'OK';
-    }
+  async expire(key: string, seconds: number): Promise<void> {
+    await this.client.expire(key, seconds);
   }
 
-  async hSet(key: string, field: string, value: string): Promise<number> {
-    try {
-      return await this.client.hset(key, field, value);
-    } catch {
-      this.logger.warn(`Redis HSET failed for key: ${key}, field: ${field}`);
-      return 0;
-    }
+  async exists(key: string): Promise<boolean> {
+    const result = await this.client.exists(key);
+    return result === 1;
   }
 
-  async hGet(key: string, field: string): Promise<string | null> {
-    try {
-      return await this.client.hget(key, field);
-    } catch {
-      this.logger.warn(`Redis HGET failed for key: ${key}, field: ${field}`);
-      return null;
-    }
-  }
-
-  async hDel(key: string, field: string): Promise<number> {
-    try {
-      return await this.client.hdel(key, field);
-    } catch {
-      this.logger.warn(`Redis HDEL failed for key: ${key}, field: ${field}`);
-      return 0;
-    }
-  }
-
-  async hGetAll(key: string): Promise<Record<string, string>> {
-    try {
-      return await this.client.hgetall(key);
-    } catch {
-      this.logger.warn(`Redis HGETALL failed for key: ${key}`);
-      return {};
-    }
+  async setex(key: string, seconds: number, value: any): Promise<void> {
+    const strValue = JSON.stringify(value);
+    await this.client.setex(key, seconds, strValue);
   }
 
   async keys(pattern: string): Promise<string[]> {
-    try {
-      return await this.client.keys(pattern);
-    } catch {
-      this.logger.warn(`Redis KEYS failed for pattern: ${pattern}`);
-      return [];
-    }
+    return this.client.keys(pattern);
+  }
+
+  async flushdb(): Promise<void> {
+    await this.client.flushdb();
   }
 
   async ping(): Promise<string> {
     return this.client.ping();
   }
 
-  async blacklistToken(token: string, expiresIn: number): Promise<void> {
-    try {
-      await this.setEx(`blacklist:token:${token}`, '1', expiresIn);
-    } catch {
-      this.logger.warn('Failed to blacklist token — token will remain valid');
-    }
-  }
-
-  async isTokenBlacklisted(token: string): Promise<boolean> {
-    try {
-      const result = await this.exists(`blacklist:token:${token}`);
-      return result === 1;
-    } catch {
-      this.logger.warn(
-        'Failed to check token blacklist — treating as not blacklisted',
-      );
-      return false;
-    }
-  }
-
   onModuleDestroy() {
-    this.client.disconnect();
+    if (this.client) {
+      this.client.disconnect();
+    }
   }
 }

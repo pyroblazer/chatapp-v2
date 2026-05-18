@@ -35,6 +35,9 @@ import { AdminModule } from './admin/admin.module';
 import { AuditModule } from './audit/audit.module';
 import { BotModule } from './bot/bot.module';
 import { BlockedUsersModule } from './blocked-users/blocked-users.module';
+import { FirebaseModule } from './firebase/firebase.module';
+import { KafkaModule } from './kafka/kafka.module';
+import { ScheduleModule } from '@nestjs/schedule';
 
 let envFilePath = ['.env.development', '.env'];
 if (process.env.ENVIRONMENT === 'PRODUCTION') envFilePath = ['.env.production', '.env'];
@@ -64,6 +67,7 @@ if (process.env.ENVIRONMENT === 'PRODUCTION') envFilePath = ['.env.production', 
     MessagesModule,
     GatewayModule,
     EventEmitterModule.forRoot(),
+    ScheduleModule.forRoot(),
     GroupModule,
     FriendRequestsModule,
     FriendsModule,
@@ -89,6 +93,8 @@ if (process.env.ENVIRONMENT === 'PRODUCTION') envFilePath = ['.env.production', 
     AuditModule,
     BotModule,
     BlockedUsersModule,
+    FirebaseModule,
+    KafkaModule,
   ],
   controllers: [],
   providers: [

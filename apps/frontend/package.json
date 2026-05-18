@@ -16,6 +16,7 @@
     "akar-icons": "^1.9.20",
     "axios": "^0.27.2",
     "date-fns": "^2.29.2",
+    "emoji-picker-react": "^4.19.1",
     "eslint": "^10.3.0",
     "peerjs": "^1.4.7",
     "react": "^18.2.0",
@@ -33,6 +34,7 @@
     "web-vitals": "^2.1.0"
   },
   "scripts": {
+    "dev": "vite",
     "start:dev": "vite",
     "build": "vite build",
     "preview": "vite preview",

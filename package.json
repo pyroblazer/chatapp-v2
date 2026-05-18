@@ -3,23 +3,29 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
-    "dev": "docker compose -f docker-compose.yml -f docker-compose.override.yml up --build",
-    "docker:up": "docker compose down --remove-orphans && docker compose up --build",
-    "docker:up:d": "docker compose down --remove-orphans && docker compose up --build -d",
-    "docker:up:dev": "docker compose down --remove-orphans && docker compose -f docker-compose.yml -f docker-compose.override.yml up --build",
-    "docker:up:dev:d": "docker compose down --remove-orphans && docker compose -f docker-compose.yml -f docker-compose.override.yml up --build -d",
-    "docker:up:monitoring": "docker compose down --remove-orphans && docker compose -f docker-compose.yml -f docker-compose.monitoring.yml up --build",
-    "docker:up:monitoring:d": "docker compose down --remove-orphans && docker compose -f docker-compose.yml -f docker-compose.monitoring.yml up --build -d",
-    "docker:down": "docker compose down --remove-orphans",
-    "docker:down:volumes": "docker compose down --remove-orphans --volumes",
-    "docker:logs": "docker compose logs -f",
-    "docker:logs:backend": "docker compose logs -f backend",
-    "docker:logs:frontend": "docker compose logs -f frontend",
-    "docker:ps": "docker compose ps",
-    "docker:build": "docker compose build",
-    "docker:build:no-cache": "docker compose build --no-cache"
+    "dev": "concurrently --names \"backend,frontend\" --prefix-colors \"cyan,magenta\" \"bun run --cwd apps/backend dev\" \"bun run --cwd apps/frontend dev\"",
+    "dev:backend": "bun run --cwd apps/backend dev",
+    "dev:frontend": "bun run --cwd apps/frontend dev",
+    "docker:up": "docker compose --env-file .env.docker down --remove-orphans && docker compose --env-file .env.docker up --build",
+    "docker:up:d": "docker compose --env-file .env.docker down --remove-orphans && docker compose --env-file .env.docker up --build -d",
+    "docker:up:dev": "docker compose --env-file .env.docker down --remove-orphans && docker compose --env-file .env.docker -f docker-compose.yml -f docker-compose.override.yml up --build",
+    "docker:up:dev:d": "docker compose --env-file .env.docker down --remove-orphans && docker compose --env-file .env.docker -f docker-compose.yml -f docker-compose.override.yml up --build -d",
+    "docker:up:monitoring": "docker compose --env-file .env.docker down --remove-orphans && docker compose --env-file .env.docker -f docker-compose.yml -f docker-compose.monitoring.yml up --build",
+    "docker:up:monitoring:d": "docker compose --env-file .env.docker down --remove-orphans && docker compose --env-file .env.docker -f docker-compose.yml -f docker-compose.monitoring.yml up --build -d",
+    "docker:down": "docker compose --env-file .env.docker down --remove-orphans",
+    "docker:down:volumes": "docker compose --env-file .env.docker down --remove-orphans --volumes",
+    "docker:logs": "docker compose --env-file .env.docker logs -f",
+    "docker:logs:backend": "docker compose --env-file .env.docker logs -f backend",
+    "docker:logs:frontend": "docker compose --env-file .env.docker logs -f frontend",
+    "docker:ps": "docker compose --env-file .env.docker ps",
+    "docker:build": "docker compose --env-file .env.docker build",
+    "docker:build:no-cache": "docker compose --env-file .env.docker build --no-cache"
   },
   "devDependencies": {
-    "@playwright/test": "^1.60.0"
+    "@playwright/test": "^1.60.0",
+    "concurrently": "^9.2.1"
+  },
+  "dependencies": {
+    "firebase": "^12.13.0"
   }
 }
