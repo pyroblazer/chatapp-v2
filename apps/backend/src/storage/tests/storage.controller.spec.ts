@@ -2,6 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { NotFoundException } from '@nestjs/common';
 import { LocalStorageProvider } from '../local-storage.provider';
 import { StorageController } from '../storage.controller';
+import { Services } from '../../utils/constants';
 
 jest.mock('../local-storage.provider');
 
@@ -11,6 +12,16 @@ describe('StorageController', () => {
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       controllers: [StorageController],
+      providers: [
+        {
+          provide: Services.STORAGE_SERVICE,
+          useValue: {
+            isAvailable: jest.fn().mockReturnValue(true),
+            getFile: async (bucket: string, key: string) =>
+              new LocalStorageProvider().read(bucket, key),
+          },
+        },
+      ],
     }).compile();
     controller = module.get(StorageController);
   });

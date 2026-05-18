@@ -5,6 +5,7 @@ import { RedisService } from '../../redis/redis.service';
 import { RabbitMQService } from '../../rabbitmq/rabbitmq.service';
 import { StorageService } from '../../storage/storage.service';
 import { AiService } from '../../bot/ai/ai.service';
+import { KafkaService } from '../../kafka/kafka.service';
 
 describe('HealthController', () => {
   let controller: HealthController;
@@ -12,6 +13,7 @@ describe('HealthController', () => {
   let rabbitMQService: any;
   let storageService: any;
   let aiService: any;
+  let kafkaService: any;
   let mockConnection: any;
 
   beforeEach(async () => {
@@ -36,6 +38,10 @@ describe('HealthController', () => {
       isAvailable: jest.fn().mockReturnValue(true),
     };
 
+    kafkaService = {
+      isAvailable: jest.fn().mockReturnValue(true),
+    };
+
     const module: TestingModule = await Test.createTestingModule({
       controllers: [HealthController],
       providers: [
@@ -43,6 +49,7 @@ describe('HealthController', () => {
         { provide: RabbitMQService, useValue: rabbitMQService },
         { provide: StorageService, useValue: storageService },
         { provide: AiService, useValue: aiService },
+        { provide: KafkaService, useValue: kafkaService },
         { provide: getConnectionToken(), useValue: mockConnection },
       ],
     }).compile();
@@ -68,6 +75,7 @@ describe('HealthController', () => {
       expect(result.services.rabbitmq).toBe('up');
       expect(result.services.minio).toBe('up');
       expect(result.services.ollama).toBe('up');
+      expect(result.services.kafka).toBe('up');
       expect(result.timestamp).toBeDefined();
     });
 
@@ -140,6 +148,7 @@ describe('HealthController', () => {
       rabbitMQService.isAvailable.mockReturnValue(false);
       storageService.isAvailable.mockReturnValue(false);
       aiService.isAvailable.mockReturnValue(false);
+      kafkaService.isAvailable.mockReturnValue(false);
 
       const result = await controller.check();
 

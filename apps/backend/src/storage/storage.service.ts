@@ -136,7 +136,13 @@ export class StorageService implements OnModuleInit, OnModuleDestroy {
 
     const customId = `${bucket}/${key}`;
 
-    // UploadThing upload is required — errors propagate to abort the calling operation
+    if (!this.available) {
+      // UploadThing is down — write to local filesystem only
+      await this.localStorage.write(bucket, key, buffer, mimeType);
+      this.logger.debug(`File stored locally (UploadThing unavailable): ${customId}`);
+      return;
+    }
+
     const utFile = new UTFile([buffer], key, {
       type: mimeType || 'application/octet-stream',
       customId,
@@ -158,7 +164,7 @@ export class StorageService implements OnModuleInit, OnModuleDestroy {
     // Cache to local disk for fast first-display — failure here is non-fatal
     try {
       await this.localStorage.write(bucket, key, buffer, mimeType);
-      this.logger.debug(`File cached locally: ${bucket}/${key}`);
+      this.logger.debug(`File cached locally: ${customId}`);
     } catch (cacheErr) {
       this.logger.warn(`Local cache write failed (non-fatal): ${cacheErr.message}`);
     }

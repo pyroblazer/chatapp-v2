@@ -26,6 +26,7 @@ describe('FriendRequestsService', () => {
         },
         { provide: Services.USERS, useValue: mockUserService },
         { provide: Services.FRIENDS_SERVICE, useValue: mockFriendsService },
+        { provide: Services.NOTIFICATIONS, useValue: { create: jest.fn(), notify: jest.fn() } },
       ],
     }).compile();
 

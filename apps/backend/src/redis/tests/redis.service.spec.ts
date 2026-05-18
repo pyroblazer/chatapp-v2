@@ -12,8 +12,8 @@ const mockPing = jest.fn();
 const mockDisconnect = jest.fn();
 const mockOn = jest.fn();
 
-jest.mock('ioredis', () =>
-  jest.fn().mockImplementation(() => ({
+jest.mock('ioredis', () => ({
+  Redis: jest.fn().mockImplementation(() => ({
     on: mockOn,
     get: mockGet,
     set: mockSet,
@@ -27,8 +27,11 @@ jest.mock('ioredis', () =>
     keys: mockKeys,
     ping: mockPing,
     disconnect: mockDisconnect,
+    incr: jest.fn(),
+    expire: jest.fn(),
+    flushdb: jest.fn(),
   })),
-);
+}));
 
 import { RedisService } from '../redis.service';
 

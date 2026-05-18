@@ -1,4 +1,4 @@
-import { Injectable, OnModuleDestroy } from '@nestjs/common';
+import { Injectable, Logger, OnModuleDestroy } from '@nestjs/common';
 import { Redis } from 'ioredis';
 
 function buildRedisClient(): Redis {
@@ -6,12 +6,10 @@ function buildRedisClient(): Redis {
   const restToken = process.env.UPSTASH_REDIS_REST_TOKEN;
 
   if (restUrl && restToken) {
-    // Upstash: derive host from REST URL (https://<host>) and connect via ioredis + TLS
     const host = restUrl.replace(/^https?:\/\//, '');
     return new Redis({ host, port: 6379, password: restToken, tls: {} });
   }
 
-  // Local Docker fallback
   const host = process.env.REDIS_HOST || 'localhost';
   const port = Number(process.env.REDIS_PORT || 6379);
   const password = process.env.REDIS_PASSWORD || undefined;
@@ -21,36 +19,59 @@ function buildRedisClient(): Redis {
 
 @Injectable()
 export class RedisService implements OnModuleDestroy {
+  private readonly logger = new Logger(RedisService.name);
   private client: Redis;
+  private connected = false;
 
   constructor() {
     this.client = buildRedisClient();
-
-    this.client.on('connect', () => {
-      console.log('Redis client connected');
-    });
-
-    this.client.on('error', (err) => {
-      console.error('Redis client error:', err);
-    });
+    this.client.on('connect', () => { this.connected = true; });
+    this.client.on('error', (err) => { this.logger.error('Redis error', err.message); });
   }
 
-  async set(key: string, value: any, ttl?: number): Promise<void> {
-    const strValue = JSON.stringify(value);
-    if (ttl) {
-      await this.client.setex(key, ttl, strValue);
-    } else {
-      await this.client.set(key, strValue);
+  isAvailable(): boolean {
+    return this.connected;
+  }
+
+  async get(key: string): Promise<string | null> {
+    try {
+      return await this.client.get(key);
+    } catch {
+      return null;
     }
   }
 
-  async get<T>(key: string): Promise<T | null> {
-    const value = await this.client.get(key);
-    return value ? JSON.parse(value) : null;
+  async set(key: string, value: string, ttl?: number): Promise<string> {
+    try {
+      if (ttl) return await this.client.setex(key, ttl, value);
+      return await this.client.set(key, value);
+    } catch {
+      return 'OK';
+    }
   }
 
-  async del(key: string): Promise<void> {
-    await this.client.del(key);
+  async del(key: string): Promise<number> {
+    try {
+      return await this.client.del(key);
+    } catch {
+      return 0;
+    }
+  }
+
+  async exists(key: string): Promise<number> {
+    try {
+      return await this.client.exists(key);
+    } catch {
+      return 0;
+    }
+  }
+
+  async setEx(key: string, value: string, ttl: number): Promise<string> {
+    try {
+      return await this.client.setex(key, ttl, value);
+    } catch {
+      return 'OK';
+    }
   }
 
   async incr(key: string): Promise<number> {
@@ -61,18 +82,44 @@ export class RedisService implements OnModuleDestroy {
     await this.client.expire(key, seconds);
   }
 
-  async exists(key: string): Promise<boolean> {
-    const result = await this.client.exists(key);
-    return result === 1;
+  async hSet(key: string, field: string, value: string): Promise<number> {
+    try {
+      return await this.client.hset(key, field, value);
+    } catch {
+      return 0;
+    }
   }
 
-  async setex(key: string, seconds: number, value: any): Promise<void> {
-    const strValue = JSON.stringify(value);
-    await this.client.setex(key, seconds, strValue);
+  async hGet(key: string, field: string): Promise<string | null> {
+    try {
+      return await this.client.hget(key, field);
+    } catch {
+      return null;
+    }
+  }
+
+  async hDel(key: string, field: string): Promise<number> {
+    try {
+      return await this.client.hdel(key, field);
+    } catch {
+      return 0;
+    }
+  }
+
+  async hGetAll(key: string): Promise<Record<string, string>> {
+    try {
+      return await this.client.hgetall(key) ?? {};
+    } catch {
+      return {};
+    }
   }
 
   async keys(pattern: string): Promise<string[]> {
-    return this.client.keys(pattern);
+    try {
+      return await this.client.keys(pattern);
+    } catch {
+      return [];
+    }
   }
 
   async flushdb(): Promise<void> {
@@ -83,9 +130,24 @@ export class RedisService implements OnModuleDestroy {
     return this.client.ping();
   }
 
-  onModuleDestroy() {
-    if (this.client) {
-      this.client.disconnect();
+  async blacklistToken(token: string, ttlSeconds: number): Promise<void> {
+    try {
+      await this.client.setex(`blacklist:token:${token}`, ttlSeconds, '1');
+    } catch {
+      // non-critical
     }
+  }
+
+  async isTokenBlacklisted(token: string): Promise<boolean> {
+    try {
+      const result = await this.client.exists(`blacklist:token:${token}`);
+      return result === 1;
+    } catch {
+      return false;
+    }
+  }
+
+  onModuleDestroy() {
+    if (this.client) this.client.disconnect();
   }
 }
