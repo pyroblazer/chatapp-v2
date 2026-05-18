@@ -3,9 +3,9 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
-    "dev": "concurrently --names \"backend,frontend\" --prefix-colors \"cyan,magenta\" \"bun run --cwd apps/backend dev\" \"bun run --cwd apps/frontend dev\"",
-    "dev:backend": "bun run --cwd apps/backend dev",
-    "dev:frontend": "bun run --cwd apps/frontend dev",
+    "dev": "concurrently --names \"backend,frontend\" --prefix-colors \"cyan,magenta\" \"cd apps/backend && bun dev\" \"cd apps/frontend && bun dev\"",
+    "dev:backend": "cd apps/backend && bun dev",
+    "dev:frontend": "cd apps/frontend && bun dev",
     "docker:up": "docker compose --env-file .env.docker down --remove-orphans && docker compose --env-file .env.docker up --build",
     "docker:up:d": "docker compose --env-file .env.docker down --remove-orphans && docker compose --env-file .env.docker up --build -d",
     "docker:up:dev": "docker compose --env-file .env.docker down --remove-orphans && docker compose --env-file .env.docker -f docker-compose.yml -f docker-compose.override.yml up --build",
@@ -27,5 +27,8 @@
   },
   "dependencies": {
     "firebase": "^12.13.0"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": ["@firebase/util", "protobufjs"]
   }
 }
