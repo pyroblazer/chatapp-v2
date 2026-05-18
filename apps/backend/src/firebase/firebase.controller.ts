@@ -1,6 +1,6 @@
 import { Controller, Post, Body, Get } from '@nestjs/common';
 import { FirebaseService } from './firebase.service';
-import { Public } from '../common/decorators/public.decorator';
+import { Public } from '../utils/public.decorator';
 
 @Controller('firebase')
 export class FirebaseController {
