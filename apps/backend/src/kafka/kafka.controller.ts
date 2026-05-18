@@ -1,6 +1,6 @@
 import { Controller, Get, Post, Body } from '@nestjs/common';
 import { KafkaService } from './kafka.service';
-import { Public } from '../common/decorators/public.decorator';
+import { Public } from '../utils/public.decorator';
 
 @Controller('test/kafka')
 export class KafkaController {
