@@ -20,14 +20,12 @@ import { AuthContext } from '../utils/context/AuthContext';
 import { useFriendRequestReceived } from '../utils/hooks/sockets/friend-requests/useFriendRequestReceived';
 import { useStreamCallReceived } from '../utils/hooks/sockets/useStreamCallReceived';
 import { StreamProvider } from '../context/StreamContext';
-import { StreamCallView } from '../components/calls/StreamCallView';
 
 export const AppPage = () => {
   const { user } = useContext(AuthContext);
   const socket = useContext(SocketContext);
   const dispatch = useDispatch<AppDispatch>();
   const navigate = useNavigate();
-  const { activeCallId, callType, isInCall } = useSelector((state: RootState) => state.call);
   const { info } = useToast({ theme: 'dark' });
   const { theme } = useSelector((state: RootState) => state.settings);
   const storageTheme = localStorage.getItem('theme') as SelectableTheme;
@@ -84,9 +82,6 @@ export const AppPage = () => {
         }
       >
         {IncomingCallUI}
-        {isInCall && activeCallId && (
-          <StreamCallView callId={activeCallId} type={callType} />
-        )}
         <LayoutPage>
           <UserSidebar />
           <Outlet />

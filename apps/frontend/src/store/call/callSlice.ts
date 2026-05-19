@@ -3,12 +3,9 @@ import { createSlice, PayloadAction } from '@reduxjs/toolkit';
 export interface CallState {
   activeCallId?: string;
   callType?: 'video' | 'audio';
-  isInCall: boolean;
 }
 
-const initialState: CallState = {
-  isInCall: false,
-};
+const initialState: CallState = {};
 
 export const callSlice = createSlice({
   name: 'callSlice',
@@ -17,12 +14,10 @@ export const callSlice = createSlice({
     setActiveCall: (state, action: PayloadAction<{ callId: string; callType: 'video' | 'audio' }>) => {
       state.activeCallId = action.payload.callId;
       state.callType = action.payload.callType;
-      state.isInCall = true;
     },
     clearActiveCall: (state) => {
       state.activeCallId = undefined;
       state.callType = undefined;
-      state.isInCall = false;
     },
   },
 });

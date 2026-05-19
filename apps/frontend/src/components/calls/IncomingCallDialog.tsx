@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { useDispatch } from 'react-redux';
+import { useNavigate } from 'react-router-dom';
 import { useStreamClient } from '../../context/StreamContext';
-import { setActiveCall, clearActiveCall } from '../../store/call/callSlice';
 import { SocketContext } from '../../utils/context/SocketContext';
 import { useContext } from 'react';
 
@@ -20,8 +19,7 @@ interface IncomingCallDialogProps {
 }
 
 export const IncomingCallDialog: React.FC<IncomingCallDialogProps> = ({ payload, onClose }) => {
-  const client = useStreamClient();
-  const dispatch = useDispatch();
+  const navigate = useNavigate();
   const socket = useContext(SocketContext);
   const [timeLeft, setTimeLeft] = useState(30);
 
@@ -41,21 +39,15 @@ export const IncomingCallDialog: React.FC<IncomingCallDialogProps> = ({ payload,
   }, []);
 
   const handleAccept = async () => {
-    try {
-      const call = client.call('default', payload.callId);
-      await call.join({ create: false });
+    // Notify caller that we accepted
+    socket.emit('streamCallAccepted', {
+      callId: payload.callId,
+      recipientId: payload.recipientId,
+    });
 
-      // Notify caller that we accepted
-      socket.emit('streamCallAccepted', {
-        callId: payload.callId,
-        recipientId: payload.recipientId,
-      });
-
-      dispatch(setActiveCall({ callId: payload.callId, callType: payload.callType }));
-      onClose();
-    } catch (error) {
-      console.error('Failed to join call:', error);
-    }
+    // Navigate to the call page
+    navigate(`/call/${payload.callId}`, { replace: false });
+    onClose();
   };
 
   const handleReject = () => {
@@ -65,7 +57,6 @@ export const IncomingCallDialog: React.FC<IncomingCallDialogProps> = ({ payload,
       recipientId: payload.recipientId,
     });
 
-    dispatch(clearActiveCall());
     onClose();
   };
 

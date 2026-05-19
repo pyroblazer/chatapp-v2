@@ -75,6 +75,9 @@ const SettingsAppearancePage = lazy(() =>
 const CallsPage = lazy(() =>
   import('./pages/calls/CallsPage').then((m) => ({ default: m.CallsPage }))
 );
+const CallPage = lazy(() =>
+  import('./pages/CallPage').then((m) => ({ default: m.CallPage }))
+);
 const BlockedPage = lazy(() =>
   import('./pages/friends/BlockedPage').then((m) => ({
     default: m.BlockedPage,
@@ -182,6 +185,7 @@ function App() {
                 <Route path="appearance" element={<SettingsAppearancePage />} />
               </Route>
               <Route path="calls" element={<CallsPage />} />
+              <Route path="call/:callId" element={<CallPage />} />
               <Route path="*" element={<Navigate to="/conversations" replace />} />
             </Route>
           </Routes>
