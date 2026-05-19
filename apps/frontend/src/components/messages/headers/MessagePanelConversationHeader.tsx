@@ -34,15 +34,9 @@ export const MessagePanelConversationHeader = () => {
       // Create a unique call ID
       const callId = `call-${conversation.id}-${Date.now()}`;
 
-      // Create the call via Stream
+      // Create and join the call via Stream (caller joins immediately)
       const call = client.call('default', callId);
-      await call.create({
-        data: {
-          type,
-          conversationId: conversation.id,
-          participants: [user.id, recipient.id],
-        },
-      });
+      await call.join({ create: true });
 
       // Notify the recipient via Socket.IO
       const callerDisplayName = user.firstName && user.lastName
@@ -58,7 +52,7 @@ export const MessagePanelConversationHeader = () => {
         conversationId: conversation.id,
       });
 
-      // Update Redux state and join the call
+      // Update Redux state so caller enters the call UI
       dispatch(setActiveCall({ callId, callType: type }));
     } catch (error) {
       console.error('Failed to start call:', error);

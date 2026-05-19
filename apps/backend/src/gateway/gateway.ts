@@ -587,6 +587,30 @@ export class MessagingGateway
     }
   }
 
+  @SubscribeMessage('streamCallAccepted')
+  async handleStreamCallAccepted(
+    @MessageBody() data: { callId: string; recipientId: string },
+    @ConnectedSocket() socket: AuthenticatedSocket,
+  ) {
+    // Notify the caller that the recipient accepted
+    const callerSocket = this.sessions.getUserSocket(data.recipientId);
+    if (callerSocket) {
+      callerSocket.emit('streamCallAccepted', data);
+    }
+  }
+
+  @SubscribeMessage('streamCallRejected')
+  async handleStreamCallRejected(
+    @MessageBody() data: { callId: string; recipientId: string },
+    @ConnectedSocket() socket: AuthenticatedSocket,
+  ) {
+    // Notify the caller that the recipient rejected
+    const callerSocket = this.sessions.getUserSocket(data.recipientId);
+    if (callerSocket) {
+      callerSocket.emit('streamCallRejected', data);
+    }
+  }
+
   @OnEvent(ServerEvents.NOTIFICATION_CREATED)
   handleNotificationCreated(payload: { notification: any }) {
     const { notification } = payload;

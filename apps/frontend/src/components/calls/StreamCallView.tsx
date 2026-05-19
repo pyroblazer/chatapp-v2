@@ -10,6 +10,8 @@ import {
 import { useStreamClient } from '../../context/StreamContext';
 import { clearActiveCall } from '../../store/call/callSlice';
 import { AppDispatch } from '../../store';
+import { SocketContext } from '../../utils/context/SocketContext';
+import { useContext } from 'react';
 
 interface StreamCallViewProps {
   callId: string;
@@ -19,54 +21,54 @@ interface StreamCallViewProps {
 export const StreamCallView: React.FC<StreamCallViewProps> = ({ callId, type = 'video' }) => {
   const client = useStreamClient();
   const dispatch = useDispatch<AppDispatch>();
+  const socket = useContext(SocketContext);
   const [call, setCall] = useState(client.call('default', callId));
   const [hasJoined, setHasJoined] = useState(false);
-  const [callTimeout, setCallTimeout] = useState<NodeJS.Timeout | null>(null);
+  const [isCaller, setIsCaller] = useState(false);
 
   useEffect(() => {
     let mounted = true;
 
     const joinCall = async () => {
       try {
-        // Join the call
+        // Try to join the call (for receiver)
         await call.join({ create: false });
         if (mounted) {
           setHasJoined(true);
+          setIsCaller(false);
         }
       } catch (error) {
         console.error('Failed to join call:', error);
-        // Call might not exist yet, try creating it
+        // Call might not exist yet, we're the caller
         try {
-          await call.create({ data: { type } });
-          await call.join();
+          // Caller already joined when initiating, so just set state
           if (mounted) {
             setHasJoined(true);
+            setIsCaller(true);
           }
         } catch (createError) {
-          console.error('Failed to create/join call:', createError);
+          console.error('Failed to handle call:', createError);
         }
       }
     };
 
-    // Set up a timeout for miscall (30 seconds to answer)
-    const timeoutId = setTimeout(() => {
-      const currentState = call.state.callingState;
-      if (currentState !== CallingState.JOINED && currentState !== CallingState.JOINING) {
-        console.log('Call not answered within timeout, ending call');
+    joinCall();
+
+    // Listen for call rejection
+    const handleCallRejected = (data: { callId: string; recipientId: string }) => {
+      if (data.callId === callId) {
+        console.log('Call was rejected by recipient');
         leaveCall();
       }
-    }, 30000); // 30 seconds
+    };
 
-    setCallTimeout(timeoutId);
-    joinCall();
+    socket.on('streamCallRejected', handleCallRejected);
 
     return () => {
       mounted = false;
-      if (callTimeout) {
-        clearTimeout(callTimeout);
-      }
+      socket.off('streamCallRejected', handleCallRejected);
     };
-  }, [call, type]);
+  }, [call, callId, socket]);
 
   const leaveCall = async () => {
     try {
@@ -101,7 +103,7 @@ export const StreamCallView: React.FC<StreamCallViewProps> = ({ callId, type = '
           gap: '20px',
         }}
       >
-        <div>Joining call...</div>
+        <div>{isCaller ? 'Waiting for answer...' : 'Joining call...'}</div>
         <button
           onClick={leaveCall}
           style={{

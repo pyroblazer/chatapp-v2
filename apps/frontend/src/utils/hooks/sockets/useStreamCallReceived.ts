@@ -1,9 +1,7 @@
-import { useEffect } from 'react';
-import { useDispatch } from 'react-redux';
+import { useEffect, useState } from 'react';
 import { SocketContext } from '../../context/SocketContext';
 import { useContext } from 'react';
-import { setActiveCall } from '../../../store/call/callSlice';
-import { useToast } from '../useToast';
+import { IncomingCallDialog } from '../../../components/calls/IncomingCallDialog';
 
 interface StreamCallPayload {
   callId: string;
@@ -16,8 +14,7 @@ interface StreamCallPayload {
 
 export const useStreamCallReceived = () => {
   const socket = useContext(SocketContext);
-  const dispatch = useDispatch();
-  const { info, warning } = useToast({ theme: 'dark' });
+  const [incomingCall, setIncomingCall] = useState<StreamCallPayload | null>(null);
 
   useEffect(() => {
     const handleStreamCallInitiated = (payload: StreamCallPayload) => {
@@ -27,21 +24,8 @@ export const useStreamCallReceived = () => {
         return;
       }
 
-      // Show incoming call notification
-      info(
-        `Incoming ${payload.callType} call from ${payload.callerName}`,
-        {
-          position: 'top-center',
-          duration: 30000, // Show for 30 seconds (same as call timeout)
-          onClick: () => {
-            // Join the call when notification is clicked
-            dispatch(setActiveCall({ callId: payload.callId, callType: payload.callType }));
-          },
-        }
-      );
-
-      // Auto-join the call
-      dispatch(setActiveCall({ callId: payload.callId, callType: payload.callType }));
+      // Show incoming call dialog
+      setIncomingCall(payload);
     };
 
     socket.on('streamCallInitiated', handleStreamCallInitiated);
@@ -49,5 +33,15 @@ export const useStreamCallReceived = () => {
     return () => {
       socket.off('streamCallInitiated', handleStreamCallInitiated);
     };
-  }, [socket, dispatch, info, warning]);
+  }, [socket]);
+
+  const handleCloseDialog = () => {
+    setIncomingCall(null);
+  };
+
+  const IncomingCallUI = incomingCall
+    ? React.createElement(IncomingCallDialog, { payload: incomingCall, onClose: handleCloseDialog })
+    : null;
+
+  return { IncomingCallUI };
 };

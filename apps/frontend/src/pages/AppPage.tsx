@@ -37,7 +37,7 @@ export const AppPage = () => {
   }, [dispatch]);
 
   useFriendRequestReceived();
-  useStreamCallReceived();
+  const { IncomingCallUI } = useStreamCallReceived();
 
   useEffect(() => {
     socket.on('onFriendRequestCancelled', (payload: FriendRequest) => {
@@ -83,6 +83,7 @@ export const AppPage = () => {
             : LightTheme
         }
       >
+        {IncomingCallUI}
         {isInCall && activeCallId && (
           <StreamCallView callId={activeCallId} type={callType} />
         )}
