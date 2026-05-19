@@ -6,6 +6,7 @@ import { RootState } from '../../../store';
 import { setActiveCall } from '../../../store/call/callSlice';
 import { selectConversationById } from '../../../store/conversationSlice';
 import { AuthContext } from '../../../utils/context/AuthContext';
+import { SocketContext } from '../../../utils/context/SocketContext';
 import { getRecipientFromConversation } from '../../../utils/helpers';
 import { useStreamClient } from '../../../context/StreamContext';
 import {
@@ -16,6 +17,7 @@ import {
 export const MessagePanelConversationHeader = () => {
   const user = useContext(AuthContext).user!;
   const { id } = useParams();
+  const socket = useContext(SocketContext);
   const client = useStreamClient();
 
   const dispatch = useDispatch();
@@ -42,7 +44,17 @@ export const MessagePanelConversationHeader = () => {
         },
       });
 
-      // Update Redux state
+      // Notify the recipient via Socket.IO
+      socket.emit('streamCallInitiated', {
+        callId,
+        callType: type,
+        callerId: user.id,
+        callerName: user.username,
+        recipientId: recipient.id,
+        conversationId: conversation.id,
+      });
+
+      // Update Redux state and join the call
       dispatch(setActiveCall({ callId, callType: type }));
     } catch (error) {
       console.error('Failed to start call:', error);

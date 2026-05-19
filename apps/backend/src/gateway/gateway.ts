@@ -568,6 +568,25 @@ export class MessagingGateway
     socket.emit(WebsocketEvents.VOICE_CALL_REJECTED, { receiver });
   }
 
+  @SubscribeMessage('streamCallInitiated')
+  async handleStreamCallInitiated(
+    @MessageBody() data: {
+      callId: string;
+      callType: 'video' | 'audio';
+      callerId: string;
+      callerName: string;
+      recipientId: string;
+      conversationId: string;
+    },
+    @ConnectedSocket() socket: AuthenticatedSocket,
+  ) {
+    // Forward the call notification to the recipient
+    const recipientSocket = this.sessions.getUserSocket(data.recipientId);
+    if (recipientSocket) {
+      recipientSocket.emit('streamCallInitiated', data);
+    }
+  }
+
   @OnEvent(ServerEvents.NOTIFICATION_CREATED)
   handleNotificationCreated(payload: { notification: any }) {
     const { notification } = payload;

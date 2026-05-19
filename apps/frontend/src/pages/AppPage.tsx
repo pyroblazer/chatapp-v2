@@ -18,6 +18,7 @@ import { ThemeProvider } from 'styled-components';
 import { DarkTheme, LightTheme } from '../utils/themes';
 import { AuthContext } from '../utils/context/AuthContext';
 import { useFriendRequestReceived } from '../utils/hooks/sockets/friend-requests/useFriendRequestReceived';
+import { useStreamCallReceived } from '../utils/hooks/sockets/useStreamCallReceived';
 import { StreamProvider } from '../context/StreamContext';
 import { StreamCallView } from '../components/calls/StreamCallView';
 
@@ -36,6 +37,7 @@ export const AppPage = () => {
   }, [dispatch]);
 
   useFriendRequestReceived();
+  useStreamCallReceived();
 
   useEffect(() => {
     socket.on('onFriendRequestCancelled', (payload: FriendRequest) => {
