@@ -6,6 +6,8 @@
     "dev": "concurrently --names \"backend,frontend\" --prefix-colors \"cyan,magenta\" \"cd apps/backend && bun dev\" \"cd apps/frontend && bun dev\"",
     "dev:backend": "cd apps/backend && bun dev",
     "dev:frontend": "cd apps/frontend && bun dev",
+    "build": "cd apps/backend && npm run build",
+    "start": "cd apps/backend && npm run start:prod",
     "docker:up": "docker compose --env-file .env.docker down --remove-orphans && docker compose --env-file .env.docker up --build",
     "docker:up:d": "docker compose --env-file .env.docker down --remove-orphans && docker compose --env-file .env.docker up --build -d",
     "docker:up:dev": "docker compose --env-file .env.docker down --remove-orphans && docker compose --env-file .env.docker -f docker-compose.yml -f docker-compose.override.yml up --build",
