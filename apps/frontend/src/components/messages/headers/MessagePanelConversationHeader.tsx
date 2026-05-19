@@ -45,11 +45,15 @@ export const MessagePanelConversationHeader = () => {
       });
 
       // Notify the recipient via Socket.IO
+      const callerDisplayName = user.firstName && user.lastName
+        ? `${user.firstName} ${user.lastName}`
+        : user.username;
+
       socket.emit('streamCallInitiated', {
         callId,
         callType: type,
         callerId: user.id,
-        callerName: user.username,
+        callerName: callerDisplayName,
         recipientId: recipient.id,
         conversationId: conversation.id,
       });

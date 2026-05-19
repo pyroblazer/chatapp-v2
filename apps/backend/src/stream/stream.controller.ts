@@ -15,6 +15,10 @@ export class StreamController {
       token,
       userId,
       apiKey: process.env.STREAM_API_KEY,
+      // Include user's name for display in calls
+      firstName: req.user.firstName,
+      lastName: req.user.lastName,
+      username: req.user.username,
     };
   }
 }

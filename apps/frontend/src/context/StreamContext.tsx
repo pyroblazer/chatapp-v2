@@ -48,11 +48,16 @@ export const StreamProvider: React.FC<StreamProviderProps> = ({ children }) => {
           throw new Error('Failed to get Stream token');
         }
 
-        const { token: streamToken, userId, apiKey } = await response.json();
+        const { token: streamToken, userId, apiKey, firstName, lastName, username } = await response.json();
+
+        // Create display name from firstName + lastName, fallback to username
+        const displayName = firstName && lastName
+          ? `${firstName} ${lastName}`
+          : username || userId;
 
         const streamUser: StreamUser = {
           id: userId,
-          name: userId, // You can customize this with actual user data
+          name: displayName,
           image: undefined,
         };
 
