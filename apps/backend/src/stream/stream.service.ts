@@ -14,9 +14,7 @@ export class StreamService {
 
   async createVideoToken(userId: string) {
     const exp = Math.floor(Date.now() / 1000) + 86400; // 24 hours from now (unlimited call duration)
-    const token = this.client.createToken(userId, {
-      exp,
-    });
+    const token = this.client.createToken(userId, exp);
 
     return token;
   }
