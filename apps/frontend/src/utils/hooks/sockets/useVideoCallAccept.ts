@@ -9,11 +9,13 @@ import {
   setCall,
   setActiveConversationId,
   setRemoteStream,
+  setLocalStream,
 } from '../../../store/call/callSlice';
 import { AuthContext } from '../../context/AuthContext';
 import { SocketContext } from '../../context/SocketContext';
 import { AcceptedCallPayload } from '../../types';
 import { debugPeer, debugStream } from '../../debug/webrtc';
+import store from '../../../store';
 
 /**
  * This useEffect will only trigger logic for the person who initiated
@@ -47,7 +49,7 @@ export function useVideoCallAccept() {
       }
 
       if (data.caller.id === user!.id) {
-        console.log('=== Video Call Accepted ===');
+        console.log('=== Caller (User A) - Initiating Call ===');
         console.log('Call data:', data);
 
         if (!peer || !peer.id) {
@@ -98,6 +100,81 @@ export function useVideoCallAccept() {
           newCall.on('close', () => {
             console.log('PeerJS call closed');
           });
+        }
+      } else if (data.acceptor.id === user!.id) {
+        console.log('=== Acceptor (User B) - Setting up to receive call ===');
+        console.log('Call data:', data);
+
+        // User B (acceptor) needs to:
+        // 1. Create local stream
+        // 2. Listen for incoming call from User A
+        // 3. Answer the call with local stream
+
+        if (!localStream) {
+          console.log('Creating local stream for acceptor');
+          navigator.mediaDevices.getUserMedia({ video: true, audio: true })
+            .then((stream) => {
+              console.log('Local stream created for acceptor');
+              debugStream(stream, 'Local (Acceptor)');
+              dispatch(setLocalStream(stream));
+
+              // Set up listener for incoming call AFTER stream is ready
+              setupIncomingCallListener();
+            })
+            .catch((err) => {
+              console.error('Failed to get local stream for acceptor:', err);
+            });
+        } else {
+          console.log('Using existing local stream for acceptor');
+          debugStream(localStream, 'Local (Acceptor)');
+          setupIncomingCallListener();
+        }
+
+        function setupIncomingCallListener() {
+          if (!peer) {
+            console.error('Peer not initialized for acceptor');
+            return;
+          }
+
+          console.log('Setting up incoming call listener for acceptor');
+
+          // Listen for incoming call from User A
+          peer.on('call', (call) => {
+            console.log('Incoming call received:', call);
+            console.log('Caller peer ID:', call.peer);
+
+            // Get current local stream from Redux state
+            const currentLocalStream = localStream || (store.getState() as any).call.localStream;
+
+            if (!currentLocalStream) {
+              console.error('No local stream available to answer call');
+              return;
+            }
+
+            console.log('Answering call with local stream');
+            debugStream(currentLocalStream, 'Local (Answering)');
+
+            // Answer the call with local stream
+            call.answer(currentLocalStream);
+            dispatch(setCall(call));
+
+            // Listen for remote stream from User A
+            call.on('stream', (remoteStream) => {
+              console.log('Received remote stream from caller:', remoteStream);
+              debugStream(remoteStream, 'Remote (from caller)');
+              dispatch(setRemoteStream(remoteStream));
+            });
+
+            call.on('error', (err) => {
+              console.error('PeerJS call error (acceptor):', err);
+            });
+
+            call.on('close', () => {
+              console.log('PeerJS call closed (acceptor)');
+            });
+          });
+
+          console.log('Incoming call listener set up for acceptor');
         }
       }
     });
