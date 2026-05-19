@@ -166,6 +166,7 @@ describe('friendsSlice', () => {
       friendRequests: [],
       onlineFriends: [],
       offlineFriends: [],
+      userStatuses: {},
       showContextMenu: false,
       points: { x: 0, y: 0 },
     };
@@ -179,6 +180,7 @@ describe('friendsSlice', () => {
       friendRequests: [],
       onlineFriends: [],
       offlineFriends: [],
+      userStatuses: {},
       showContextMenu: false,
       points: { x: 0, y: 0 },
     };

@@ -1,158 +1,38 @@
 import callReducer, {
-  setPeer,
-  setCall,
-  setLocalStream,
-  setRemoteStream,
-  setIsReceivingCall,
-  setIsCalling,
-  setIsCallInProgress,
-  setCaller,
-  setReceiver,
-  resetState,
-  setActiveConversationId,
-  setCallType,
-  setUserBusy,
-  setCallError,
+  setActiveCall,
+  clearActiveCall,
   type CallState,
 } from '../callSlice';
 
 describe('callSlice', () => {
   it('should return the correct initial state', () => {
     const result = callReducer(undefined, { type: 'unknown' });
-    expect(result).toEqual({
-      isCalling: false,
-      isCallInProgress: false,
-      isReceivingCall: false,
-      isUserBusy: false,
-    });
+    expect(result).toEqual({});
   });
 
-  it('should set peer via setPeer', () => {
-    const mockPeer = {} as any;
-    const result = callReducer(undefined, setPeer(mockPeer));
-    expect(result.peer).toBe(mockPeer);
-  });
-
-  it('should set call via setCall', () => {
-    const mockCall = {} as any;
-    const result = callReducer(undefined, setCall(mockCall));
-    expect(result.call).toBe(mockCall);
-  });
-
-  it('should set localStream via setLocalStream', () => {
-    const mockStream = {} as any;
-    const result = callReducer(undefined, setLocalStream(mockStream));
-    expect(result.localStream).toBe(mockStream);
-  });
-
-  it('should set remoteStream via setRemoteStream', () => {
-    const mockStream = {} as any;
-    const result = callReducer(undefined, setRemoteStream(mockStream));
-    expect(result.remoteStream).toBe(mockStream);
-  });
-
-  it('should set isReceivingCall via setIsReceivingCall', () => {
-    const result = callReducer(undefined, setIsReceivingCall(true));
-    expect(result.isReceivingCall).toBe(true);
-  });
-
-  it('should set isCalling via setIsCalling', () => {
-    const result = callReducer(undefined, setIsCalling(true));
-    expect(result.isCalling).toBe(true);
-  });
-
-  it('should set isCallInProgress and clear isCalling via setIsCallInProgress', () => {
-    const state: CallState = {
-      isCalling: true,
-      isCallInProgress: false,
-      isReceivingCall: false,
-      isUserBusy: false,
-    };
-    const result = callReducer(state, setIsCallInProgress(true));
-    expect(result.isCallInProgress).toBe(true);
-    expect(result.isCalling).toBe(false);
-  });
-
-  it('should set caller via setCaller', () => {
-    const mockUser = { id: 1, username: 'alice' } as any;
-    const result = callReducer(undefined, setCaller(mockUser));
-    expect(result.caller).toBe(mockUser);
-  });
-
-  it('should set receiver via setReceiver', () => {
-    const mockUser = { id: 2, username: 'bob' } as any;
-    const result = callReducer(undefined, setReceiver(mockUser));
-    expect(result.receiver).toBe(mockUser);
-  });
-
-  it('should set activeConversationId', () => {
-    const result = callReducer(undefined, setActiveConversationId(42));
-    expect(result.activeConversationId).toBe(42);
-  });
-
-  it('should set callType', () => {
-    const result = callReducer(undefined, setCallType('video'));
+  it('should set activeCallId and callType via setActiveCall', () => {
+    const result = callReducer(undefined, setActiveCall({ callId: 'abc-123', callType: 'video' }));
+    expect(result.activeCallId).toBe('abc-123');
     expect(result.callType).toBe('video');
   });
 
-  it('should reset all call state via resetState (except peer)', () => {
-    const mockPeer = { id: 'test-peer' } as any;
+  it('should clear active call via clearActiveCall', () => {
     const state: CallState = {
-      isCalling: true,
-      isCallInProgress: true,
-      isReceivingCall: true,
-      caller: {} as any,
-      receiver: {} as any,
-      peer: mockPeer,
-      call: {} as any,
-      connection: {} as any,
-      remoteStream: {} as any,
-      localStream: {} as any,
-      activeConversationId: 5,
+      activeCallId: 'abc-123',
       callType: 'audio',
-      isUserBusy: true,
-      busyMessage: 'In another call',
-      callError: 'Test error',
     };
-    const result = callReducer(state, resetState());
-    // resetState does NOT clear peer
-    expect(result.peer).toBe(mockPeer);
-    expect(result.isCalling).toBe(false);
-    expect(result.isCallInProgress).toBe(false);
-    expect(result.isReceivingCall).toBe(false);
-    expect(result.caller).toBeUndefined();
-    expect(result.receiver).toBeUndefined();
-    expect(result.call).toBeUndefined();
-    expect(result.connection).toBeUndefined();
-    expect(result.remoteStream).toBeUndefined();
-    expect(result.localStream).toBeUndefined();
-    expect(result.activeConversationId).toBeUndefined();
+    const result = callReducer(state, clearActiveCall());
+    expect(result.activeCallId).toBeUndefined();
     expect(result.callType).toBeUndefined();
-    expect(result.isUserBusy).toBe(false);
-    expect(result.busyMessage).toBeUndefined();
-    expect(result.callError).toBeUndefined();
   });
 
-  it('should set user busy state via setUserBusy', () => {
-    const result = callReducer(undefined, setUserBusy({ busy: true, message: 'In another call' }));
-    expect(result.isUserBusy).toBe(true);
-    expect(result.busyMessage).toBe('In another call');
-  });
-
-  it('should set call error via setCallError', () => {
-    const result = callReducer(undefined, setCallError('Connection failed'));
-    expect(result.callError).toBe('Connection failed');
-  });
-
-  it('should clear call error via setCallError with null', () => {
+  it('should overwrite an existing active call via setActiveCall', () => {
     const state: CallState = {
-      isCalling: false,
-      isCallInProgress: false,
-      isReceivingCall: false,
-      isUserBusy: false,
-      callError: 'Previous error',
+      activeCallId: 'old-id',
+      callType: 'audio',
     };
-    const result = callReducer(state, setCallError(null));
-    expect(result.callError).toBeNull();
+    const result = callReducer(state, setActiveCall({ callId: 'new-id', callType: 'video' }));
+    expect(result.activeCallId).toBe('new-id');
+    expect(result.callType).toBe('video');
   });
 });
