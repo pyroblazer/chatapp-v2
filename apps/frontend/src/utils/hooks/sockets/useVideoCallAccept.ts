@@ -2,6 +2,7 @@ import { useContext, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
 import { AppDispatch, RootState } from '../../../store';
+import { store } from '../../../store';
 import {
   setIsCallInProgress,
   setIsReceivingCall,
@@ -15,7 +16,6 @@ import { AuthContext } from '../../context/AuthContext';
 import { SocketContext } from '../../context/SocketContext';
 import { AcceptedCallPayload } from '../../types';
 import { debugPeer, debugStream } from '../../debug/webrtc';
-import store from '../../../store';
 
 /**
  * This useEffect will only trigger logic for the person who initiated

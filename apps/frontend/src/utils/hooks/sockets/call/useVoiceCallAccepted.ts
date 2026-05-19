@@ -2,6 +2,7 @@ import { useContext, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
 import { AppDispatch, RootState } from '../../../../store';
+import { store } from '../../../../store';
 import {
   setActiveConversationId,
   setCall,
@@ -16,7 +17,6 @@ import { AuthContext } from '../../../context/AuthContext';
 import { SocketContext } from '../../../context/SocketContext';
 import { AcceptedCallPayload } from '../../../types';
 import { debugPeer, debugStream } from '../../../../utils/debug/webrtc';
-import store from '../../../../store';
 
 export function useVoiceCallAccepted() {
   const { user } = useContext(AuthContext);
