@@ -1,18 +1,22 @@
 import { Injectable } from '@nestjs/common';
-import { StreamClient } from '@stream-io/video-react-sdk';
+import { StreamClient } from '@stream-io/node-sdk';
 
 @Injectable()
 export class StreamService {
   private client: StreamClient;
 
   constructor() {
-    this.client = new StreamClient({
-      apiKey: process.env.STREAM_API_KEY,
-      secret: process.env.STREAM_API_SECRET,
-    });
+    const apiKey = process.env.STREAM_API_KEY || '';
+    const secret = process.env.STREAM_API_SECRET || '';
+
+    this.client = new StreamClient(apiKey, secret);
   }
 
   async createVideoToken(userId: string) {
-    return this.client.createToken(userId);
+    const token = this.client.createToken(userId, {
+      validity: 7200, // 2 hours
+    });
+
+    return token;
   }
 }
