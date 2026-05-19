@@ -1,7 +1,6 @@
-import { useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { SocketContext } from '../../context/SocketContext';
 import { AuthContext } from '../../context/AuthContext';
-import { useContext } from 'react';
 import { IncomingCallDialog } from '../../../components/calls/IncomingCallDialog';
 
 interface StreamCallPayload {
@@ -14,8 +13,8 @@ interface StreamCallPayload {
 }
 
 export const useStreamCallReceived = () => {
-  const socket = useContext(SocketContext);
-  const { user } = useContext(AuthContext);
+  const socket = React.useContext(SocketContext);
+  const { user } = React.useContext(AuthContext);
   const [incomingCall, setIncomingCall] = useState<StreamCallPayload | null>(null);
 
   useEffect(() => {

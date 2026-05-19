@@ -1,7 +1,7 @@
 import { useContext } from 'react';
 import { FaPhoneAlt, FaVideo } from 'react-icons/fa';
 import { useDispatch, useSelector } from 'react-redux';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
 import { RootState } from '../../../store';
 import { setActiveCall } from '../../../store/call/callSlice';
 import { selectConversationById } from '../../../store/conversationSlice';
@@ -19,7 +19,6 @@ export const MessagePanelConversationHeader = () => {
   const { id } = useParams();
   const socket = useContext(SocketContext);
   const client = useStreamClient();
-  const navigate = useNavigate();
 
   const dispatch = useDispatch();
   const conversation = useSelector((state: RootState) =>
@@ -53,8 +52,9 @@ export const MessagePanelConversationHeader = () => {
         conversationId: conversation.id,
       });
 
-      // Navigate to the call page (opens like Google Meet)
-      navigate(`/call/${callId}`, { replace: false });
+      // Open call in new browser tab
+      const callUrl = `${window.location.origin}/call/${callId}`;
+      window.open(callUrl, '_blank', 'noopener,noreferrer');
     } catch (error) {
       console.error('Failed to start call:', error);
     }

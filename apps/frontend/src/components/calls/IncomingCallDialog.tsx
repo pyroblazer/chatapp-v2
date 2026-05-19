@@ -1,5 +1,4 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { SocketContext } from '../../utils/context/SocketContext';
 import { useContext } from 'react';
 import { FaVideo, FaPhone, FaPhoneSlash } from 'react-icons/fa';
@@ -19,7 +18,6 @@ interface IncomingCallDialogProps {
 }
 
 export const IncomingCallDialog: React.FC<IncomingCallDialogProps> = ({ payload, onClose }) => {
-  const navigate = useNavigate();
   const socket = useContext(SocketContext);
   const [timeLeft, setTimeLeft] = useState(30);
   const ringtoneRef = useRef<HTMLAudioElement | null>(null);
@@ -70,8 +68,10 @@ export const IncomingCallDialog: React.FC<IncomingCallDialogProps> = ({ payload,
       recipientId: payload.recipientId,
     });
 
-    // Navigate to the call page
-    navigate(`/call/${payload.callId}`, { replace: false });
+    // Open call in new browser tab
+    const callUrl = `${window.location.origin}/call/${payload.callId}`;
+    window.open(callUrl, '_blank', 'noopener,noreferrer');
+
     onClose();
   };
 
