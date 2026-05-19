@@ -1,8 +1,8 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useStreamClient } from '../../context/StreamContext';
 import { SocketContext } from '../../utils/context/SocketContext';
 import { useContext } from 'react';
+import { FaVideo, FaPhone, FaPhoneSlash } from 'react-icons/fa';
 
 interface IncomingCallPayload {
   callId: string;
@@ -22,8 +22,18 @@ export const IncomingCallDialog: React.FC<IncomingCallDialogProps> = ({ payload,
   const navigate = useNavigate();
   const socket = useContext(SocketContext);
   const [timeLeft, setTimeLeft] = useState(30);
+  const ringtoneRef = useRef<HTMLAudioElement | null>(null);
 
   useEffect(() => {
+    // Play ringtone
+    try {
+      ringtoneRef.current = new Audio('/sounds/ringtone.mp3');
+      ringtoneRef.current.loop = true;
+      ringtoneRef.current.play().catch((err) => console.log('Could not play ringtone:', err));
+    } catch (err) {
+      console.log('Ringtone not available:', err);
+    }
+
     const timer = setInterval(() => {
       setTimeLeft((prev) => {
         if (prev <= 1) {
@@ -35,10 +45,25 @@ export const IncomingCallDialog: React.FC<IncomingCallDialogProps> = ({ payload,
       });
     }, 1000);
 
-    return () => clearInterval(timer);
+    return () => {
+      clearInterval(timer);
+      if (ringtoneRef.current) {
+        ringtoneRef.current.pause();
+        ringtoneRef.current = null;
+      }
+    };
   }, []);
 
+  const stopRingtone = () => {
+    if (ringtoneRef.current) {
+      ringtoneRef.current.pause();
+      ringtoneRef.current = null;
+    }
+  };
+
   const handleAccept = async () => {
+    stopRingtone();
+
     // Notify caller that we accepted
     socket.emit('streamCallAccepted', {
       callId: payload.callId,
@@ -51,6 +76,8 @@ export const IncomingCallDialog: React.FC<IncomingCallDialogProps> = ({ payload,
   };
 
   const handleReject = () => {
+    stopRingtone();
+
     // Notify caller that we rejected
     socket.emit('streamCallRejected', {
       callId: payload.callId,
@@ -68,63 +95,178 @@ export const IncomingCallDialog: React.FC<IncomingCallDialogProps> = ({ payload,
         left: 0,
         right: 0,
         bottom: 0,
-        background: 'rgba(0, 0, 0, 0.8)',
+        background: 'rgba(0, 0, 0, 0.9)',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        zIndex: 10000,
+        zIndex: 999999,
+        animation: 'fadeIn 0.3s ease-in',
       }}
     >
+      <style>
+        {`
+          @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+          }
+          @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+          }
+          .pulse-animation {
+            animation: pulse 2s ease-in-out infinite;
+          }
+        `}
+      </style>
       <div
         style={{
-          background: '#272a30',
-          padding: '40px',
-          borderRadius: '16px',
+          background: 'linear-gradient(135deg, #1e1e2e 0%, #2d2d44 100%)',
+          padding: '50px',
+          borderRadius: '24px',
           textAlign: 'center',
           color: 'white',
-          minWidth: '400px',
+          minWidth: '500px',
+          maxWidth: '90%',
+          boxShadow: '0 20px 60px rgba(0, 0, 0, 0.5)',
+          border: '1px solid rgba(255, 255, 255, 0.1)',
         }}
       >
-        <h2 style={{ marginBottom: '20px' }}>
-          Incoming {payload.callType} call
+        {/* Call Icon */}
+        <div style={{ marginBottom: '30px' }} className="pulse-animation">
+          {payload.callType === 'video' ? (
+            <FaVideo size={80} color="#3498db" />
+          ) : (
+            <FaPhone size={80} color="#3498db" />
+          )}
+        </div>
+
+        {/* Call Type */}
+        <h2
+          style={{
+            marginBottom: '15px',
+            fontSize: '28px',
+            fontWeight: '600',
+            textTransform: 'uppercase',
+            letterSpacing: '1px',
+          }}
+        >
+          Incoming {payload.callType} Call
         </h2>
-        <p style={{ marginBottom: '10px', fontSize: '18px' }}>
-          {payload.callerName} is calling you...
+
+        {/* Caller Name */}
+        <p
+          style={{
+            marginBottom: '10px',
+            fontSize: '24px',
+            fontWeight: '500',
+          }}
+        >
+          {payload.callerName}
         </p>
-        <p style={{ marginBottom: '30px', color: '#aaa' }}>
-          {timeLeft}s remaining
+
+        {/* Calling... text */}
+        <p
+          style={{
+            marginBottom: '30px',
+            color: '#aaa',
+            fontSize: '16px',
+          }}
+        >
+          is calling you...
         </p>
-        <div style={{ display: 'flex', gap: '20px', justifyContent: 'center' }}>
+
+        {/* Timer */}
+        <div
+          style={{
+            marginBottom: '40px',
+            padding: '10px 20px',
+            background: 'rgba(255, 255, 255, 0.1)',
+            borderRadius: '20px',
+            display: 'inline-block',
+          }}
+        >
+          <span style={{ fontSize: '20px', fontWeight: 'bold' }}>
+            {timeLeft}s
+          </span>
+        </div>
+
+        {/* Action Buttons */}
+        <div
+          style={{
+            display: 'flex',
+            gap: '30px',
+            justifyContent: 'center',
+            alignItems: 'center',
+          }}
+        >
+          {/* Decline Button */}
           <button
             onClick={handleReject}
             style={{
-              padding: '12px 30px',
+              width: '80px',
+              height: '80px',
+              borderRadius: '50%',
               background: '#e74c3c',
               color: 'white',
               border: 'none',
-              borderRadius: '8px',
-              fontSize: '16px',
               cursor: 'pointer',
-              fontWeight: 'bold',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              transition: 'all 0.2s',
+              boxShadow: '0 4px 15px rgba(231, 76, 60, 0.4)',
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.transform = 'scale(1.1)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.transform = 'scale(1)';
             }}
           >
-            Decline
+            <FaPhoneSlash size={32} />
           </button>
+
+          {/* Accept Button */}
           <button
             onClick={handleAccept}
             style={{
-              padding: '12px 30px',
+              width: '80px',
+              height: '80px',
+              borderRadius: '50%',
               background: '#27ae60',
               color: 'white',
               border: 'none',
-              borderRadius: '8px',
-              fontSize: '16px',
               cursor: 'pointer',
-              fontWeight: 'bold',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              transition: 'all 0.2s',
+              boxShadow: '0 4px 15px rgba(39, 174, 96, 0.4)',
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.transform = 'scale(1.1)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.transform = 'scale(1)';
             }}
           >
-            Accept
+            <FaPhone size={32} style={{ transform: 'rotate(135deg)' }} />
           </button>
+        </div>
+
+        {/* Labels */}
+        <div
+          style={{
+            marginTop: '20px',
+            display: 'flex',
+            gap: '80px',
+            justifyContent: 'center',
+            fontSize: '14px',
+            color: '#aaa',
+          }}
+        >
+          <span>Decline</span>
+          <span>Accept</span>
         </div>
       </div>
     </div>

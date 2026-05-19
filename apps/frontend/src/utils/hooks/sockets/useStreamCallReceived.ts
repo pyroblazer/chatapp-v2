@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { SocketContext } from '../../context/SocketContext';
+import { AuthContext } from '../../context/AuthContext';
 import { useContext } from 'react';
 import { IncomingCallDialog } from '../../../components/calls/IncomingCallDialog';
 
@@ -14,17 +15,17 @@ interface StreamCallPayload {
 
 export const useStreamCallReceived = () => {
   const socket = useContext(SocketContext);
+  const { user } = useContext(AuthContext);
   const [incomingCall, setIncomingCall] = useState<StreamCallPayload | null>(null);
 
   useEffect(() => {
     const handleStreamCallInitiated = (payload: StreamCallPayload) => {
       // Check if this call is for the current user
-      const currentUserId = localStorage.getItem('userId');
-      if (payload.recipientId !== currentUserId) {
+      if (!user || payload.recipientId !== user.id) {
         return;
       }
 
-      // Show incoming call dialog
+      // Show incoming call dialog (dialog handles ringtone)
       setIncomingCall(payload);
     };
 
@@ -33,7 +34,7 @@ export const useStreamCallReceived = () => {
     return () => {
       socket.off('streamCallInitiated', handleStreamCallInitiated);
     };
-  }, [socket]);
+  }, [socket, user]);
 
   const handleCloseDialog = () => {
     setIncomingCall(null);
