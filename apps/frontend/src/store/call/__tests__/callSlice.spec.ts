@@ -11,6 +11,8 @@ import callReducer, {
   resetState,
   setActiveConversationId,
   setCallType,
+  setUserBusy,
+  setCallError,
   type CallState,
 } from '../callSlice';
 
@@ -21,6 +23,7 @@ describe('callSlice', () => {
       isCalling: false,
       isCallInProgress: false,
       isReceivingCall: false,
+      isUserBusy: false,
     });
   });
 
@@ -63,6 +66,7 @@ describe('callSlice', () => {
       isCalling: true,
       isCallInProgress: false,
       isReceivingCall: false,
+      isUserBusy: false,
     };
     const result = callReducer(state, setIsCallInProgress(true));
     expect(result.isCallInProgress).toBe(true);
@@ -106,6 +110,9 @@ describe('callSlice', () => {
       localStream: {} as any,
       activeConversationId: 5,
       callType: 'audio',
+      isUserBusy: true,
+      busyMessage: 'In another call',
+      callError: 'Test error',
     };
     const result = callReducer(state, resetState());
     // resetState does NOT clear peer
@@ -121,5 +128,31 @@ describe('callSlice', () => {
     expect(result.localStream).toBeUndefined();
     expect(result.activeConversationId).toBeUndefined();
     expect(result.callType).toBeUndefined();
+    expect(result.isUserBusy).toBe(false);
+    expect(result.busyMessage).toBeUndefined();
+    expect(result.callError).toBeUndefined();
+  });
+
+  it('should set user busy state via setUserBusy', () => {
+    const result = callReducer(undefined, setUserBusy({ busy: true, message: 'In another call' }));
+    expect(result.isUserBusy).toBe(true);
+    expect(result.busyMessage).toBe('In another call');
+  });
+
+  it('should set call error via setCallError', () => {
+    const result = callReducer(undefined, setCallError('Connection failed'));
+    expect(result.callError).toBe('Connection failed');
+  });
+
+  it('should clear call error via setCallError with null', () => {
+    const state: CallState = {
+      isCalling: false,
+      isCallInProgress: false,
+      isReceivingCall: false,
+      isUserBusy: false,
+      callError: 'Previous error',
+    };
+    const result = callReducer(state, setCallError(null));
+    expect(result.callError).toBeNull();
   });
 });
