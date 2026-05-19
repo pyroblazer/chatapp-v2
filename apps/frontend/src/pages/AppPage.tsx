@@ -20,6 +20,7 @@ import { AuthContext } from '../utils/context/AuthContext';
 import { useFriendRequestReceived } from '../utils/hooks/sockets/friend-requests/useFriendRequestReceived';
 import { useStreamCallReceived } from '../utils/hooks/sockets/useStreamCallReceived';
 import { useFriendStatus } from '../utils/hooks/sockets/useFriendStatus';
+import { useKeepAlive } from '../utils/hooks/useKeepAlive';
 import { StreamProvider } from '../context/StreamContext';
 
 export const AppPage = () => {
@@ -37,6 +38,7 @@ export const AppPage = () => {
 
   useFriendRequestReceived();
   useFriendStatus();
+  useKeepAlive();
   const { IncomingCallUI } = useStreamCallReceived();
 
   useEffect(() => {
