@@ -20,4 +20,5 @@ export interface IAuthService {
 export interface IJwtPayload {
   sub: string;
   username: string;
+  peerId: string;
 }

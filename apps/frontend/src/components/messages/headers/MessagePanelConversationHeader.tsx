@@ -69,8 +69,18 @@ export const MessagePanelConversationHeader = () => {
         <span>{recipient?.username || 'User'}</span>
       </div>
       <MessagePanelHeaderIcons>
-        <FaPhoneAlt size={24} cursor="pointer" onClick={voiceCallUser} />
-        <FaVideo size={30} cursor="pointer" onClick={videoCallUser} />
+        <FaPhoneAlt
+          size={24}
+          cursor="pointer"
+          onClick={voiceCallUser}
+          data-testid="voice-call-button"
+        />
+        <FaVideo
+          size={30}
+          cursor="pointer"
+          onClick={videoCallUser}
+          data-testid="video-call-button"
+        />
       </MessagePanelHeaderIcons>
     </MessagePanelHeaderStyle>
   );

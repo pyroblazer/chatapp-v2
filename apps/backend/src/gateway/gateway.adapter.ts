@@ -12,17 +12,20 @@ export class WebsocketAdapter extends IoAdapter {
     const server = super.createIOServer(port, options);
 
     // Set up Redis adapter for multi-instance WebSocket scaling
-    const redisHost = process.env.REDIS_HOST || 'localhost';
-    const redisPort = parseInt(process.env.REDIS_PORT || '6379', 10);
-    const redisPassword = process.env.REDIS_PASSWORD || undefined;
+    const redisUrl = process.env.REDIS_URL;
+    const redisOpts = {
+      maxRetriesPerRequest: null as any,
+      keepAlive: 10000,
+      retryStrategy: (t: number) => t > 10 ? null : Math.min(t * 1000, 10000),
+    };
 
     try {
-      const pubClient = new Redis({
-        host: redisHost,
-        port: redisPort,
-        password: redisPassword,
-      });
+      const pubClient = redisUrl
+        ? new Redis(redisUrl, redisOpts)
+        : new Redis({ host: process.env.REDIS_HOST || 'localhost', port: parseInt(process.env.REDIS_PORT || '6379', 10), password: process.env.REDIS_PASSWORD || undefined, ...redisOpts });
+      pubClient.on('error', (err) => this.logger.warn(`Redis pub error: ${err.message}`));
       const subClient = pubClient.duplicate();
+      subClient.on('error', (err) => this.logger.warn(`Redis sub error: ${err.message}`));
 
       server.adapter(createAdapter(pubClient, subClient));
       this.logger.log('Redis adapter applied to WebSocket server');
@@ -50,8 +53,13 @@ export class WebsocketAdapter extends IoAdapter {
           const payload = jwt.verify(token, jwtSecret) as {
             sub: string;
             username: string;
+            peerId: string;
           };
-          socket.user = { id: payload.sub, username: payload.username } as any;
+          socket.user = {
+            id: payload.sub,
+            username: payload.username,
+            peer: { id: payload.peerId },
+          } as any;
           next();
         } catch {
           return next(new Error('Invalid or expired token'));

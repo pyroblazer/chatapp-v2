@@ -391,8 +391,25 @@ export class MessagingGateway
     @ConnectedSocket() socket: AuthenticatedSocket,
   ) {
     const caller = socket.user;
+
+    // Check if receiver is already in a call
+    if (this.sessions.isUserInCall(data.recipientId)) {
+      socket.emit('onUserBusy', {
+        userId: data.recipientId,
+        message: 'User is currently in another call'
+      });
+      return;
+    }
+
     const receiverSocket = this.sessions.getUserSocket(data.recipientId);
-    if (!receiverSocket) socket.emit('onUserUnavailable');
+    if (!receiverSocket) {
+      socket.emit('onUserUnavailable');
+      return;
+    }
+
+    // Mark caller as being in a call
+    this.sessions.setUserInCall(caller.id, true);
+
     receiverSocket.emit('onVideoCall', { ...data, caller });
   }
 
@@ -401,16 +418,29 @@ export class MessagingGateway
     @MessageBody() data: CallAcceptedPayload,
     @ConnectedSocket() socket: AuthenticatedSocket,
   ) {
+    // Mark both parties as being in a call
+    this.sessions.setUserInCall(data.caller.id, true);
+    this.sessions.setUserInCall(socket.user.id, true);
+
     const callerSocket = this.sessions.getUserSocket(data.caller.id);
     const conversation = await this.conversationService.isCreated(
       data.caller.id,
       socket.user.id,
     );
-    if (!conversation) return;
+    if (!conversation) {
+      socket.emit('onVideoCallError', {
+        message: 'Conversation not found. Please start a conversation first.',
+      });
+      return;
+    }
     if (callerSocket) {
       const payload = { ...data, conversation, acceptor: socket.user };
       callerSocket.emit('onVideoCallAccept', payload);
       socket.emit('onVideoCallAccept', payload);
+    } else {
+      socket.emit('onVideoCallError', {
+        message: 'Caller is no longer available.',
+      });
     }
   }
 
@@ -431,6 +461,10 @@ export class MessagingGateway
     @MessageBody() { caller, receiver }: CallHangUpPayload,
     @ConnectedSocket() socket: AuthenticatedSocket,
   ) {
+    // Mark both parties as no longer being in a call
+    this.sessions.setUserInCall(caller.id, false);
+    this.sessions.setUserInCall(receiver.id, false);
+
     if (socket.user.id === caller.id) {
       const receiverSocket = this.sessions.getUserSocket(receiver.id);
       socket.emit('onVideoCallHangUp');
@@ -447,8 +481,25 @@ export class MessagingGateway
     @ConnectedSocket() socket: AuthenticatedSocket,
   ) {
     const caller = socket.user;
+
+    // Check if receiver is already in a call
+    if (this.sessions.isUserInCall(payload.recipientId)) {
+      socket.emit('onUserBusy', {
+        userId: payload.recipientId,
+        message: 'User is currently in another call'
+      });
+      return;
+    }
+
     const receiverSocket = this.sessions.getUserSocket(payload.recipientId);
-    if (!receiverSocket) socket.emit('onUserUnavailable');
+    if (!receiverSocket) {
+      socket.emit('onUserUnavailable');
+      return;
+    }
+
+    // Mark caller as being in a call
+    this.sessions.setUserInCall(caller.id, true);
+
     receiverSocket.emit('onVoiceCall', { ...payload, caller });
   }
 
@@ -457,16 +508,29 @@ export class MessagingGateway
     @MessageBody() payload: CallAcceptedPayload,
     @ConnectedSocket() socket: AuthenticatedSocket,
   ) {
+    // Mark both parties as being in a call
+    this.sessions.setUserInCall(payload.caller.id, true);
+    this.sessions.setUserInCall(socket.user.id, true);
+
     const callerSocket = this.sessions.getUserSocket(payload.caller.id);
     const conversation = await this.conversationService.isCreated(
       payload.caller.id,
       socket.user.id,
     );
-    if (!conversation) return;
+    if (!conversation) {
+      socket.emit('onVoiceCallError', {
+        message: 'Conversation not found. Please start a conversation first.',
+      });
+      return;
+    }
     if (callerSocket) {
       const callPayload = { ...payload, conversation, acceptor: socket.user };
       callerSocket.emit(WebsocketEvents.VOICE_CALL_ACCEPTED, callPayload);
       socket.emit(WebsocketEvents.VOICE_CALL_ACCEPTED, callPayload);
+    } else {
+      socket.emit('onVoiceCallError', {
+        message: 'Caller is no longer available.',
+      });
     }
   }
 
@@ -475,6 +539,10 @@ export class MessagingGateway
     @MessageBody() { caller, receiver }: CallHangUpPayload,
     @ConnectedSocket() socket: AuthenticatedSocket,
   ) {
+    // Mark both parties as no longer being in a call
+    this.sessions.setUserInCall(caller.id, false);
+    this.sessions.setUserInCall(receiver.id, false);
+
     if (socket.user.id === caller.id) {
       const receiverSocket = this.sessions.getUserSocket(receiver.id);
       socket.emit(WebsocketEvents.VOICE_CALL_HANG_UP);

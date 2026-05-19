@@ -27,7 +27,14 @@ export class UserService implements IUserService {
     const peer = this.peerRepository.create();
     const params = { ...userDetails, password, peer };
     const newUser = this.userRepository.create(params);
-    return this.userRepository.save(newUser);
+    try {
+      return await this.userRepository.save(newUser);
+    } catch (err: any) {
+      if (err?.code === '23505' || err?.message?.includes('duplicate key')) {
+        throw new HttpException('User already exists', HttpStatus.CONFLICT);
+      }
+      throw err;
+    }
   }
 
   async findUser(

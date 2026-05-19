@@ -3,7 +3,6 @@ import { GroupRecipientsField } from '../recipients/GroupRecipientsField';
 import {
   InputContainer,
   InputLabel,
-  TextField,
   Button,
   RecipientChipContainer,
   InputField,
@@ -26,7 +25,6 @@ type Props = {
 
 export const CreateGroupForm: FC<Props> = ({ setShowModal }) => {
   const [title, setTitle] = useState('');
-  const [message, setMessage] = useState('');
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<User[]>([]);
   const [selectedRecipients, setSelectedRecipients] = useState<User[]>([]);
@@ -48,7 +46,7 @@ export const CreateGroupForm: FC<Props> = ({ setShowModal }) => {
 
   const onSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    if (selectedRecipients.length === 0 || !message || !title) return;
+    if (selectedRecipients.length === 0 || !title) return;
     const users = selectedRecipients.map((user) => user.username);
     return dispatch(createGroupThunk({ title, users }))
       .unwrap()
@@ -89,15 +87,6 @@ export const CreateGroupForm: FC<Props> = ({ setShowModal }) => {
           <InputField
             value={title}
             onChange={(e) => setTitle(e.target.value)}
-          />
-        </InputContainer>
-      </section>
-      <section className={styles.message}>
-        <InputContainer backgroundColor="#161616">
-          <InputLabel>Message (optional)</InputLabel>
-          <TextField
-            value={message}
-            onChange={(e) => setMessage(e.target.value)}
           />
         </InputContainer>
       </section>

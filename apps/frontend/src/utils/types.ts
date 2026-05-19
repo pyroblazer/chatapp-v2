@@ -36,6 +36,7 @@ export type User = {
   profile?: Profile;
   presence?: UserPresence;
   peer: UserPeer;
+  sessionPeerId?: string;
 };
 
 export type Conversation = {
@@ -48,7 +49,7 @@ export type Conversation = {
 
 export type CreateConversationParams = {
   username: string;
-  message: string;
+  message?: string;
 };
 
 export type MessageAttachment = {

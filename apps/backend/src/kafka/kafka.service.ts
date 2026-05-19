@@ -17,8 +17,10 @@ export class KafkaService implements OnModuleInit, OnModuleDestroy {
     const kafka = new Kafka({
       clientId: process.env.KAFKA_CLIENT_ID || 'chatapp-backend',
       brokers: (process.env.KAFKA_BROKER_LIST || '').split(','),
-      ssl: process.env.KAFKA_SECURITY_PROTOCOL === 'ssl',
+      ssl: process.env.KAFKA_SECURITY_PROTOCOL === 'ssl' ? { rejectUnauthorized: false } : false,
       logLevel: logLevel.WARN,
+      connectionTimeout: 5000,
+      retry: { retries: 3, initialRetryTime: 500 },
     });
 
     this.producer = kafka.producer();
@@ -35,6 +37,8 @@ export class KafkaService implements OnModuleInit, OnModuleDestroy {
       this.logger.log('Kafka producer connected');
     } catch (err) {
       this.logger.warn('Kafka unavailable — running without it');
+      // Disconnect to stop kafkajs background retry loop
+      try { await this.producer.disconnect(); } catch { /* ignore */ }
     }
   }
 

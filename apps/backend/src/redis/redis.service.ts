@@ -1,20 +1,26 @@
 import { Injectable, Logger, OnModuleDestroy } from '@nestjs/common';
 import { Redis } from 'ioredis';
 
-function buildRedisClient(): Redis {
-  const restUrl = process.env.UPSTASH_REDIS_REST_URL;
-  const restToken = process.env.UPSTASH_REDIS_REST_TOKEN;
+const REDIS_OPTS = {
+  maxRetriesPerRequest: null,
+  enableOfflineQueue: true,
+  keepAlive: 10000,
+  retryStrategy: (times: number) => {
+    if (times > 10) return null; // stop retrying after 10 consecutive failures
+    return Math.min(times * 1000, 10000);
+  },
+};
 
-  if (restUrl && restToken) {
-    const host = restUrl.replace(/^https?:\/\//, '');
-    return new Redis({ host, port: 6379, password: restToken, tls: {} });
+function buildRedisClient(): Redis {
+  const url = process.env.REDIS_URL;
+  if (url) {
+    return new Redis(url, REDIS_OPTS);
   }
 
   const host = process.env.REDIS_HOST || 'localhost';
   const port = Number(process.env.REDIS_PORT || 6379);
   const password = process.env.REDIS_PASSWORD || undefined;
-  const tls = process.env.REDIS_TLS === 'true' ? {} : undefined;
-  return new Redis({ host, port, password, tls });
+  return new Redis({ host, port, password, ...REDIS_OPTS });
 }
 
 @Injectable()
@@ -26,7 +32,8 @@ export class RedisService implements OnModuleDestroy {
   constructor() {
     this.client = buildRedisClient();
     this.client.on('connect', () => { this.connected = true; });
-    this.client.on('error', (err) => { this.logger.error('Redis error', err.message); });
+    this.client.on('close', () => { this.connected = false; });
+    this.client.on('error', (err) => { this.logger.warn(`Redis connection error: ${err.message}`); });
   }
 
   isAvailable(): boolean {

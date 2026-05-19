@@ -121,6 +121,17 @@ describe('StorageService', () => {
       expect(mockDeleteFiles).toHaveBeenCalledWith('file.txt');
     });
 
+    it('falls back to local storage when UTApi.uploadFiles throws', async () => {
+      mockUploadFiles.mockRejectedValueOnce(new Error('UploadThing error'));
+      await service.uploadFile('bucket', 'fallback-on-error.txt', Buffer.from('data'), {
+        'Content-Type': 'text/plain',
+      });
+      // service should remain operational and write locally
+      const filePath = path.join(tmpDir, 'bucket', 'fallback-on-error.txt');
+      const written = await fs.readFile(filePath);
+      expect(written.toString()).toBe('data');
+    });
+
     it('uploadWithPreview returns correct key paths for non-image file', async () => {
       mockUploadFiles.mockResolvedValue({
         data: { ufsUrl: 'https://testappid.ufs.sh/f/bucket/key' },

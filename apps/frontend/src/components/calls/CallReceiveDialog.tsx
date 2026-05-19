@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { useSelector } from 'react-redux';
 import { RootState } from '../../store';
 import { CallReceiveDialogContainer } from '../../utils/styles';
@@ -7,17 +8,31 @@ import { HandleCallType } from '../../utils/types';
 import { useContext } from 'react';
 import { SocketContext } from '../../utils/context/SocketContext';
 import { SenderEvents, WebsocketEvents } from '../../utils/constants';
+import { useDispatch } from 'react-redux';
+import { setCallError } from '../../store/call/callSlice';
 
 export const CallReceiveDialog = () => {
   const { caller, callType } = useSelector((state: RootState) => state.call);
   const socket = useContext(SocketContext);
+  const dispatch = useDispatch();
+  const [isAccepting, setIsAccepting] = useState(false);
+
   const handleCall = (type: HandleCallType) => {
     const payload = { caller };
     switch (type) {
       case 'accept':
-        return callType === 'video'
-          ? socket.emit('videoCallAccepted', payload)
-          : socket.emit(SenderEvents.VOICE_CALL_ACCEPT, payload);
+        setIsAccepting(true);
+        const emitEvent = callType === 'video'
+          ? 'videoCallAccepted'
+          : SenderEvents.VOICE_CALL_ACCEPT;
+        socket.emit(emitEvent, payload);
+
+        // Add timeout to reset if no response
+        setTimeout(() => {
+          setIsAccepting(false);
+          dispatch(setCallError('No response from server. Please try again.'));
+        }, 5000);
+        break;
       case 'reject':
         return callType === 'video'
           ? socket.emit(WebsocketEvents.VIDEO_CALL_REJECTED, payload)
@@ -25,19 +40,28 @@ export const CallReceiveDialog = () => {
     }
   };
   return (
-    <CallReceiveDialogContainer>
+    <CallReceiveDialogContainer data-testid="call-receive-dialog">
       <UserAvatar user={caller!} />
       <div className="content">
-        <span>
+        <span data-testid="call-message">
           {caller!.username} wants to {callType === 'audio' ? 'voice' : 'video'}{' '}
           call you
         </span>
       </div>
       <div className="icons">
-        <div className="accept" onClick={() => handleCall('accept')}>
-          <MdCall />
+        <div
+          className="accept"
+          data-testid="accept-call-button"
+          onClick={() => handleCall('accept')}
+          style={{ opacity: isAccepting ? 0.6 : 1, cursor: isAccepting ? 'not-allowed' : 'pointer' }}
+        >
+          {isAccepting ? 'Connecting...' : <MdCall />}
         </div>
-        <div className="reject" onClick={() => handleCall('reject')}>
+        <div
+          className="reject"
+          data-testid="reject-call-button"
+          onClick={() => handleCall('reject')}
+        >
           <MdCallEnd />
         </div>
       </div>

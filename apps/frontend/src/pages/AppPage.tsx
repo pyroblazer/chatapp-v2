@@ -18,13 +18,21 @@ import { ThemeProvider } from 'styled-components';
 import { DarkTheme, LightTheme } from '../utils/themes';
 import Peer from 'peerjs';
 import { AuthContext } from '../utils/context/AuthContext';
+import { getAccessToken } from '../utils/api';
 import {
   setCall,
+  setIsCallInProgress,
+  setIsReceivingCall,
   setLocalStream,
   setPeer,
   setRemoteStream,
+  setCallError,
 } from '../store/call/callSlice';
 import { CallReceiveDialog } from '../components/calls/CallReceiveDialog';
+import { CallBusyDialog } from '../components/calls/CallBusyDialog';
+import { TwoWayCallUI } from '../components/calls/TwoWayCallUI';
+import { MediaConnection } from 'peerjs';
+import { store } from '../store';
 import { useVideoCallRejected } from '../utils/hooks/sockets/useVideoCallRejected';
 import { useVideoCallHangUp } from '../utils/hooks/sockets/useVideoCallHangUp';
 import { useVideoCallAccept } from '../utils/hooks/sockets/useVideoCallAccept';
@@ -40,7 +48,7 @@ export const AppPage = () => {
   const socket = useContext(SocketContext);
   const dispatch = useDispatch<AppDispatch>();
   const navigate = useNavigate();
-  const { peer, call, isReceivingCall, caller, connection, callType } =
+  const { peer, call, isReceivingCall, caller, connection, isCallInProgress, localStream, remoteStream, callType } =
     useSelector((state: RootState) => state.call);
   const { info } = useToast({ theme: 'dark' });
   const { theme } = useSelector((state: RootState) => state.settings);
@@ -51,28 +59,83 @@ export const AppPage = () => {
 
   useEffect(() => {
     if (!user) return;
-    const newPeer = new Peer(user.peer.id, {
-      config: {
-        iceServers: [
-          {
-            urls: 'stun:stun.l.google.com:19302',
+
+    let currentPeer: Peer | null = null;
+
+    const initializePeer = async () => {
+      try {
+        // Fetch TURN credentials from backend
+        const token = getAccessToken();
+        const response = await fetch(`${import.meta.env.VITE_API_URL}/webrtc/turn-credentials`, {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
           },
-          {
-            urls: 'stun:stun1.l.google.com:19302',
-          },
-          {
-            urls: 'turn:free.expressturn.com:3478',
-            username: '000000002094437945',
-            credential: 'kXzUEtrPK7lkqvYvG90kT3R6L5s=',
-          },
-        ],
-      },
-    });
-    dispatch(setPeer(newPeer));
+        });
+
+        if (!response.ok) {
+          console.error('Failed to fetch TURN credentials:', response.statusText);
+          // Fallback to default STUN servers only
+          const fallbackPeer = new Peer(undefined, {
+            config: {
+              iceServers: [
+                { urls: 'stun:stun.l.google.com:19302' },
+                { urls: 'stun:stun1.l.google.com:19302' },
+              ],
+            },
+          });
+
+          fallbackPeer.on('open', (id) => {
+            console.log('PeerJS connection established with fallback config:', id);
+          });
+
+          fallbackPeer.on('error', (err) => {
+            console.error('PeerJS connection error:', err);
+          });
+
+          currentPeer = fallbackPeer;
+          dispatch(setPeer(fallbackPeer));
+          return;
+        }
+
+        const { iceServers } = await response.json();
+
+        // Use the database peer ID from the user object
+        const peerId = user.peer?.id;
+        if (!peerId) {
+          console.error('No peer ID found for user');
+          return;
+        }
+
+        const newPeer = new Peer(peerId, { config: { iceServers } });
+
+        newPeer.on('open', (id) => {
+          console.log('PeerJS connection established with ID:', id);
+        });
+
+        newPeer.on('error', (err) => {
+          console.error('PeerJS connection error:', err);
+          // If peer ID is already in use, destroy and attempt reconnection
+          if (err.type === 'peer-unavailable') {
+            console.log('Peer ID already in use, attempting to reconnect...');
+            if (newPeer && !newPeer.destroyed) {
+              newPeer.destroy();
+            }
+          }
+        });
+
+        currentPeer = newPeer;
+        dispatch(setPeer(newPeer));
+      } catch (error) {
+        console.error('Failed to initialize PeerJS:', error);
+      }
+    };
+
+    initializePeer();
 
     return () => {
-      if (newPeer && !newPeer.destroyed) {
-        newPeer.destroy();
+      if (currentPeer && !currentPeer.destroyed) {
+        currentPeer.destroy();
       }
     };
   }, [user, dispatch]);
@@ -121,28 +184,103 @@ export const AppPage = () => {
    */
   useEffect(() => {
     if (!peer) return;
-    peer.on('call', async (incomingCall) => {
-      const constraints = { video: callType === 'video', audio: true };
-      const stream = await navigator.mediaDevices.getUserMedia(constraints);
-      incomingCall.answer(stream);
-      dispatch(setLocalStream(stream));
-      dispatch(setCall(incomingCall));
-    });
-    return () => {
-      peer.off('call');
-    };
-  }, [peer, callType, dispatch]);
 
-  useEffect(() => {
-    if (!call) return;
-    call.on('stream', (remoteStream) =>
-      dispatch(setRemoteStream(remoteStream))
-    );
-    return () => {
-      call.off('stream');
-      call.off('close');
+    const handleIncomingCall = async (incomingCall: MediaConnection) => {
+      try {
+        console.log('=== Incoming Call ===');
+
+        // CRITICAL: Set isCallInProgress AND call object BEFORE getting stream
+        // This ensures the UI renders immediately
+        dispatch(setCall(incomingCall));
+        dispatch(setIsCallInProgress(true));
+        dispatch(setIsReceivingCall(false));
+
+        // Get current callType from Redux to avoid stale closure
+        const currentCallType = store.getState().call.callType;
+
+        const constraints = {
+          video: currentCallType === 'video',
+          audio: true
+        };
+
+        console.log('Getting user media with constraints:', constraints);
+
+        let stream;
+        try {
+          stream = await navigator.mediaDevices.getUserMedia(constraints);
+          console.log('Got local stream:', stream);
+        } catch (mediaError: any) {
+          console.error('Failed to get media stream:', mediaError);
+
+          // Handle specific error types
+          if (mediaError.name === 'NotAllowedError') {
+            dispatch(setCallError('Permission denied. Please allow camera/microphone access.'));
+          } else if (mediaError.name === 'NotFoundError') {
+            dispatch(setCallError('No camera or microphone found.'));
+          } else if (mediaError.name === 'NotReadableError') {
+            dispatch(setCallError('Camera/microphone is already in use by another application.'));
+          } else {
+            dispatch(setCallError(`Failed to access media: ${mediaError.message}`));
+          }
+
+          // Still answer the call with audio-only if video failed
+          try {
+            const audioOnlyStream = await navigator.mediaDevices.getUserMedia({
+              video: false,
+              audio: true
+            });
+            incomingCall.answer(audioOnlyStream);
+            dispatch(setLocalStream(audioOnlyStream));
+            console.log('Answered with audio-only stream');
+
+            // Attach stream listener for audio-only call
+            incomingCall.on('stream', (remoteStream) => {
+              console.log('Received remote stream:', remoteStream);
+              dispatch(setRemoteStream(remoteStream));
+            });
+
+            incomingCall.on('error', (err) => {
+              console.error('WebRTC call error:', err);
+            });
+
+            return;
+          } catch (audioError) {
+            console.error('Failed to get audio stream:', audioError);
+            // If audio also fails, answer without stream
+            incomingCall.answer();
+            dispatch(setCallError('Could not access camera or microphone. Call will continue without media.'));
+            return;
+          }
+        }
+
+        // Answer with our local stream
+        incomingCall.answer(stream);
+        dispatch(setLocalStream(stream));
+
+        console.log('Answered incoming call');
+
+        // IMMEDIATELY attach stream listener
+        incomingCall.on('stream', (remoteStream) => {
+          console.log('Received remote stream:', remoteStream);
+          dispatch(setRemoteStream(remoteStream));
+        });
+
+        // Handle errors
+        incomingCall.on('error', (err) => {
+          console.error('WebRTC call error:', err);
+        });
+
+      } catch (err) {
+        console.error('Failed to get media stream:', err);
+      }
     };
-  }, [call]);
+
+    peer.on('call', handleIncomingCall);
+
+    return () => {
+      peer.off('call', handleIncomingCall);
+    };
+  }, [peer, dispatch]);
 
   useVideoCallAccept();
   useVideoCallRejected();
@@ -182,7 +320,9 @@ export const AppPage = () => {
           : LightTheme
       }
     >
-      {isReceivingCall && caller && <CallReceiveDialog />}
+      {isReceivingCall && caller && !isCallInProgress && <CallReceiveDialog />}
+      <CallBusyDialog />
+      {isCallInProgress && <TwoWayCallUI />}
       <LayoutPage>
         <UserSidebar />
         <Outlet />

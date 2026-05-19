@@ -30,7 +30,11 @@ export class AuthService implements IAuthService {
   }
 
   async generateTokens(user: User) {
-    const payload: IJwtPayload = { sub: user.id, username: user.username };
+    const payload: IJwtPayload = {
+      sub: user.id,
+      username: user.username,
+      peerId: user.peer.id,
+    };
 
     const accessToken = this.jwtService.sign(payload, { expiresIn: '15m' });
     const refreshToken = this.jwtService.sign(payload, {

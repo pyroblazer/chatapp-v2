@@ -37,6 +37,7 @@ import { BotModule } from './bot/bot.module';
 import { BlockedUsersModule } from './blocked-users/blocked-users.module';
 import { FirebaseModule } from './firebase/firebase.module';
 import { KafkaModule } from './kafka/kafka.module';
+import { WebRTCModule } from './webrtc/webrtc.module';
 import { ScheduleModule } from '@nestjs/schedule';
 
 let envFilePath = ['.env.development', '.env'];
@@ -50,18 +51,22 @@ if (process.env.ENVIRONMENT === 'PRODUCTION') envFilePath = ['.env.production', 
     PassportModule.register({ defaultStrategy: 'jwt' }),
     TypeOrmModule.forRoot({
       type: 'postgres',
-      host: process.env.DATABASE_HOST || process.env.MYSQL_DB_HOST,
-      port: parseInt(
-        process.env.DATABASE_PORT || process.env.MYSQL_DB_PORT || '5432',
-        10,
-      ),
-      username: process.env.DATABASE_USERNAME || process.env.MYSQL_DB_USERNAME,
-      password: process.env.DATABASE_PASSWORD || process.env.MYSQL_DB_PASSWORD,
-      database: process.env.DATABASE_NAME || process.env.MYSQL_DB_NAME,
+      host: process.env.DATABASE_HOST,
+      port: parseInt(process.env.DATABASE_PORT || '5432', 10),
+      username: process.env.DATABASE_USERNAME,
+      password: process.env.DATABASE_PASSWORD,
+      database: process.env.DATABASE_NAME,
       synchronize: process.env.ENVIRONMENT !== 'PRODUCTION',
       entities,
       logging: process.env.ENVIRONMENT !== 'PRODUCTION' ? ['error'] : false,
       ssl: process.env.DATABASE_SSL === 'true' ? { rejectUnauthorized: false } : false,
+      retryAttempts: 5,
+      retryDelay: 3000,
+      extra: {
+        max: 10,
+        idleTimeoutMillis: 60000,
+        connectionTimeoutMillis: 10000,
+      },
     }),
     ConversationsModule,
     MessagesModule,
@@ -95,6 +100,7 @@ if (process.env.ENVIRONMENT === 'PRODUCTION') envFilePath = ['.env.production', 
     BlockedUsersModule,
     FirebaseModule,
     KafkaModule,
+    WebRTCModule,
   ],
   controllers: [],
   providers: [

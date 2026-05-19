@@ -65,6 +65,8 @@ export enum ServerEvents {
   MESSAGE_READ = 'message.read',
   THREAD_REPLY = 'thread.reply',
   NOTIFICATION_CREATED = 'notification.created',
+  VIDEO_CALL_ERROR = 'onVideoCallError',
+  VOICE_CALL_ERROR = 'onVoiceCallError',
 }
 
 export enum WebsocketEvents {

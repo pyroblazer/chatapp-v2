@@ -11,6 +11,7 @@ export const mockUser = {
   active: true,
   messages: [],
   groups: [],
+  peer: { id: 'mock-peer-uuid-5678' },
 } as unknown as User;
 
 // Repository mock factory

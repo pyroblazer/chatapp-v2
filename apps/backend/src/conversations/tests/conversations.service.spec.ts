@@ -151,7 +151,7 @@ describe('ConversationsService', () => {
       ).rejects.toThrow(ConversationExistsException);
     });
 
-    it('should create a conversation with initial message', async () => {
+    it('should create a conversation with an initial message when provided', async () => {
       mockUserService.findUser.mockResolvedValue(recipient);
       mockFriendsService.isFriends.mockResolvedValue(true);
       conversationRepo.findOne.mockResolvedValue(null);
@@ -173,6 +173,42 @@ describe('ConversationsService', () => {
       expect(result).toEqual(savedConversation);
       expect(conversationRepo.save).toHaveBeenCalled();
       expect(messageRepo.save).toHaveBeenCalled();
+    });
+
+    it('should create a conversation without an initial message when message is omitted', async () => {
+      mockUserService.findUser.mockResolvedValue(recipient);
+      mockFriendsService.isFriends.mockResolvedValue(true);
+      conversationRepo.findOne.mockResolvedValue(null);
+
+      const savedConversation = { id: 1, creator, recipient };
+      conversationRepo.create.mockReturnValue(savedConversation);
+      conversationRepo.save.mockResolvedValue(savedConversation);
+
+      const result = await service.createConversation(creator, {
+        username: 'recipient',
+      });
+
+      expect(result).toEqual(savedConversation);
+      expect(conversationRepo.save).toHaveBeenCalled();
+      expect(messageRepo.save).not.toHaveBeenCalled();
+    });
+
+    it('should create a conversation without an initial message when message is empty string', async () => {
+      mockUserService.findUser.mockResolvedValue(recipient);
+      mockFriendsService.isFriends.mockResolvedValue(true);
+      conversationRepo.findOne.mockResolvedValue(null);
+
+      const savedConversation = { id: 1, creator, recipient };
+      conversationRepo.create.mockReturnValue(savedConversation);
+      conversationRepo.save.mockResolvedValue(savedConversation);
+
+      const result = await service.createConversation(creator, {
+        username: 'recipient',
+        message: '',
+      });
+
+      expect(result).toEqual(savedConversation);
+      expect(messageRepo.save).not.toHaveBeenCalled();
     });
   });
 

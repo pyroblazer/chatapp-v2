@@ -15,12 +15,16 @@ export interface CallState {
   localStream?: MediaStream;
   activeConversationId?: string;
   callType?: CallType;
+  isUserBusy: boolean;
+  busyMessage?: string;
+  callError?: string | null;
 }
 
 const initialState: CallState = {
   isCalling: false,
   isCallInProgress: false,
   isReceivingCall: false,
+  isUserBusy: false,
 };
 
 export const callSlice = createSlice({
@@ -64,6 +68,13 @@ export const callSlice = createSlice({
     setCallType: (state, action: PayloadAction<CallType>) => {
       state.callType = action.payload;
     },
+    setUserBusy: (state, action: PayloadAction<{ busy: boolean; message?: string }>) => {
+      state.isUserBusy = action.payload.busy;
+      state.busyMessage = action.payload.message;
+    },
+    setCallError: (state, action: PayloadAction<string | null>) => {
+      state.callError = action.payload;
+    },
     resetState: (state) => {
       state.isCalling = false;
       state.isCallInProgress = false;
@@ -76,6 +87,9 @@ export const callSlice = createSlice({
       state.activeConversationId = undefined;
       state.receiver = undefined;
       state.callType = undefined;
+      state.isUserBusy = false;
+      state.busyMessage = undefined;
+      state.callError = undefined;
     },
     initiateCallState: (state, action: PayloadAction<CallInitiatePayload>) => {
       state.localStream = action.payload.localStream;
@@ -85,6 +99,9 @@ export const callSlice = createSlice({
       state.receiver = action.payload.receiver;
       state.callType = action.payload.callType;
       state.isReceivingCall = false;
+
+      // CRITICAL: Set isCallInProgress to true so the UI shows immediately
+      state.isCallInProgress = true;
     },
   },
 });
@@ -104,5 +121,7 @@ export const {
   setReceiver,
   initiateCallState,
   setCallType,
+  setUserBusy,
+  setCallError,
 } = callSlice.actions;
 export default callSlice.reducer;

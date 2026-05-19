@@ -11,6 +11,8 @@ export interface IGatewaySessionManager {
   setUserOffline(userId: string, socketId: string): Promise<void>;
   getOnlineUsers(): Promise<Record<string, string>>;
   isUserOnline(userId: string): Promise<boolean>;
+  setUserInCall(userId: string, inCall: boolean): void;
+  isUserInCall(userId: string): boolean;
 }
 
 @Injectable()
@@ -19,6 +21,7 @@ export class GatewaySessionManager implements IGatewaySessionManager {
   private readonly sessions: Map<string, AuthenticatedSocket> = new Map();
   private readonly PRESENCE_KEY = 'presence:online';
   private redisAvailable = false;
+  private readonly activeCalls = new Set<string>(); // Track users in calls
 
   constructor(@Optional() private readonly redisService?: RedisService) {
     this.redisAvailable = !!this.redisService;
@@ -113,5 +116,19 @@ export class GatewaySessionManager implements IGatewaySessionManager {
     } catch {
       return false;
     }
+  }
+
+  setUserInCall(userId: string, inCall: boolean): void {
+    if (inCall) {
+      this.activeCalls.add(userId);
+      this.logger.log(`User ${userId} is now in a call`);
+    } else {
+      this.activeCalls.delete(userId);
+      this.logger.log(`User ${userId} is no longer in a call`);
+    }
+  }
+
+  isUserInCall(userId: string): boolean {
+    return this.activeCalls.has(userId);
   }
 }

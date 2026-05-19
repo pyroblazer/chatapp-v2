@@ -143,30 +143,33 @@ export class StorageService implements OnModuleInit, OnModuleDestroy {
       return;
     }
 
-    const utFile = new UTFile([buffer], key, {
-      type: mimeType || 'application/octet-stream',
-      customId,
-    });
+    try {
+      const utFile = new UTFile([buffer], key, {
+        type: mimeType || 'application/octet-stream',
+        customId,
+      });
 
-    const result = await this.utApi.uploadFiles(utFile);
+      const result = await this.utApi.uploadFiles(utFile);
 
-    if (result && typeof result === 'object' && 'data' in result) {
-      const data = (result as any).data;
-      if (data?.ufsUrl) {
-        this.uploadedFiles.set(customId, data.ufsUrl);
+      if (result && typeof result === 'object' && 'data' in result) {
+        const data = (result as any).data;
+        if (data?.ufsUrl) this.uploadedFiles.set(customId, data.ufsUrl);
+      } else if (result && typeof result === 'object' && 'ufsUrl' in result) {
+        this.uploadedFiles.set(customId, (result as any).ufsUrl);
       }
-    } else if (result && typeof result === 'object' && 'ufsUrl' in result) {
-      this.uploadedFiles.set(customId, (result as any).ufsUrl);
+
+      this.logger.debug(`File uploaded to UploadThing: ${customId}`);
+    } catch (utErr) {
+      this.logger.warn(`UploadThing upload failed, falling back to local: ${utErr.message}`);
+      this.available = false;
     }
 
-    this.logger.debug(`File uploaded to UploadThing: ${customId}`);
-
-    // Cache to local disk for fast first-display — failure here is non-fatal
+    // Always write to local disk (primary if UT failed, cache otherwise)
     try {
       await this.localStorage.write(bucket, key, buffer, mimeType);
-      this.logger.debug(`File cached locally: ${customId}`);
+      this.logger.debug(`File stored locally: ${customId}`);
     } catch (cacheErr) {
-      this.logger.warn(`Local cache write failed (non-fatal): ${cacheErr.message}`);
+      this.logger.warn(`Local storage write failed: ${cacheErr.message}`);
     }
   }
 

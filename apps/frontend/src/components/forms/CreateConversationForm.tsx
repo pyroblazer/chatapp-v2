@@ -44,7 +44,7 @@ export const CreateConversationForm: FC<Props> = ({ setShowModal }) => {
 
   const onSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    if (!message || !selectedUser) return;
+    if (!selectedUser) return;
     return dispatch(
       createConversationThunk({ username: selectedUser.username, message })
     )
@@ -80,7 +80,7 @@ export const CreateConversationForm: FC<Props> = ({ setShowModal }) => {
       )}
       <section className={styles.message}>
         <InputContainer backgroundColor="#161616">
-          <InputLabel>Message (optional)</InputLabel>
+          <InputLabel>Message</InputLabel>
           <TextField
             value={message}
             onChange={(e) => setMessage(e.target.value)}

@@ -12,6 +12,28 @@ export async function loginAsUser(page: Page, username: string) {
   await page.waitForURL('/conversations', { timeout: 5000 });
 }
 
+export async function login(page: Page, email: string, password: string = 'password123') {
+  await page.goto('/login');
+  await page.locator('input[type="email"]').fill(email);
+  await page.locator('input[type="password"]').fill(password);
+  await page.locator('button[type="submit"]').click();
+  await page.waitForURL('/conversations', { timeout: 5000 });
+}
+
+export async function cleanup(page: Page) {
+  // Hang up any active calls
+  const hangupButton = page.locator('[data-testid="hangup-button"]');
+  if (await hangupButton.isVisible().catch(() => false)) {
+    await hangupButton.click();
+  }
+
+  // Wait for call UI to disappear
+  const callUI = page.locator('[data-testid="call-ui"]');
+  if (await callUI.isVisible().catch(() => false)) {
+    await callUI.waitFor({ state: 'hidden', timeout: 3000 });
+  }
+}
+
 export async function setupConversation(context: BrowserContext, id: string, unreadCount: number) {
   const page = await context.newPage();
   await page.goto('/conversations');
