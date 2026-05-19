@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
@@ -23,6 +23,7 @@ export const CallPage = () => {
   const [call, setCall] = useState(callId ? client.call('default', callId) : null);
   const [hasJoined, setHasJoined] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const isLeavingRef = useRef(false);
 
   useEffect(() => {
     if (!callId || !call) {
@@ -31,6 +32,7 @@ export const CallPage = () => {
     }
 
     let mounted = true;
+    isLeavingRef.current = false; // Reset leaving state on new call
 
     const joinCall = async () => {
       try {
@@ -61,26 +63,53 @@ export const CallPage = () => {
     return () => {
       mounted = false;
       socket.off('streamCallRejected', handleCallRejected);
+      // Cleanup: leave call when component unmounts
+      if (call && hasJoined && !isLeavingRef.current) {
+        call.leave().catch((err) => {
+          console.log('Cleanup: error leaving call', err.message);
+        });
+      }
     };
-  }, [call, callId, socket]);
+  }, [call, callId, socket, hasJoined]);
 
   const leaveCall = async () => {
+    // Prevent multiple leave calls
+    if (isLeavingRef.current) {
+      return;
+    }
+    isLeavingRef.current = true;
+
     try {
       if (call) {
-        await call.leave();
+        await call.leave().catch((err) => {
+          console.log('Call already left or ended:', err.message);
+          // Ignore error, continue with cleanup
+        });
       }
-      dispatch(clearActiveCall());
-      navigate(-1); // Go back to previous page
     } catch (err) {
-      console.error('Error leaving call:', err);
+      console.log('Error leaving call:', err);
+    } finally {
+      // Always cleanup and navigate, regardless of call.leave() result
       dispatch(clearActiveCall());
-      navigate(-1);
+      // Use setTimeout to ensure state updates before navigation
+      setTimeout(() => {
+        navigate(-1); // Go back to previous page
+      }, 100);
     }
   };
 
   const handleCallEnded = () => {
+    // Prevent multiple navigations
+    if (isLeavingRef.current) {
+      return;
+    }
+    isLeavingRef.current = true;
+
     dispatch(clearActiveCall());
-    navigate(-1);
+    // Use setTimeout to ensure state updates before navigation
+    setTimeout(() => {
+      navigate(-1);
+    }, 100);
   };
 
   if (error) {
