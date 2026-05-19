@@ -5,7 +5,6 @@ import {
   SidebarHeader,
   SidebarStyle,
 } from '../../../utils/styles';
-import { CallSidebarItem } from '../../calls/CallSidebarItem';
 
 export const CallsSidebar = () => {
   const { friends } = useSelector((state: RootState) => state.friends);
@@ -14,7 +13,9 @@ export const CallsSidebar = () => {
       <SidebarHeader>Friends</SidebarHeader>
       <ScrollableContainer>
         {friends.map((friend) => (
-          <CallSidebarItem key={friend.id} friend={friend} />
+          <div key={friend.id} style={{ padding: '10px', borderBottom: '1px solid #eee' }}>
+            {friend.username}
+          </div>
         ))}
       </ScrollableContainer>
     </SidebarStyle>

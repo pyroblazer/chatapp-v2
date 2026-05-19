@@ -3,22 +3,20 @@ import { FaPhoneAlt, FaVideo } from 'react-icons/fa';
 import { useDispatch, useSelector } from 'react-redux';
 import { useParams } from 'react-router-dom';
 import { RootState } from '../../../store';
-import { initiateCallState } from '../../../store/call/callSlice';
+import { setActiveCall } from '../../../store/call/callSlice';
 import { selectConversationById } from '../../../store/conversationSlice';
-import { SenderEvents } from '../../../utils/constants';
 import { AuthContext } from '../../../utils/context/AuthContext';
-import { SocketContext } from '../../../utils/context/SocketContext';
 import { getRecipientFromConversation } from '../../../utils/helpers';
+import { useStreamClient } from '../../../context/StreamContext';
 import {
   MessagePanelHeaderIcons,
   MessagePanelHeaderStyle,
 } from '../../../utils/styles';
-import { CallInitiatePayload, CallType } from '../../../utils/types';
 
 export const MessagePanelConversationHeader = () => {
   const user = useContext(AuthContext).user!;
   const { id } = useParams();
-  const socket = useContext(SocketContext);
+  const client = useStreamClient();
 
   const dispatch = useDispatch();
   const conversation = useSelector((state: RootState) =>
@@ -26,41 +24,37 @@ export const MessagePanelConversationHeader = () => {
   );
 
   const recipient = getRecipientFromConversation(conversation, user);
-  const buildCallPayloadParams = (
-    stream: MediaStream,
-    type: CallType
-  ): CallInitiatePayload | undefined =>
-    conversation && {
-      localStream: stream,
-      caller: user,
-      receiver: recipient!,
-      isCalling: true,
-      activeConversationId: conversation.id,
-      callType: type,
-    };
+
+  const startCall = async (type: 'video' | 'audio') => {
+    if (!conversation || !recipient) return;
+
+    try {
+      // Create a unique call ID
+      const callId = `call-${conversation.id}-${Date.now()}`;
+
+      // Create the call via Stream
+      const call = client.call('default', callId);
+      await call.create({
+        data: {
+          type,
+          conversationId: conversation.id,
+          participants: [user.id, recipient.id],
+        },
+      });
+
+      // Update Redux state
+      dispatch(setActiveCall({ callId, callType: type }));
+    } catch (error) {
+      console.error('Failed to start call:', error);
+    }
+  };
 
   const videoCallUser = async () => {
-    socket.emit('onVideoCallInitiate', {
-      conversationId: conversation!.id,
-      recipientId: recipient.id,
-    });
-    const constraints = { video: true, audio: true };
-    const stream = await navigator.mediaDevices.getUserMedia(constraints);
-    const payload = buildCallPayloadParams(stream, 'video');
-    if (!payload) throw new Error('Video Call Payload is undefined.');
-    dispatch(initiateCallState(payload));
+    await startCall('video');
   };
 
   const voiceCallUser = async () => {
-    socket.emit(SenderEvents.VOICE_CALL_INITIATE, {
-      conversationId: conversation!.id,
-      recipientId: recipient.id,
-    });
-    const constraints = { video: false, audio: true };
-    const stream = await navigator.mediaDevices.getUserMedia(constraints);
-    const payload = buildCallPayloadParams(stream, 'audio');
-    if (!payload) throw new Error('Voice Call Payload is undefined.');
-    dispatch(initiateCallState(payload));
+    await startCall('audio');
   };
 
   return (

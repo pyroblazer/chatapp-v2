@@ -42,6 +42,7 @@
     "@nestjs/typeorm": "^9.0.1",
     "@nestjs/websockets": "^9.0.11",
     "@socket.io/redis-adapter": "^8.3.0",
+    "@stream-io/video-react-sdk": "^1.37.0",
     "amqplib": "^0.10.0",
     "bcrypt": "^5.0.1",
     "class-transformer": "^0.5.1",

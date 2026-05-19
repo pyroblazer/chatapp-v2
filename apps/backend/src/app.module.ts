@@ -37,7 +37,7 @@ import { BotModule } from './bot/bot.module';
 import { BlockedUsersModule } from './blocked-users/blocked-users.module';
 import { FirebaseModule } from './firebase/firebase.module';
 import { KafkaModule } from './kafka/kafka.module';
-import { WebRTCModule } from './webrtc/webrtc.module';
+import { StreamModule } from './stream/stream.module';
 import { ScheduleModule } from '@nestjs/schedule';
 
 let envFilePath = ['.env.development', '.env'];
@@ -100,7 +100,7 @@ if (process.env.ENVIRONMENT === 'PRODUCTION') envFilePath = ['.env.production', 
     BlockedUsersModule,
     FirebaseModule,
     KafkaModule,
-    WebRTCModule,
+    StreamModule,
   ],
   controllers: [],
   providers: [
