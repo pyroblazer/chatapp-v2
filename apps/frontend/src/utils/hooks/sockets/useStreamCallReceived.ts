@@ -10,6 +10,7 @@ interface StreamCallPayload {
   callerName: string;
   recipientId: string;
   conversationId: string;
+  initiatedAt?: number;
 }
 
 export const useStreamCallReceived = () => {

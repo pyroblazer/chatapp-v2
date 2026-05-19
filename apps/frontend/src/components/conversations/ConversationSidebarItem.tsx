@@ -1,7 +1,6 @@
 import { useContext } from 'react';
 import { useSelector } from 'react-redux';
 import { useNavigate, useParams } from 'react-router-dom';
-import { CDN_URL } from '../../utils/constants';
 import { AuthContext } from '../../utils/context/AuthContext';
 import { getRecipientFromConversation, formatBadgeCount } from '../../utils/helpers';
 import {
@@ -11,9 +10,8 @@ import {
 } from '../../utils/styles';
 import { Conversation } from '../../utils/types';
 import { RootState } from '../../store';
-import defaultAvatar from '../../__assets__/default_avatar.jpg';
+import { UserAvatar } from '../users/UserAvatar';
 
-import styles from './index.module.scss';
 
 type Props = {
   conversation: Conversation;
@@ -28,7 +26,9 @@ export const ConversationSidebarItem: React.FC<Props> = ({ conversation }) => {
   const unreadCount = useSelector(
     (state: RootState) => state.unread.conversationCounts[conversation.id] ?? 0
   );
+  const userStatuses = useSelector((state: RootState) => state.friends.userStatuses);
   const badgeText = formatBadgeCount(unreadCount);
+  const recipientStatus = recipient ? userStatuses[recipient.id] : undefined;
   const lastMessageContent = () => {
     const { lastMessageSent } = conversation;
     if (lastMessageSent && lastMessageSent.content)
@@ -38,23 +38,15 @@ export const ConversationSidebarItem: React.FC<Props> = ({ conversation }) => {
     return null;
   };
 
-  const hasProfilePicture = () => recipient?.profile?.avatar;
-
   return (
     <>
       <ConversationSidebarItemStyle
         onClick={() => navigate(`/conversations/${conversation.id}`)}
         selected={id! === conversation.id}
       >
-        <img
-          src={
-            hasProfilePicture()
-              ? CDN_URL.BASE.concat(recipient?.profile?.avatar!)
-              : defaultAvatar
-          }
-          alt="avatar"
-          className={styles.conversationAvatar}
-        />
+        {recipient && (
+          <UserAvatar user={recipient} status={recipientStatus} />
+        )}
         <ConversationSidebarItemDetails>
           <span className="conversationName">
             {`${recipient?.firstName} ${recipient?.lastName}`}

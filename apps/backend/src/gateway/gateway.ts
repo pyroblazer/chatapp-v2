@@ -59,13 +59,58 @@ export class MessagingGateway
   @WebSocketServer()
   server: Server;
 
-  handleConnection(socket: AuthenticatedSocket, ...args: any[]) {
+  private readonly callParticipants: Map<string, Set<string>> = new Map(); // callId -> userIds
+  private readonly userCallMap: Map<string, string> = new Map(); // userId -> callId
+
+  private readonly pendingStreamCalls: Map<
+    string,
+    {
+      callId: string;
+      callType: 'video' | 'audio';
+      callerId: string;
+      callerName: string;
+      recipientId: string;
+      conversationId: string;
+      initiatedAt: number;
+    }
+  > = new Map();
+
+  async handleConnection(socket: AuthenticatedSocket, ...args: any[]) {
     this.sessions.setUserSocket(socket.user.id, socket);
     socket.emit('connected', {});
+
+    // Deliver any pending stream call that was initiated while this user was offline
+    const pending = this.pendingStreamCalls.get(socket.user.id);
+    if (pending) {
+      socket.emit('streamCallInitiated', pending);
+    }
+
+    await this.broadcastStatusToFriends(socket.user.id, 'online');
   }
 
-  handleDisconnect(socket: AuthenticatedSocket) {
+  async handleDisconnect(socket: AuthenticatedSocket) {
+    this.sessions.setUserInCall(socket.user.id, false);
     this.sessions.removeUserSocket(socket.user.id);
+    await this.broadcastStatusToFriends(socket.user.id, 'offline');
+  }
+
+  private async broadcastStatusToFriends(
+    userId: string,
+    status: 'online' | 'offline' | 'in-call',
+  ) {
+    try {
+      const friends = await this.friendsService.getFriends(userId);
+      for (const friend of friends) {
+        const friendUserId =
+          friend.sender.id === userId ? friend.receiver.id : friend.sender.id;
+        const friendSocket = this.sessions.getUserSocket(friendUserId);
+        if (friendSocket) {
+          friendSocket.emit('onFriendStatusChange', { userId, status });
+        }
+      }
+    } catch {
+      // non-critical — ignore errors
+    }
   }
 
   @SubscribeMessage('getOnlineGroupUsers')
@@ -580,34 +625,103 @@ export class MessagingGateway
     },
     @ConnectedSocket() socket: AuthenticatedSocket,
   ) {
-    // Forward the call notification to the recipient
+    if (this.sessions.isUserInCall(data.recipientId)) {
+      socket.emit('onUserBusy', { userId: data.recipientId });
+      return;
+    }
+
     const recipientSocket = this.sessions.getUserSocket(data.recipientId);
+    const callData = { ...data, initiatedAt: Date.now() };
     if (recipientSocket) {
-      recipientSocket.emit('streamCallInitiated', data);
+      recipientSocket.emit('streamCallInitiated', callData);
+    } else {
+      // Store so it can be delivered when the recipient comes online
+      this.pendingStreamCalls.set(data.recipientId, callData);
+      // Auto-expire after the call timeout so stale calls are never delivered
+      setTimeout(() => {
+        const pending = this.pendingStreamCalls.get(data.recipientId);
+        if (pending && pending.callId === data.callId) {
+          this.pendingStreamCalls.delete(data.recipientId);
+        }
+      }, 10_000);
     }
   }
 
   @SubscribeMessage('streamCallAccepted')
   async handleStreamCallAccepted(
-    @MessageBody() data: { callId: string; recipientId: string },
+    @MessageBody() data: { callId: string; callerId: string },
     @ConnectedSocket() socket: AuthenticatedSocket,
   ) {
-    // Notify the caller that the recipient accepted
-    const callerSocket = this.sessions.getUserSocket(data.recipientId);
+    this.pendingStreamCalls.delete(socket.user.id);
+
+    this.sessions.setUserInCall(socket.user.id, true);
+    this.sessions.setUserInCall(data.callerId, true);
+    await this.broadcastStatusToFriends(socket.user.id, 'in-call');
+    await this.broadcastStatusToFriends(data.callerId, 'in-call');
+
+    const participants = new Set([socket.user.id, data.callerId]);
+    this.callParticipants.set(data.callId, participants);
+    this.userCallMap.set(socket.user.id, data.callId);
+    this.userCallMap.set(data.callerId, data.callId);
+
+    const callerSocket = this.sessions.getUserSocket(data.callerId);
     if (callerSocket) {
       callerSocket.emit('streamCallAccepted', data);
     }
   }
 
+  @SubscribeMessage('streamCallEnded')
+  async handleStreamCallEnded(
+    @ConnectedSocket() socket: AuthenticatedSocket,
+  ) {
+    const userId = socket.user.id;
+    this.sessions.setUserInCall(userId, false);
+    await this.broadcastStatusToFriends(userId, 'online');
+
+    const callId = this.userCallMap.get(userId);
+    if (callId) {
+      this.userCallMap.delete(userId);
+      const participants = this.callParticipants.get(callId);
+      if (participants) {
+        participants.delete(userId);
+        for (const participantId of participants) {
+          const participantSocket = this.sessions.getUserSocket(participantId);
+          if (participantSocket) {
+            participantSocket.emit('onCallForceEnded');
+          }
+          this.sessions.setUserInCall(participantId, false);
+          this.userCallMap.delete(participantId);
+          await this.broadcastStatusToFriends(participantId, 'online');
+        }
+        this.callParticipants.delete(callId);
+      }
+    }
+  }
+
   @SubscribeMessage('streamCallRejected')
   async handleStreamCallRejected(
+    @MessageBody() data: { callId: string; callerId: string },
+    @ConnectedSocket() socket: AuthenticatedSocket,
+  ) {
+    this.pendingStreamCalls.delete(socket.user.id);
+
+    const callerSocket = this.sessions.getUserSocket(data.callerId);
+    if (callerSocket) {
+      callerSocket.emit('streamCallRejected', data);
+    }
+  }
+
+  @SubscribeMessage('streamCallCancelled')
+  async handleStreamCallCancelled(
     @MessageBody() data: { callId: string; recipientId: string },
     @ConnectedSocket() socket: AuthenticatedSocket,
   ) {
-    // Notify the caller that the recipient rejected
-    const callerSocket = this.sessions.getUserSocket(data.recipientId);
-    if (callerSocket) {
-      callerSocket.emit('streamCallRejected', data);
+    // Remove any pending call for this recipient so it isn't delivered on reconnect
+    this.pendingStreamCalls.delete(data.recipientId);
+
+    const recipientSocket = this.sessions.getUserSocket(data.recipientId);
+    if (recipientSocket) {
+      recipientSocket.emit('streamCallCancelled', data);
     }
   }
 

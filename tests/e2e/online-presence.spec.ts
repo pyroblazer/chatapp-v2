@@ -69,6 +69,128 @@ test.describe('Online Presence - Friends List', () => {
   });
 });
 
+test.describe('Online Presence - In-Call Status', () => {
+  test('should show red status dot when friend is in a call', async ({ page, browser }) => {
+    const user1 = createTestUser();
+    const user2 = createTestUser();
+    const user3 = createTestUser();
+    await registerUserViaAPI(user1);
+    await registerUserViaAPI(user2);
+    await registerUserViaAPI(user3);
+
+    const { accessToken: token1 } = await loginViaAPI(user1.username, user1.password);
+    const { accessToken: token2 } = await loginViaAPI(user2.username, user2.password);
+    const { accessToken: token3 } = await loginViaAPI(user3.username, user3.password);
+
+    await makeFriends(token1, user2.username, token2);
+
+    // user2 also friends with user3 so user3 can initiate a call to user2
+    const req = await apiRequest('POST', '/friends/requests', token2, { username: user3.username });
+    const reqs = await (await apiRequest('GET', '/friends/requests', token3)).json();
+    const inc = (Array.isArray(reqs) ? reqs : []).find((r: any) => r.receiver?.username === user3.username);
+    if (inc) await apiRequest('PATCH', `/friends/requests/${inc.id}/accept`, token3);
+
+    await (await apiRequest('POST', '/conversations', token3, { username: user2.username })).json();
+    const conv23 = await (await apiRequest('POST', '/conversations', token3, { username: user2.username })).json();
+
+    // user2 online
+    const ctx2 = await browser.newContext();
+    const page2 = await ctx2.newPage();
+    await loginViaUI(page2, user2.username, user2.password);
+    await page2.waitForLoadState('networkidle');
+
+    // user3 calls user2
+    const ctx3 = await browser.newContext();
+    const page3 = await ctx3.newPage();
+    await loginViaUI(page3, user3.username, user3.password);
+    await page3.goto(`/conversations/${conv23.id}`);
+    await page3.waitForLoadState('networkidle');
+    await page3.locator('[data-testid="voice-call-button"]').click();
+
+    // user2 accepts
+    const acceptBtn = page2.locator('button').filter({ hasText: /accept/i }).first();
+    if (await acceptBtn.isVisible({ timeout: 5000 }).catch(() => false)) {
+      await acceptBtn.click();
+    }
+
+    // user1 navigates to friends list
+    await loginViaUI(page, user1.username, user1.password);
+    await page.goto('/friends');
+    await page.waitForLoadState('networkidle');
+    await page.waitForTimeout(2000);
+
+    // Status dot for user2 should be red (#e74c3c) indicating in-call
+    const statusDot = page.locator(`span[title="In a call"]`).first();
+    if (await statusDot.isVisible({ timeout: 6000 }).catch(() => false)) {
+      const bg = await statusDot.evaluate((el) => getComputedStyle(el).backgroundColor);
+      // rgb(231, 76, 60) = #e74c3c
+      expect(bg).toContain('231');
+    }
+
+    await ctx2.close();
+    await ctx3.close();
+  });
+
+  test('should restore online status dot after call ends', async ({ page, browser }) => {
+    const user1 = createTestUser();
+    const user2 = createTestUser();
+    const user3 = createTestUser();
+    await registerUserViaAPI(user1);
+    await registerUserViaAPI(user2);
+    await registerUserViaAPI(user3);
+
+    const { accessToken: token1 } = await loginViaAPI(user1.username, user1.password);
+    const { accessToken: token2 } = await loginViaAPI(user2.username, user2.password);
+    const { accessToken: token3 } = await loginViaAPI(user3.username, user3.password);
+
+    await makeFriends(token1, user2.username, token2);
+
+    const req = await apiRequest('POST', '/friends/requests', token2, { username: user3.username });
+    const reqs = await (await apiRequest('GET', '/friends/requests', token3)).json();
+    const inc = (Array.isArray(reqs) ? reqs : []).find((r: any) => r.receiver?.username === user3.username);
+    if (inc) await apiRequest('PATCH', `/friends/requests/${inc.id}/accept`, token3);
+
+    const conv23 = await (await apiRequest('POST', '/conversations', token3, { username: user2.username })).json();
+
+    const ctx2 = await browser.newContext();
+    const page2 = await ctx2.newPage();
+    await loginViaUI(page2, user2.username, user2.password);
+    await page2.waitForLoadState('networkidle');
+
+    const ctx3 = await browser.newContext();
+    const page3 = await ctx3.newPage();
+    await loginViaUI(page3, user3.username, user3.password);
+    await page3.goto(`/conversations/${conv23.id}`);
+    await page3.waitForLoadState('networkidle');
+    await page3.locator('[data-testid="voice-call-button"]').click();
+
+    const acceptBtn = page2.locator('button').filter({ hasText: /accept/i }).first();
+    if (await acceptBtn.isVisible({ timeout: 5000 }).catch(() => false)) {
+      await acceptBtn.click();
+    }
+
+    // user1 watches
+    await loginViaUI(page, user1.username, user1.password);
+    await page.goto('/friends');
+    await page.waitForLoadState('networkidle');
+    await page.waitForTimeout(2000);
+
+    // Close ctx3 (user3 ends the call)
+    await ctx3.close();
+    await page.waitForTimeout(3000);
+
+    // user2 status dot should now be green (online), not red
+    const onlineDot = page.locator(`span[title="Online"]`).first();
+    if (await onlineDot.isVisible({ timeout: 6000 }).catch(() => false)) {
+      const bg = await onlineDot.evaluate((el) => getComputedStyle(el).backgroundColor);
+      // rgb(46, 204, 113) = #2ecc71
+      expect(bg).toContain('46');
+    }
+
+    await ctx2.close();
+  });
+});
+
 test.describe('Online Presence - Group Participants', () => {
   test('should show members in group participants sidebar', async ({ page, browser }) => {
     const user1 = createTestUser();

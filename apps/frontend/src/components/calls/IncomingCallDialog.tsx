@@ -3,6 +3,8 @@ import { SocketContext } from '../../utils/context/SocketContext';
 import { useContext } from 'react';
 import { FaVideo, FaPhone, FaPhoneSlash } from 'react-icons/fa';
 
+const CALL_TIMEOUT = 10;
+
 interface IncomingCallPayload {
   callId: string;
   callType: 'video' | 'audio';
@@ -10,6 +12,7 @@ interface IncomingCallPayload {
   callerName: string;
   recipientId: string;
   conversationId: string;
+  initiatedAt?: number;
 }
 
 interface IncomingCallDialogProps {
@@ -19,38 +22,16 @@ interface IncomingCallDialogProps {
 
 export const IncomingCallDialog: React.FC<IncomingCallDialogProps> = ({ payload, onClose }) => {
   const socket = useContext(SocketContext);
-  const [timeLeft, setTimeLeft] = useState(30);
+  // Prevents the timer, user action, and cancellation from all firing socket events
+  const handledRef = useRef(false);
   const ringtoneRef = useRef<HTMLAudioElement | null>(null);
 
-  useEffect(() => {
-    // Play ringtone
-    try {
-      ringtoneRef.current = new Audio('/sounds/ringtone.mp3');
-      ringtoneRef.current.loop = true;
-      ringtoneRef.current.play().catch((err) => console.log('Could not play ringtone:', err));
-    } catch (err) {
-      console.log('Ringtone not available:', err);
-    }
+  const getTimeLeft = () =>
+    payload.initiatedAt
+      ? Math.max(0, CALL_TIMEOUT - Math.floor((Date.now() - payload.initiatedAt) / 1000))
+      : CALL_TIMEOUT;
 
-    const timer = setInterval(() => {
-      setTimeLeft((prev) => {
-        if (prev <= 1) {
-          clearInterval(timer);
-          handleReject();
-          return 0;
-        }
-        return prev - 1;
-      });
-    }, 1000);
-
-    return () => {
-      clearInterval(timer);
-      if (ringtoneRef.current) {
-        ringtoneRef.current.pause();
-        ringtoneRef.current = null;
-      }
-    };
-  }, []);
+  const [timeLeft, setTimeLeft] = useState(getTimeLeft);
 
   const stopRingtone = () => {
     if (ringtoneRef.current) {
@@ -59,33 +40,72 @@ export const IncomingCallDialog: React.FC<IncomingCallDialogProps> = ({ payload,
     }
   };
 
-  const handleAccept = async () => {
+  const handleAccept = () => {
+    if (handledRef.current) return;
+    handledRef.current = true;
     stopRingtone();
-
-    // Notify caller that we accepted
     socket.emit('streamCallAccepted', {
       callId: payload.callId,
-      recipientId: payload.recipientId,
+      callerId: payload.callerId,
     });
-
-    // Open call in new browser tab
     const callUrl = `${window.location.origin}/call/${payload.callId}`;
     window.open(callUrl, '_blank', 'noopener,noreferrer');
-
     onClose();
   };
 
   const handleReject = () => {
+    if (handledRef.current) return;
+    handledRef.current = true;
     stopRingtone();
-
-    // Notify caller that we rejected
     socket.emit('streamCallRejected', {
       callId: payload.callId,
-      recipientId: payload.recipientId,
+      callerId: payload.callerId,
     });
-
     onClose();
   };
+
+  useEffect(() => {
+    try {
+      ringtoneRef.current = new Audio('/sounds/ringtone.mp3');
+      ringtoneRef.current.loop = true;
+      ringtoneRef.current.play().catch((err) => console.log('Could not play ringtone:', err));
+    } catch (err) {
+      console.log('Ringtone not available:', err);
+    }
+
+    // Auto-dismiss immediately if time already expired (e.g. late reconnect)
+    if (getTimeLeft() <= 0) {
+      handleReject();
+      return;
+    }
+
+    const timer = setInterval(() => {
+      const remaining = getTimeLeft();
+      if (remaining <= 0) {
+        clearInterval(timer);
+        handleReject();
+        return;
+      }
+      setTimeLeft(remaining);
+    }, 1000);
+
+    const handleCallCancelled = (data: { callId: string }) => {
+      if (data.callId === payload.callId) {
+        // Mark as handled so no reject is emitted — caller already cancelled
+        handledRef.current = true;
+        stopRingtone();
+        onClose();
+      }
+    };
+
+    socket.on('streamCallCancelled', handleCallCancelled);
+
+    return () => {
+      clearInterval(timer);
+      stopRingtone();
+      socket.off('streamCallCancelled', handleCallCancelled);
+    };
+  }, [socket, payload.callId, onClose]);
 
   return (
     <div

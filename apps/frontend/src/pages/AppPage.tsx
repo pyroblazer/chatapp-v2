@@ -19,6 +19,7 @@ import { DarkTheme, LightTheme } from '../utils/themes';
 import { AuthContext } from '../utils/context/AuthContext';
 import { useFriendRequestReceived } from '../utils/hooks/sockets/friend-requests/useFriendRequestReceived';
 import { useStreamCallReceived } from '../utils/hooks/sockets/useStreamCallReceived';
+import { useFriendStatus } from '../utils/hooks/sockets/useFriendStatus';
 import { StreamProvider } from '../context/StreamContext';
 
 export const AppPage = () => {
@@ -35,6 +36,7 @@ export const AppPage = () => {
   }, [dispatch]);
 
   useFriendRequestReceived();
+  useFriendStatus();
   const { IncomingCallUI } = useStreamCallReceived();
 
   useEffect(() => {

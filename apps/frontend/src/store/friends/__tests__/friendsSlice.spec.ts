@@ -3,6 +3,7 @@ import friendsReducer, {
   removeFriendRequest,
   setOnlineFriends,
   setOfflineFriends,
+  setUserStatus,
   toggleContextMenu,
   setSelectedFriend,
   removeFriend,
@@ -42,6 +43,7 @@ describe('friendsSlice', () => {
       friendRequests: [],
       onlineFriends: [],
       offlineFriends: [],
+      userStatuses: {},
       showContextMenu: false,
       points: { x: 0, y: 0 },
     });
@@ -188,5 +190,93 @@ describe('friendsSlice', () => {
   it('should toggle context menu', () => {
     const result = friendsReducer(undefined, toggleContextMenu(true));
     expect(result.showContextMenu).toBe(true);
+  });
+
+  // --- user status (added with call/presence feature) ---
+
+  it('should set a user status via setUserStatus', () => {
+    const result = friendsReducer(undefined, setUserStatus({ userId: '42', status: 'online' }));
+    expect(result.userStatuses['42']).toBe('online');
+  });
+
+  it('should overwrite an existing user status via setUserStatus', () => {
+    const state: FriendsState = {
+      friends: [],
+      friendRequests: [],
+      onlineFriends: [],
+      offlineFriends: [],
+      userStatuses: { '42': 'online' },
+      showContextMenu: false,
+      points: { x: 0, y: 0 },
+    };
+    const result = friendsReducer(state, setUserStatus({ userId: '42', status: 'in-call' }));
+    expect(result.userStatuses['42']).toBe('in-call');
+  });
+
+  it('should seed userStatuses to "online" for each friend in setOnlineFriends', () => {
+    const state: FriendsState = {
+      friends: [mockFriend],
+      friendRequests: [],
+      onlineFriends: [],
+      offlineFriends: [],
+      userStatuses: {},
+      showContextMenu: false,
+      points: { x: 0, y: 0 },
+    };
+    const result = friendsReducer(state, setOnlineFriends([mockFriend]));
+    expect(result.userStatuses[mockFriend.id]).toBe('online');
+  });
+
+  it('should not downgrade "in-call" to "online" when seeding via setOnlineFriends', () => {
+    const state: FriendsState = {
+      friends: [mockFriend],
+      friendRequests: [],
+      onlineFriends: [],
+      offlineFriends: [],
+      userStatuses: { [mockFriend.id]: 'in-call' },
+      showContextMenu: false,
+      points: { x: 0, y: 0 },
+    };
+    const result = friendsReducer(state, setOnlineFriends([mockFriend]));
+    expect(result.userStatuses[mockFriend.id]).toBe('in-call');
+  });
+
+  it('should set userStatuses to "offline" for friends not in onlineFriends via setOfflineFriends', () => {
+    const friend2: Friend = {
+      id: 2,
+      sender: mockUser(1, 'alice'),
+      receiver: mockUser(3, 'carol'),
+      createdAt: Date.now(),
+    };
+    const state: FriendsState = {
+      friends: [mockFriend, friend2],
+      friendRequests: [],
+      onlineFriends: [mockFriend], // only mockFriend is online
+      offlineFriends: [],
+      userStatuses: {},
+      showContextMenu: false,
+      points: { x: 0, y: 0 },
+    };
+    const result = friendsReducer(state, setOfflineFriends());
+    expect(result.offlineFriends).toHaveLength(1);
+    expect(result.offlineFriends[0].id).toBe(friend2.id);
+    expect(result.userStatuses[friend2.id]).toBe('offline');
+    // online friend's status should be untouched (not set to offline)
+    expect(result.userStatuses[mockFriend.id]).toBeUndefined();
+  });
+
+  it('should not overwrite "in-call" with "offline" via setOfflineFriends', () => {
+    const state: FriendsState = {
+      friends: [mockFriend],
+      friendRequests: [],
+      onlineFriends: [],
+      offlineFriends: [],
+      userStatuses: { [mockFriend.id]: 'in-call' },
+      showContextMenu: false,
+      points: { x: 0, y: 0 },
+    };
+    const result = friendsReducer(state, setOfflineFriends());
+    // in-call should be preserved — not downgraded to offline
+    expect(result.userStatuses[mockFriend.id]).toBe('in-call');
   });
 });

@@ -10,11 +10,14 @@ import {
   removeFriendThunk,
 } from './friendsThunk';
 
+export type UserStatus = 'online' | 'offline' | 'in-call';
+
 export interface FriendsState {
   friends: Friend[];
   friendRequests: FriendRequest[];
   onlineFriends: Friend[];
   offlineFriends: Friend[];
+  userStatuses: Record<string, UserStatus>;
   showContextMenu: boolean;
   selectedFriendContextMenu?: Friend;
   points: Points;
@@ -25,6 +28,7 @@ const initialState: FriendsState = {
   friendRequests: [],
   onlineFriends: [],
   offlineFriends: [],
+  userStatuses: {},
   showContextMenu: false,
   points: { x: 0, y: 0 },
 };
@@ -49,6 +53,12 @@ export const friendsSlice = createSlice({
     },
     setOnlineFriends: (state, action: PayloadAction<Friend[]>) => {
       state.onlineFriends = action.payload;
+      // Seed statuses from the bulk online list (don't override 'in-call')
+      action.payload.forEach((friend) => {
+        if (state.userStatuses[friend.id] !== 'in-call') {
+          state.userStatuses[friend.id] = 'online';
+        }
+      });
     },
     setOfflineFriends: (state) => {
       state.offlineFriends = state.friends.filter(
@@ -57,6 +67,14 @@ export const friendsSlice = createSlice({
             (onlineFriend) => onlineFriend.id === friend.id
           )
       );
+      state.offlineFriends.forEach((friend) => {
+        if (!state.userStatuses[friend.id] || state.userStatuses[friend.id] === 'online') {
+          state.userStatuses[friend.id] = 'offline';
+        }
+      });
+    },
+    setUserStatus: (state, action: PayloadAction<{ userId: string; status: UserStatus }>) => {
+      state.userStatuses[action.payload.userId] = action.payload.status;
     },
     toggleContextMenu: (state, action: PayloadAction<boolean>) => {
       state.showContextMenu = action.payload;
@@ -113,6 +131,7 @@ export const {
   removeFriendRequest,
   setOnlineFriends,
   setOfflineFriends,
+  setUserStatus,
   toggleContextMenu,
   setContextMenuLocation,
   setSelectedFriend,
