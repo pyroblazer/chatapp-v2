@@ -10,11 +10,12 @@ import { CallHistoryController } from './call-history.controller';
   imports: [TypeOrmModule.forFeature([Call, CallParticipant])],
   controllers: [CallHistoryController],
   providers: [
+    CallHistoryService,
     {
       provide: Services.CALL_HISTORY,
-      useClass: CallHistoryService,
+      useExisting: CallHistoryService,
     },
   ],
-  exports: [Services.CALL_HISTORY],
+  exports: [CallHistoryService, Services.CALL_HISTORY],
 })
 export class CallHistoryModule {}
