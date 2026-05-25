@@ -36,10 +36,17 @@ const axiosClient = axios.create({
   withCredentials: true,
 });
 
-let accessToken: string | null = null;
+const TOKEN_KEY = 'chatapp_access_token';
+
+let accessToken: string | null = localStorage.getItem(TOKEN_KEY);
 
 export const setAccessToken = (token: string | null) => {
   accessToken = token;
+  if (token) {
+    localStorage.setItem(TOKEN_KEY, token);
+  } else {
+    localStorage.removeItem(TOKEN_KEY);
+  }
 };
 
 export const getAccessToken = () => accessToken;
