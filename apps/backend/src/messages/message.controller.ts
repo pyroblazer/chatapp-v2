@@ -7,9 +7,11 @@ import {
   HttpStatus,
   Inject,
   Param,
+  ParseIntPipe,
   ParseUUIDPipe,
   Patch,
   Post,
+  Query,
   UploadedFiles,
   UseInterceptors,
 } from '@nestjs/common';
@@ -22,6 +24,7 @@ import {
   ApiConsumes,
   ApiOperation,
   ApiParam,
+  ApiQuery,
   ApiResponse,
   ApiTags,
 } from '@nestjs/swagger';
@@ -93,14 +96,18 @@ export class MessageController {
 
   @ApiOperation({ summary: 'Get all messages in a conversation' })
   @ApiParam({ name: 'id', description: 'Conversation UUID' })
+  @ApiQuery({ name: 'cursor', required: false, type: String })
+  @ApiQuery({ name: 'limit', required: false, type: Number })
   @ApiResponse({ status: 200 })
   @Get()
   @SkipThrottle()
   async getMessagesFromConversation(
     @AuthUser() user: User,
     @Param('id', ParseUUIDPipe) id: string,
+    @Query('cursor') cursor?: string,
+    @Query('limit', new ParseIntPipe({ optional: true })) limit?: number,
   ) {
-    const messages = await this.messageService.getMessages(id);
+    const messages = await this.messageService.getMessages(id, cursor, limit || 50);
     return { id, messages };
   }
 

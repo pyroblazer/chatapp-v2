@@ -73,12 +73,24 @@ export class MessageService implements IMessageService {
     return { message: savedMessage, conversation: updated };
   }
 
-  getMessages(conversationId: string): Promise<Message[]> {
-    return this.messageRepository.find({
-      relations: ['author', 'attachments', 'author.profile'],
-      where: { conversation: { id: conversationId } },
-      order: { createdAt: 'DESC' },
-    });
+  async getMessages(conversationId: string, cursor?: string, limit = 50): Promise<Message[]> {
+    const qb = this.messageRepository.createQueryBuilder('message')
+      .leftJoinAndSelect('message.author', 'author')
+      .leftJoinAndSelect('author.profile', 'profile')
+      .leftJoinAndSelect('message.attachments', 'attachments')
+      .where('message.conversationId = :conversationId', { conversationId })
+      .orderBy('message.createdAt', 'DESC')
+      .take(limit + 1);
+
+    if (cursor) {
+      const cursorMsg = await this.messageRepository.findOne({ where: { id: cursor } });
+      if (cursorMsg) {
+        qb.andWhere('message.createdAt < :cursorDate', { cursorDate: cursorMsg.createdAt });
+      }
+    }
+
+    const messages = await qb.getMany();
+    return messages.slice(0, limit);
   }
 
   async deleteMessage(params: DeleteMessageParams) {

@@ -1,12 +1,10 @@
-import { FieldErrorsImpl, UseFormRegister } from 'react-hook-form';
+import { FieldErrorsImpl, UseFormRegister, UseFormWatch } from 'react-hook-form';
 import { CreateUserParams } from '../types';
 
+export type RegisterFormValues = CreateUserParams & { confirmPassword: string };
+
 export type RegisterFormFieldProps = {
-  register: UseFormRegister<CreateUserParams>;
-  errors: FieldErrorsImpl<{
-    username: string;
-    firstName: string;
-    lastName: string;
-    password: string;
-  }>;
+  register: UseFormRegister<RegisterFormValues>;
+  errors: FieldErrorsImpl<RegisterFormValues>;
+  watch?: UseFormWatch<RegisterFormValues>;
 };

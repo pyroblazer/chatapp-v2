@@ -80,21 +80,86 @@ describe('MessageService', () => {
   });
 
   describe('getMessages', () => {
-    it('should return messages for a conversation', async () => {
-      const mockMessages = [
-        { id: '1', content: 'Hello' },
-        { id: '2', content: 'World' },
-      ];
-      messageRepo.find.mockResolvedValue(mockMessages);
+    const createMockQb = () => ({
+      leftJoinAndSelect: jest.fn().mockReturnThis(),
+      where: jest.fn().mockReturnThis(),
+      andWhere: jest.fn().mockReturnThis(),
+      orderBy: jest.fn().mockReturnThis(),
+      take: jest.fn().mockReturnThis(),
+      getMany: jest.fn(),
+    });
 
-      const result = await service.getMessages(1);
+    it('should return messages using cursor-based pagination (first page)', async () => {
+      const qb = createMockQb();
+      const mockMessages = Array.from({ length: 51 }, (_, i) => ({
+        id: `msg-${i}`,
+        createdAt: new Date(),
+      }));
+      qb.getMany.mockResolvedValue(mockMessages);
+      messageRepo.createQueryBuilder.mockReturnValue(qb);
 
-      expect(result).toEqual(mockMessages);
-      expect(messageRepo.find).toHaveBeenCalledWith({
-        relations: ['author', 'attachments', 'author.profile'],
-        where: { conversation: { id: 1 } },
-        order: { createdAt: 'DESC' },
-      });
+      const result = await service.getMessages('conv-1', undefined, 50);
+
+      expect(messageRepo.createQueryBuilder).toHaveBeenCalledWith('message');
+      expect(qb.where).toHaveBeenCalledWith(
+        'message.conversationId = :conversationId',
+        { conversationId: 'conv-1' },
+      );
+      expect(qb.take).toHaveBeenCalledWith(51);
+      expect(qb.orderBy).toHaveBeenCalledWith('message.createdAt', 'DESC');
+      expect(qb.andWhere).not.toHaveBeenCalled();
+      expect(result).toHaveLength(50);
+    });
+
+    it('should apply cursor filter when cursor is provided', async () => {
+      const qb = createMockQb();
+      const cursorDate = new Date('2025-01-01T12:00:00Z');
+      messageRepo.findOne.mockResolvedValue({ id: 'msg-25', createdAt: cursorDate });
+      const mockMessages = Array.from({ length: 26 }, (_, i) => ({
+        id: `msg-${i}`,
+        createdAt: new Date('2025-01-01T11:59:00Z'),
+      }));
+      qb.getMany.mockResolvedValue(mockMessages);
+      messageRepo.createQueryBuilder.mockReturnValue(qb);
+
+      const result = await service.getMessages('conv-1', 'msg-25', 25);
+
+      expect(messageRepo.findOne).toHaveBeenCalledWith({ where: { id: 'msg-25' } });
+      expect(qb.andWhere).toHaveBeenCalledWith(
+        'message.createdAt < :cursorDate',
+        { cursorDate },
+      );
+      expect(qb.take).toHaveBeenCalledWith(26);
+      expect(result).toHaveLength(25);
+    });
+
+    it('should ignore invalid cursor and return first page', async () => {
+      const qb = createMockQb();
+      messageRepo.findOne.mockResolvedValue(null);
+      const mockMessages = Array.from({ length: 50 }, (_, i) => ({
+        id: `msg-${i}`,
+        createdAt: new Date(),
+      }));
+      qb.getMany.mockResolvedValue(mockMessages);
+      messageRepo.createQueryBuilder.mockReturnValue(qb);
+
+      const result = await service.getMessages('conv-1', 'nonexistent', 50);
+
+      expect(qb.andWhere).not.toHaveBeenCalled();
+      expect(result).toHaveLength(50);
+    });
+
+    it('should return fewer messages when no more pages exist', async () => {
+      const qb = createMockQb();
+      const mockMessages = Array.from({ length: 10 }, (_, i) => ({
+        id: `msg-${i}`,
+        createdAt: new Date(),
+      }));
+      qb.getMany.mockResolvedValue(mockMessages);
+      messageRepo.createQueryBuilder.mockReturnValue(qb);
+
+      const result = await service.getMessages('conv-1', undefined, 50);
+      expect(result).toHaveLength(10);
     });
   });
 

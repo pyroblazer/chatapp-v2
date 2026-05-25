@@ -9,21 +9,26 @@ import styles from '../index.module.scss';
 import { UsernameField } from './UsernameField';
 import { NameField } from './NameField';
 import { PasswordField } from './PasswordField';
+import { ConfirmPasswordField } from './ConfirmPasswordField';
 import { ErrorModal } from '../../modals/ErrorModal';
+
+type RegisterFormValues = CreateUserParams & { confirmPassword: string };
 
 export const RegisterForm = () => {
   const {
     register,
     handleSubmit,
+    watch,
     formState: { errors },
-  } = useForm<CreateUserParams>({ reValidateMode: 'onBlur' });
+  } = useForm<RegisterFormValues>({ reValidateMode: 'onBlur' });
 
   const navigate = useNavigate();
   const [errorMsg, setErrorMsg] = useState('');
 
-  const onSubmit = async (data: CreateUserParams) => {
+  const onSubmit = async (data: RegisterFormValues) => {
+    const { confirmPassword, ...registerData } = data;
     try {
-      await postRegisterUser(data);
+      await postRegisterUser(registerData);
       navigate('/login');
       toast.clearWaitingQueue();
       toast('Account created!', { type: 'success', icon: true });
@@ -33,7 +38,7 @@ export const RegisterForm = () => {
     }
   };
 
-  const formFieldProps = { errors, register };
+  const formFieldProps = { errors, register, watch };
 
   return (
     <>
@@ -42,6 +47,7 @@ export const RegisterForm = () => {
         <UsernameField {...formFieldProps} />
         <NameField {...formFieldProps} />
         <PasswordField {...formFieldProps} />
+        <ConfirmPasswordField {...formFieldProps} />
         <Button className={styles.button}>Create My Account</Button>
         <div className={styles.footerText}>
           <span>Already have an account? </span>

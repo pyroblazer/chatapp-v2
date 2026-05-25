@@ -69,14 +69,24 @@ export class GroupMessageService implements IGroupMessageService {
     return { message: savedMessage, group: updatedGroup };
   }
 
-  getGroupMessages(id: string): Promise<GroupMessage[]> {
-    return this.groupMessageRepository.find({
-      where: { group: { id } },
-      relations: ['author', 'attachments', 'author.profile'],
-      order: {
-        createdAt: 'DESC',
-      },
-    });
+  async getGroupMessages(id: string, cursor?: string, limit = 50): Promise<GroupMessage[]> {
+    const qb = this.groupMessageRepository.createQueryBuilder('message')
+      .leftJoinAndSelect('message.author', 'author')
+      .leftJoinAndSelect('author.profile', 'profile')
+      .leftJoinAndSelect('message.attachments', 'attachments')
+      .where('message.groupId = :groupId', { groupId: id })
+      .orderBy('message.createdAt', 'DESC')
+      .take(limit + 1);
+
+    if (cursor) {
+      const cursorMsg = await this.groupMessageRepository.findOne({ where: { id: cursor } });
+      if (cursorMsg) {
+        qb.andWhere('message.createdAt < :cursorDate', { cursorDate: cursorMsg.createdAt });
+      }
+    }
+
+    const messages = await qb.getMany();
+    return messages.slice(0, limit);
   }
 
   async deleteGroupMessage(params: DeleteGroupMessageParams) {

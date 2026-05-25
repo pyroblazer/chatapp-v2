@@ -51,10 +51,15 @@ export class RedisCacheService {
   async invalidatePattern(pattern: string): Promise<void> {
     try {
       const client = this.redisService.getClient();
-      const keys = await client.keys(`cache:${pattern}`);
-      if (keys.length > 0) {
-        await client.del(...keys);
-      }
+      const matchPattern = `cache:${pattern}`;
+      let cursor = '0';
+      do {
+        const [nextCursor, keys] = await client.scan(cursor, 'MATCH', matchPattern, 'COUNT', 100);
+        cursor = nextCursor;
+        if (keys.length > 0) {
+          await client.del(...keys);
+        }
+      } while (cursor !== '0');
     } catch {
       this.logger.warn(`Cache pattern invalidation failed for: ${pattern}`);
     }
@@ -66,11 +71,7 @@ export class RedisCacheService {
     return this.getCached(`user:profile:${userId}`);
   }
 
-  async setUserProfileCache(
-    userId: string,
-    profile: any,
-    ttl?: number,
-  ): Promise<void> {
+  async setUserProfileCache(userId: string, profile: any, ttl?: number): Promise<void> {
     await this.setCache(`user:profile:${userId}`, profile, ttl);
   }
 
@@ -84,15 +85,25 @@ export class RedisCacheService {
     return this.getCached(`user:conversations:${userId}`);
   }
 
-  async setConversationsCache(
-    userId: string,
-    conversations: any,
-    ttl?: number,
-  ): Promise<void> {
+  async setConversationsCache(userId: string, conversations: any, ttl?: number): Promise<void> {
     await this.setCache(`user:conversations:${userId}`, conversations, ttl);
   }
 
   async invalidateConversations(userId: string): Promise<void> {
     await this.invalidateCache(`user:conversations:${userId}`);
+  }
+
+  // --- Group Member Caching ---
+
+  async getCachedGroupMembers(groupId: string): Promise<string[] | null> {
+    return this.getCached(`group:members:${groupId}`);
+  }
+
+  async setGroupMembersCache(groupId: string, memberIds: string[], ttl = 300): Promise<void> {
+    await this.setCache(`group:members:${groupId}`, memberIds, ttl);
+  }
+
+  async invalidateGroupMembers(groupId: string): Promise<void> {
+    await this.invalidateCache(`group:members:${groupId}`);
   }
 }

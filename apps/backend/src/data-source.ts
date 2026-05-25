@@ -17,6 +17,8 @@ import { FriendRequest } from './utils/typeorm/entities/FriendRequest';
 import { Friend } from './utils/typeorm/entities/Friend';
 import { RefreshToken } from './utils/typeorm/entities/RefreshToken';
 import { Peer } from './utils/typeorm/entities/Peer';
+import { Call } from './utils/typeorm/entities/Call';
+import { CallParticipant } from './utils/typeorm/entities/CallParticipant';
 
 export const AppDataSource = new DataSource({
   type: 'postgres',
@@ -43,6 +45,8 @@ export const AppDataSource = new DataSource({
     Friend,
     RefreshToken,
     Peer,
+    Call,
+    CallParticipant,
   ],
   migrations: ['src/migrations/*.ts'],
   synchronize: false,

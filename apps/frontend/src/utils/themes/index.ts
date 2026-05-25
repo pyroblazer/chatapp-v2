@@ -114,58 +114,58 @@ export const DarkTheme: Theme = {
 
 export const LightTheme: Theme = {
   background: {
-    primary: '#C1C1C1',
-    secondary: '#fff',
-    tertiary: '#ededed',
+    primary: '#f5f5f5',
+    secondary: '#ffffff',
+    tertiary: '#eeeeee',
   },
   text: {
-    primary: '#000',
-    secondary: '#636363',
+    primary: '#1a1a1a',
+    secondary: '#4a4a4a',
   },
   userSidebar: {
-    backgroundColor: '#15161E',
-    color: '#fff',
+    backgroundColor: '#2c2c2c',
+    color: '#ffffff',
   },
   conversationSidebar: {
-    backgroundColor: '#fff',
-    color: '#000',
+    backgroundColor: '#ffffff',
+    color: '#1a1a1a',
     conversationItem: {
-      selected: '#D1D1D1',
+      selected: '#d4e4ff',
       hover: {
-        backgroundColor: '#D8D8D8',
+        backgroundColor: '#e8e8e8',
       },
       title: {
-        color: '#000',
-        lastMessageColor: '#636363',
+        color: '#1a1a1a',
+        lastMessageColor: '#555555',
       },
     },
   },
   messagePanel: {
-    backgroundColor: '#ededed',
-    color: '#fff',
+    backgroundColor: '#f0f0f0',
+    color: '#1a1a1a',
     header: {
-      title: '#000',
+      title: '#1a1a1a',
     },
     body: {
       content: {
-        color: '#000',
+        color: '#1a1a1a',
       },
     },
     inputContainer: {
-      backgroundColor: '#fff',
-      color: '#000',
+      backgroundColor: '#ffffff',
+      color: '#1a1a1a',
     },
   },
   participantSidebar: {
-    backgroundColor: '#fff',
-    color: '#000',
+    backgroundColor: '#ffffff',
+    color: '#1a1a1a',
   },
   page: {
-    backgroundColor: '#fff',
+    backgroundColor: '#f5f5f5',
   },
   input: {
-    backgroundColor: '#ececec',
-    color: '#595959',
+    backgroundColor: '#ffffff',
+    color: '#1a1a1a',
   },
 };
 

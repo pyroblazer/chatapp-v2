@@ -7,6 +7,7 @@ import { CallHistoryModule } from '../calls/call-history.module';
 import { Services } from '../utils/constants';
 import { MessagingGateway } from './gateway';
 import { GatewaySessionManager } from './gateway.session';
+import { SocketRateLimiter } from './gateway.rate-limit';
 
 @Module({
   imports: [ConversationsModule, GroupModule, FriendsModule, RedisModule, CallHistoryModule],
@@ -16,6 +17,7 @@ import { GatewaySessionManager } from './gateway.session';
       provide: Services.GATEWAY_SESSION_MANAGER,
       useClass: GatewaySessionManager,
     },
+    SocketRateLimiter,
   ],
   exports: [Services.GATEWAY_SESSION_MANAGER, MessagingGateway],
 })

@@ -15,6 +15,7 @@ import { MessageReaction } from './entities/MessageReaction';
 import { GroupMessageReaction } from './entities/GroupMessageReaction';
 import { ReadReceipt } from './entities/ReadReceipt';
 import { Call } from './entities/Call';
+import { CallParticipant } from './entities/CallParticipant';
 import { Notification } from '../../notifications/notification.entity';
 import { Report } from '../../admin/report.entity';
 import { AuditLog } from '../../audit/audit-log.entity';
@@ -40,6 +41,7 @@ const entities = [
   GroupMessageReaction,
   ReadReceipt,
   Call,
+  CallParticipant,
   Notification,
   Report,
   AuditLog,
@@ -68,6 +70,7 @@ export {
   GroupMessageReaction,
   ReadReceipt,
   Call,
+  CallParticipant,
   Notification,
   Report,
   AuditLog,

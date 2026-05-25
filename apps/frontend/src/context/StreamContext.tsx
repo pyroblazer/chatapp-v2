@@ -39,6 +39,8 @@ export const StreamProvider: React.FC<StreamProviderProps> = ({ children }) => {
     const initStream = async () => {
       try {
         setIsLoading(true);
+        // Lazy-load Stream.io CSS only when video service initializes
+        await import('@stream-io/video-react-sdk/dist/css/styles.css');
         const token = getAccessToken();
         const response = await fetch(`${import.meta.env.VITE_API_URL}/stream/video-token`, {
           headers: { 'Authorization': `Bearer ${token}` },

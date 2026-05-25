@@ -10,3 +10,7 @@ export const createSocket = (): Socket =>
 
 export const socket = createSocket();
 export const SocketContext = createContext(socket);
+
+export const updateSocketAuth = (token: string) => {
+  socket.auth = { token };
+};

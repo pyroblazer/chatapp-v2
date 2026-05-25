@@ -34,6 +34,8 @@ import type {
 } from '../utils/types';
 import { CreateCallDto } from './dtos/CreateCallDto';
 import type { IGatewaySessionManager } from './gateway.session';
+import { SocketRateLimiter } from './gateway.rate-limit';
+import { RedisCacheService } from '../redis/redis.cache.service';
 
 @WebSocketGateway({
   cors: {
@@ -46,24 +48,8 @@ import type { IGatewaySessionManager } from './gateway.session';
 export class MessagingGateway
   implements OnGatewayConnection, OnGatewayDisconnect
 {
-  constructor(
-    @Inject(Services.GATEWAY_SESSION_MANAGER)
-    readonly sessions: IGatewaySessionManager,
-    @Inject(Services.CONVERSATIONS)
-    private readonly conversationService: IConversationsService,
-    @Inject(Services.GROUPS)
-    private readonly groupsService: IGroupService,
-    @Inject(Services.FRIENDS_SERVICE)
-    private readonly friendsService: IFriendsService,
-    @Inject(Services.CALL_HISTORY)
-    private readonly callHistoryService: CallHistoryService,
-  ) {}
-
-  @WebSocketServer()
-  server: Server;
-
-  private readonly callParticipants: Map<string, Set<string>> = new Map(); // callId -> userIds
-  private readonly userCallMap: Map<string, string> = new Map(); // userId -> callId
+  private readonly callParticipants: Map<string, Set<string>> = new Map();
+  private readonly userCallMap: Map<string, string> = new Map();
 
   private readonly pendingStreamCalls: Map<
     string,
@@ -78,8 +64,54 @@ export class MessagingGateway
     }
   > = new Map();
 
+  private readonly pendingGroupCalls: Map<
+    string,
+    {
+      callId: string;
+      callType: 'video' | 'audio';
+      callerId: string;
+      callerName: string;
+      groupId: string;
+      initiatedAt: number;
+    }
+  > = new Map();
+
+  private readonly typingThrottle = new Map<string, number>();
+  private static readonly TYPING_THROTTLE_MS = 1000;
+
+  constructor(
+    @Inject(Services.GATEWAY_SESSION_MANAGER)
+    readonly sessions: IGatewaySessionManager,
+    @Inject(Services.CONVERSATIONS)
+    private readonly conversationService: IConversationsService,
+    @Inject(Services.GROUPS)
+    private readonly groupsService: IGroupService,
+    @Inject(Services.FRIENDS_SERVICE)
+    private readonly friendsService: IFriendsService,
+    @Inject(Services.CALL_HISTORY)
+    private readonly callHistoryService: CallHistoryService,
+    private readonly rateLimiter: SocketRateLimiter,
+    private readonly cache: RedisCacheService,
+  ) {}
+
+  @WebSocketServer()
+  server: Server;
+
   async handleConnection(socket: AuthenticatedSocket, ...args: any[]) {
     this.sessions.setUserSocket(socket.user.id, socket);
+
+    // Join personal room for user-specific events (works across instances with Redis adapter)
+    socket.join(`user-${socket.user.id}`);
+
+    // Apply per-event rate limiting
+    socket.use((packet, next) => {
+      const [event] = packet;
+      if (!this.rateLimiter.isAllowed(socket.id, event)) {
+        return next(new Error('Rate limit exceeded'));
+      }
+      next();
+    });
+
     socket.emit('connected', {});
 
     // Deliver any pending stream call that was initiated while this user was offline
@@ -88,10 +120,18 @@ export class MessagingGateway
       socket.emit('streamCallInitiated', pending);
     }
 
+    // Deliver any pending group calls
+    const pendingGroup = this.pendingGroupCalls.get(socket.user.id);
+    if (pendingGroup) {
+      socket.emit('streamCallInitiated', { ...pendingGroup, groupId: pendingGroup.groupId });
+      this.pendingGroupCalls.delete(socket.user.id);
+    }
+
     await this.broadcastStatusToFriends(socket.user.id, 'online');
   }
 
   async handleDisconnect(socket: AuthenticatedSocket) {
+    this.rateLimiter.cleanup(socket.id);
     this.sessions.setUserInCall(socket.user.id, false);
     this.sessions.removeUserSocket(socket.user.id);
     await this.broadcastStatusToFriends(socket.user.id, 'offline');
@@ -102,17 +142,20 @@ export class MessagingGateway
     status: 'online' | 'offline' | 'in-call',
   ) {
     try {
-      const friends = await this.friendsService.getFriends(userId);
-      for (const friend of friends) {
-        const friendUserId =
-          friend.sender.id === userId ? friend.receiver.id : friend.sender.id;
-        const friendSocket = this.sessions.getUserSocket(friendUserId);
-        if (friendSocket) {
-          friendSocket.emit('onFriendStatusChange', { userId, status });
-        }
+      // Try cached friends list first
+      let friendIds: string[] | null = await this.cache.getCached(`user:friends:ids:${userId}`);
+      if (!friendIds) {
+        const friends = await this.friendsService.getFriends(userId);
+        friendIds = friends.map((f) =>
+          f.sender.id === userId ? f.receiver.id : f.sender.id,
+        );
+        await this.cache.setCache(`user:friends:ids:${userId}`, friendIds, 300);
+      }
+      for (const friendId of friendIds) {
+        this.server.to(`user-${friendId}`).emit('onFriendStatusChange', { userId, status });
       }
     } catch {
-      // non-critical — ignore errors
+      // non-critical
     }
   }
 
@@ -126,8 +169,8 @@ export class MessagingGateway
     const onlineUsers = [];
     const offlineUsers = [];
     group.users.forEach((user) => {
-      const socket = this.sessions.getUserSocket(user.id);
-      socket ? onlineUsers.push(user) : offlineUsers.push(user);
+      const s = this.sessions.getUserSocket(user.id);
+      s ? onlineUsers.push(user) : offlineUsers.push(user);
     });
     socket.emit('onlineGroupUsersReceived', { onlineUsers, offlineUsers });
   }
@@ -138,13 +181,19 @@ export class MessagingGateway
   }
 
   @SubscribeMessage('onConversationJoin')
-  onConversationJoin(
+  async onConversationJoin(
     @MessageBody() data: any,
     @ConnectedSocket() client: AuthenticatedSocket,
   ) {
-    console.log(
-      `${client.user?.id} joined a Conversation of ID: ${data.conversationId}`,
-    );
+    // Verify the user is a participant of this conversation
+    try {
+      const conversation = await this.conversationService.findById(data.conversationId);
+      if (!conversation || (conversation.creator.id !== client.user.id && conversation.recipient.id !== client.user.id)) {
+        return;
+      }
+    } catch {
+      return;
+    }
     client.join(`conversation-${data.conversationId}`);
     client.to(`conversation-${data.conversationId}`).emit('userJoin');
   }
@@ -159,10 +208,19 @@ export class MessagingGateway
   }
 
   @SubscribeMessage('onGroupJoin')
-  onGroupJoin(
+  async onGroupJoin(
     @MessageBody() data: any,
     @ConnectedSocket() client: AuthenticatedSocket,
   ) {
+    // Verify the user is a member of this group
+    try {
+      const group = await this.groupsService.findGroupById(data.groupId);
+      if (!group || !group.users.some((u) => u.id === client.user.id)) {
+        return;
+      }
+    } catch {
+      return;
+    }
     client.join(`group-${data.groupId}`);
     client.to(`group-${data.groupId}`).emit('userGroupJoin');
   }
@@ -181,7 +239,17 @@ export class MessagingGateway
     @MessageBody() data: any,
     @ConnectedSocket() client: AuthenticatedSocket,
   ) {
-    client.to(`conversation-${data.conversationId}`).emit('onTypingStart');
+    const key = `${client.user.id}:${data.conversationId || data.groupId}`;
+    const now = Date.now();
+    const lastEmit = this.typingThrottle.get(key) || 0;
+    if (now - lastEmit < MessagingGateway.TYPING_THROTTLE_MS) return;
+    this.typingThrottle.set(key, now);
+
+    if (data.conversationId) {
+      client.to(`conversation-${data.conversationId}`).emit('onTypingStart');
+    } else if (data.groupId) {
+      client.to(`group-${data.groupId}`).emit('onTypingStart');
+    }
   }
 
   @SubscribeMessage('onTypingStop')
@@ -189,8 +257,14 @@ export class MessagingGateway
     @MessageBody() data: any,
     @ConnectedSocket() client: AuthenticatedSocket,
   ) {
-    client.to(`conversation-${data.conversationId}`).emit('onTypingStop');
+    if (data.conversationId) {
+      client.to(`conversation-${data.conversationId}`).emit('onTypingStop');
+    } else if (data.groupId) {
+      client.to(`group-${data.groupId}`).emit('onTypingStop');
+    }
   }
+
+  // --- Event-driven message delivery via user rooms (multi-instance safe) ---
 
   @OnEvent('message.create')
   handleMessageCreateEvent(payload: CreateMessageResponse) {
@@ -199,20 +273,14 @@ export class MessagingGateway
       conversation: { creator, recipient },
     } = payload.message;
 
-    const authorSocket = this.sessions.getUserSocket(author.id);
-    const recipientSocket =
-      author.id === creator.id
-        ? this.sessions.getUserSocket(recipient.id)
-        : this.sessions.getUserSocket(creator.id);
-
-    if (authorSocket) authorSocket.emit('onMessage', payload);
-    if (recipientSocket) recipientSocket.emit('onMessage', payload);
+    // Emit to both users' personal rooms — works across instances via Redis adapter
+    this.server.to(`user-${creator.id}`).emit('onMessage', payload);
+    this.server.to(`user-${recipient.id}`).emit('onMessage', payload);
   }
 
   @OnEvent('conversation.create')
   handleConversationCreateEvent(payload: Conversation) {
-    const recipientSocket = this.sessions.getUserSocket(payload.recipient.id);
-    if (recipientSocket) recipientSocket.emit('onConversation', payload);
+    this.server.to(`user-${payload.recipient.id}`).emit('onConversation', payload);
   }
 
   @OnEvent('message.delete')
@@ -222,11 +290,8 @@ export class MessagingGateway
     );
     if (!conversation) return;
     const { creator, recipient } = conversation;
-    const recipientSocket =
-      creator.id === payload.userId
-        ? this.sessions.getUserSocket(recipient.id)
-        : this.sessions.getUserSocket(creator.id);
-    if (recipientSocket) recipientSocket.emit('onMessageDelete', payload);
+    const recipientId = creator.id === payload.userId ? recipient.id : creator.id;
+    this.server.to(`user-${recipientId}`).emit('onMessageDelete', payload);
   }
 
   @OnEvent('message.update')
@@ -235,11 +300,8 @@ export class MessagingGateway
       author,
       conversation: { creator, recipient },
     } = message;
-    const recipientSocket =
-      author.id === creator.id
-        ? this.sessions.getUserSocket(recipient.id)
-        : this.sessions.getUserSocket(creator.id);
-    if (recipientSocket) recipientSocket.emit('onMessageUpdate', message);
+    this.server.to(`user-${creator.id}`).emit('onMessageUpdate', message);
+    this.server.to(`user-${recipient.id}`).emit('onMessageUpdate', message);
   }
 
   @OnEvent('group.message.create')
@@ -251,8 +313,7 @@ export class MessagingGateway
   @OnEvent('group.create')
   handleGroupCreate(payload: Group) {
     payload.users.forEach((user) => {
-      const socket = this.sessions.getUserSocket(user.id);
-      socket && socket.emit('onGroupCreate', payload);
+      this.server.to(`user-${user.id}`).emit('onGroupCreate', payload);
     });
   }
 
@@ -264,67 +325,36 @@ export class MessagingGateway
 
   @OnEvent('group.user.add')
   handleGroupUserAdd(payload: AddGroupUserResponse) {
-    const recipientSocket = this.sessions.getUserSocket(payload.user.id);
     this.server
       .to(`group-${payload.group.id}`)
       .emit('onGroupReceivedNewUser', payload);
-    recipientSocket && recipientSocket.emit('onGroupUserAdd', payload);
+    this.server.to(`user-${payload.user.id}`).emit('onGroupUserAdd', payload);
   }
 
   @OnEvent('group.user.remove')
   handleGroupUserRemove(payload: RemoveGroupUserResponse) {
-    const { group, user } = payload;
+    const { group } = payload;
     const ROOM_NAME = `group-${payload.group.id}`;
-    const removedUserSocket = this.sessions.getUserSocket(payload.user.id);
-    if (removedUserSocket) {
-      removedUserSocket.emit('onGroupRemoved', payload);
-      removedUserSocket.leave(ROOM_NAME);
-    }
+    // Emit to the removed user via their personal room
+    this.server.to(`user-${payload.user.id}`).emit('onGroupRemoved', payload);
+    // They should also leave the group room — but we can't force socket.leave from here,
+    // the client handles this on receiving onGroupRemoved
     this.server.to(ROOM_NAME).emit('onGroupRecipientRemoved', payload);
-    const onlineUsers = group.users
-      .map((user) => this.sessions.getUserSocket(user.id) && user)
-      .filter((user) => user);
-    // this.server.to(ROOM_NAME).emit('onlineGroupUsersReceived', { onlineUsers });
   }
 
   @OnEvent('group.owner.update')
   handleGroupOwnerUpdate(payload: Group) {
     const ROOM_NAME = `group-${payload.id}`;
-    const newOwnerSocket = this.sessions.getUserSocket(payload.owner.id);
-    const { rooms } = this.server.sockets.adapter;
-    const socketsInRoom = rooms.get(ROOM_NAME);
-    // Check if the new owner is in the group (room)
     this.server.to(ROOM_NAME).emit('onGroupOwnerUpdate', payload);
-    if (newOwnerSocket && !socketsInRoom.has(newOwnerSocket.id)) {
-      newOwnerSocket.emit('onGroupOwnerUpdate', payload);
-    }
+    // Also emit to the new owner directly in case they aren't in the room yet
+    this.server.to(`user-${payload.owner.id}`).emit('onGroupOwnerUpdate', payload);
   }
 
   @OnEvent('group.user.leave')
   handleGroupUserLeave(payload) {
     const ROOM_NAME = `group-${payload.group.id}`;
-    const { rooms } = this.server.sockets.adapter;
-    const socketsInRoom = rooms.get(ROOM_NAME);
-    const leftUserSocket = this.sessions.getUserSocket(payload.userId);
-    /**
-     * If socketsInRoom is undefined, this means that there is
-     * no one connected to the room. So just emit the event for
-     * the connected user if they are online.
-     */
-    if (leftUserSocket && socketsInRoom) {
-      if (socketsInRoom.has(leftUserSocket.id)) {
-        return this.server
-          .to(ROOM_NAME)
-          .emit('onGroupParticipantLeft', payload);
-      } else {
-        leftUserSocket.emit('onGroupParticipantLeft', payload);
-        this.server.to(ROOM_NAME).emit('onGroupParticipantLeft', payload);
-        return;
-      }
-    }
-    if (leftUserSocket && !socketsInRoom) {
-      return leftUserSocket.emit('onGroupParticipantLeft', payload);
-    }
+    this.server.to(ROOM_NAME).emit('onGroupParticipantLeft', payload);
+    this.server.to(`user-${payload.userId}`).emit('onGroupParticipantLeft', payload);
   }
 
   @OnEvent(ServerEvents.REACTION_ADDED)
@@ -342,12 +372,8 @@ export class MessagingGateway
       const message = reaction.message || reaction;
       if (message.conversation) {
         const { creator, recipient } = message.conversation;
-        const creatorSocket = this.sessions.getUserSocket(creator.id);
-        const recipientSocket = this.sessions.getUserSocket(recipient.id);
-        if (creatorSocket)
-          creatorSocket.emit(WebsocketEvents.REACTION_ADDED, payload);
-        if (recipientSocket)
-          recipientSocket.emit(WebsocketEvents.REACTION_ADDED, payload);
+        this.server.to(`user-${creator.id}`).emit(WebsocketEvents.REACTION_ADDED, payload);
+        this.server.to(`user-${recipient.id}`).emit(WebsocketEvents.REACTION_ADDED, payload);
       }
     }
   }
@@ -365,11 +391,9 @@ export class MessagingGateway
         .to(`group-${payload.groupId}`)
         .emit(WebsocketEvents.REACTION_REMOVED, payload);
     } else {
-      // For DMs, emit to the conversation participants
-      // The payload contains userId so the frontend can identify the conversation
-      const userSocket = this.sessions.getUserSocket(payload.userId);
-      if (userSocket)
-        userSocket.emit(WebsocketEvents.REACTION_REMOVED, payload);
+      // For DMs, we need to find the conversation to emit to both parties
+      // Emit to the user's room — the frontend filters by conversation
+      this.server.to(`user-${payload.userId}`).emit(WebsocketEvents.REACTION_REMOVED, payload);
     }
   }
 
@@ -380,12 +404,8 @@ export class MessagingGateway
     );
     if (!conversation) return;
     const { creator, recipient } = conversation;
-    const recipientSocket =
-      creator.id === payload.userId
-        ? this.sessions.getUserSocket(recipient.id)
-        : this.sessions.getUserSocket(creator.id);
-    if (recipientSocket)
-      recipientSocket.emit(WebsocketEvents.MESSAGE_READ, payload);
+    const recipientId = creator.id === payload.userId ? recipient.id : creator.id;
+    this.server.to(`user-${recipientId}`).emit(WebsocketEvents.MESSAGE_READ, payload);
   }
 
   @OnEvent(ServerEvents.THREAD_REPLY)
@@ -401,16 +421,8 @@ export class MessagingGateway
         .emit(WebsocketEvents.THREAD_REPLY, payload);
     } else if (payload.conversation) {
       const { creator, recipient } = payload.conversation;
-      const author = payload.reply.author;
-      const authorSocket = this.sessions.getUserSocket(author.id);
-      const recipientSocket =
-        author.id === creator.id
-          ? this.sessions.getUserSocket(recipient.id)
-          : this.sessions.getUserSocket(creator.id);
-      if (authorSocket)
-        authorSocket.emit(WebsocketEvents.THREAD_REPLY, payload);
-      if (recipientSocket)
-        recipientSocket.emit(WebsocketEvents.THREAD_REPLY, payload);
+      this.server.to(`user-${creator.id}`).emit(WebsocketEvents.THREAD_REPLY, payload);
+      this.server.to(`user-${recipient.id}`).emit(WebsocketEvents.THREAD_REPLY, payload);
     }
   }
 
@@ -433,6 +445,8 @@ export class MessagingGateway
     }
   }
 
+  // --- Legacy PeerJS call handlers (retained for backward compatibility) ---
+
   @SubscribeMessage('onVideoCallInitiate')
   async handleVideoCall(
     @MessageBody() data: CreateCallDto,
@@ -440,12 +454,8 @@ export class MessagingGateway
   ) {
     const caller = socket.user;
 
-    // Check if receiver is already in a call
     if (this.sessions.isUserInCall(data.recipientId)) {
-      socket.emit('onUserBusy', {
-        userId: data.recipientId,
-        message: 'User is currently in another call'
-      });
+      socket.emit('onUserBusy', { userId: data.recipientId, message: 'User is currently in another call' });
       return;
     }
 
@@ -455,9 +465,7 @@ export class MessagingGateway
       return;
     }
 
-    // Mark caller as being in a call
     this.sessions.setUserInCall(caller.id, true);
-
     receiverSocket.emit('onVideoCall', { ...data, caller });
   }
 
@@ -466,7 +474,6 @@ export class MessagingGateway
     @MessageBody() data: CallAcceptedPayload,
     @ConnectedSocket() socket: AuthenticatedSocket,
   ) {
-    // Mark both parties as being in a call
     this.sessions.setUserInCall(data.caller.id, true);
     this.sessions.setUserInCall(socket.user.id, true);
 
@@ -476,9 +483,7 @@ export class MessagingGateway
       socket.user.id,
     );
     if (!conversation) {
-      socket.emit('onVideoCallError', {
-        message: 'Conversation not found. Please start a conversation first.',
-      });
+      socket.emit('onVideoCallError', { message: 'Conversation not found. Please start a conversation first.' });
       return;
     }
     if (callerSocket) {
@@ -486,9 +491,7 @@ export class MessagingGateway
       callerSocket.emit('onVideoCallAccept', payload);
       socket.emit('onVideoCallAccept', payload);
     } else {
-      socket.emit('onVideoCallError', {
-        message: 'Caller is no longer available.',
-      });
+      socket.emit('onVideoCallError', { message: 'Caller is no longer available.' });
     }
   }
 
@@ -499,8 +502,7 @@ export class MessagingGateway
   ) {
     const receiver = socket.user;
     const callerSocket = this.sessions.getUserSocket(data.caller.id);
-    callerSocket &&
-      callerSocket.emit(WebsocketEvents.VIDEO_CALL_REJECTED, { receiver });
+    callerSocket && callerSocket.emit(WebsocketEvents.VIDEO_CALL_REJECTED, { receiver });
     socket.emit(WebsocketEvents.VIDEO_CALL_REJECTED, { receiver });
   }
 
@@ -509,7 +511,6 @@ export class MessagingGateway
     @MessageBody() { caller, receiver }: CallHangUpPayload,
     @ConnectedSocket() socket: AuthenticatedSocket,
   ) {
-    // Mark both parties as no longer being in a call
     this.sessions.setUserInCall(caller.id, false);
     this.sessions.setUserInCall(receiver.id, false);
 
@@ -530,12 +531,8 @@ export class MessagingGateway
   ) {
     const caller = socket.user;
 
-    // Check if receiver is already in a call
     if (this.sessions.isUserInCall(payload.recipientId)) {
-      socket.emit('onUserBusy', {
-        userId: payload.recipientId,
-        message: 'User is currently in another call'
-      });
+      socket.emit('onUserBusy', { userId: payload.recipientId, message: 'User is currently in another call' });
       return;
     }
 
@@ -545,9 +542,7 @@ export class MessagingGateway
       return;
     }
 
-    // Mark caller as being in a call
     this.sessions.setUserInCall(caller.id, true);
-
     receiverSocket.emit('onVoiceCall', { ...payload, caller });
   }
 
@@ -556,7 +551,6 @@ export class MessagingGateway
     @MessageBody() payload: CallAcceptedPayload,
     @ConnectedSocket() socket: AuthenticatedSocket,
   ) {
-    // Mark both parties as being in a call
     this.sessions.setUserInCall(payload.caller.id, true);
     this.sessions.setUserInCall(socket.user.id, true);
 
@@ -566,9 +560,7 @@ export class MessagingGateway
       socket.user.id,
     );
     if (!conversation) {
-      socket.emit('onVoiceCallError', {
-        message: 'Conversation not found. Please start a conversation first.',
-      });
+      socket.emit('onVoiceCallError', { message: 'Conversation not found. Please start a conversation first.' });
       return;
     }
     if (callerSocket) {
@@ -576,9 +568,7 @@ export class MessagingGateway
       callerSocket.emit(WebsocketEvents.VOICE_CALL_ACCEPTED, callPayload);
       socket.emit(WebsocketEvents.VOICE_CALL_ACCEPTED, callPayload);
     } else {
-      socket.emit('onVoiceCallError', {
-        message: 'Caller is no longer available.',
-      });
+      socket.emit('onVoiceCallError', { message: 'Caller is no longer available.' });
     }
   }
 
@@ -587,17 +577,13 @@ export class MessagingGateway
     @MessageBody() { caller, receiver }: CallHangUpPayload,
     @ConnectedSocket() socket: AuthenticatedSocket,
   ) {
-    // Mark both parties as no longer being in a call
     this.sessions.setUserInCall(caller.id, false);
     this.sessions.setUserInCall(receiver.id, false);
 
     if (socket.user.id === caller.id) {
       const receiverSocket = this.sessions.getUserSocket(receiver.id);
       socket.emit(WebsocketEvents.VOICE_CALL_HANG_UP);
-      return (
-        receiverSocket &&
-        receiverSocket.emit(WebsocketEvents.VOICE_CALL_HANG_UP)
-      );
+      return receiverSocket && receiverSocket.emit(WebsocketEvents.VOICE_CALL_HANG_UP);
     }
     socket.emit(WebsocketEvents.VOICE_CALL_HANG_UP);
     const callerSocket = this.sessions.getUserSocket(caller.id);
@@ -611,10 +597,11 @@ export class MessagingGateway
   ) {
     const receiver = socket.user;
     const callerSocket = this.sessions.getUserSocket(data.caller.id);
-    callerSocket &&
-      callerSocket.emit(WebsocketEvents.VOICE_CALL_REJECTED, { receiver });
+    callerSocket && callerSocket.emit(WebsocketEvents.VOICE_CALL_REJECTED, { receiver });
     socket.emit(WebsocketEvents.VOICE_CALL_REJECTED, { receiver });
   }
+
+  // --- Stream.io 1-to-1 call handlers ---
 
   @SubscribeMessage('streamCallInitiated')
   async handleStreamCallInitiated(
@@ -633,7 +620,6 @@ export class MessagingGateway
       return;
     }
 
-    // Persist call record
     try {
       await this.callHistoryService.createCall({
         callId: data.callId,
@@ -644,8 +630,8 @@ export class MessagingGateway
       });
     } catch {}
 
-    const recipientSocket = this.sessions.getUserSocket(data.recipientId);
     const callData = { ...data, initiatedAt: Date.now() };
+    const recipientSocket = this.sessions.getUserSocket(data.recipientId);
     if (recipientSocket) {
       recipientSocket.emit('streamCallInitiated', callData);
     } else {
@@ -654,7 +640,6 @@ export class MessagingGateway
         const pending = this.pendingStreamCalls.get(data.recipientId);
         if (pending && pending.callId === data.callId) {
           this.pendingStreamCalls.delete(data.recipientId);
-          // Mark as missed if never delivered
           this.callHistoryService.updateStatus(data.callId, 'missed').catch(() => {});
         }
       }, 10_000);
@@ -668,7 +653,6 @@ export class MessagingGateway
   ) {
     this.pendingStreamCalls.delete(socket.user.id);
 
-    // Update call status
     try {
       await this.callHistoryService.updateStatus(data.callId, 'accepted');
     } catch {}
@@ -683,10 +667,7 @@ export class MessagingGateway
     this.userCallMap.set(socket.user.id, data.callId);
     this.userCallMap.set(data.callerId, data.callId);
 
-    const callerSocket = this.sessions.getUserSocket(data.callerId);
-    if (callerSocket) {
-      callerSocket.emit('streamCallAccepted', data);
-    }
+    this.server.to(`user-${data.callerId}`).emit('streamCallAccepted', data);
   }
 
   @SubscribeMessage('streamCallEnded')
@@ -699,7 +680,31 @@ export class MessagingGateway
 
     const callId = this.userCallMap.get(userId);
     if (callId) {
-      // Record call end
+      // Check if this is a group call
+      try {
+        const call = await this.callHistoryService['callRepository'].findOne({ where: { id: callId } });
+        if (call?.groupId) {
+          // Group call: only remove this participant
+          try {
+            await this.callHistoryService.endCallForParticipant(callId, userId);
+          } catch {}
+          this.userCallMap.delete(userId);
+          const participants = this.callParticipants.get(callId);
+          if (participants) {
+            participants.delete(userId);
+            if (participants.size === 0) {
+              // Last participant left — end the call
+              try {
+                await this.callHistoryService.endCall(callId);
+              } catch {}
+              this.callParticipants.delete(callId);
+            }
+          }
+          return;
+        }
+      } catch {}
+
+      // 1-to-1 call: end the entire call
       try {
         await this.callHistoryService.endCall(callId);
       } catch {}
@@ -708,10 +713,7 @@ export class MessagingGateway
       if (participants) {
         participants.delete(userId);
         for (const participantId of participants) {
-          const participantSocket = this.sessions.getUserSocket(participantId);
-          if (participantSocket) {
-            participantSocket.emit('onCallForceEnded');
-          }
+          this.server.to(`user-${participantId}`).emit('onCallForceEnded');
           this.sessions.setUserInCall(participantId, false);
           this.userCallMap.delete(participantId);
           await this.broadcastStatusToFriends(participantId, 'online');
@@ -728,15 +730,11 @@ export class MessagingGateway
   ) {
     this.pendingStreamCalls.delete(socket.user.id);
 
-    // Record rejection
     try {
       await this.callHistoryService.updateStatus(data.callId, 'rejected');
     } catch {}
 
-    const callerSocket = this.sessions.getUserSocket(data.callerId);
-    if (callerSocket) {
-      callerSocket.emit('streamCallRejected', data);
-    }
+    this.server.to(`user-${data.callerId}`).emit('streamCallRejected', data);
   }
 
   @SubscribeMessage('streamCallCancelled')
@@ -744,21 +742,154 @@ export class MessagingGateway
     @MessageBody() data: { callId: string; recipientId: string },
     @ConnectedSocket() socket: AuthenticatedSocket,
   ) {
-    // Remove any pending call for this recipient so it isn't delivered on reconnect
     this.pendingStreamCalls.delete(data.recipientId);
+    this.server.to(`user-${data.recipientId}`).emit('streamCallCancelled', data);
+  }
 
-    const recipientSocket = this.sessions.getUserSocket(data.recipientId);
-    if (recipientSocket) {
-      recipientSocket.emit('streamCallCancelled', data);
+  // --- Stream.io Group Call handlers ---
+
+  @SubscribeMessage('streamGroupCallInitiated')
+  async handleStreamGroupCallInitiated(
+    @MessageBody() data: {
+      callId: string;
+      callType: 'video' | 'audio';
+      callerId: string;
+      callerName: string;
+      groupId: string;
+    },
+    @ConnectedSocket() socket: AuthenticatedSocket,
+  ) {
+    // Get group members (with caching)
+    let memberIds: string[] | null = await this.cache.getCached(`group:members:${data.groupId}`);
+    if (!memberIds) {
+      const group = await this.groupsService.findGroupById(data.groupId);
+      if (!group) return;
+      memberIds = group.users.map((u) => u.id);
+      await this.cache.setCache(`group:members:${data.groupId}`, memberIds, 300);
+    }
+
+    // Filter out the caller
+    const targetMembers = memberIds.filter((id) => id !== data.callerId);
+
+    // Create call record
+    try {
+      await this.callHistoryService.createCall({
+        callId: data.callId,
+        callerId: data.callerId,
+        groupId: data.groupId,
+        callType: data.callType,
+        participantIds: targetMembers,
+      });
+    } catch {}
+
+    // Mark caller as in-call
+    this.sessions.setUserInCall(data.callerId, true);
+    this.userCallMap.set(data.callerId, data.callId);
+    this.callParticipants.set(data.callId, new Set([data.callerId]));
+    await this.broadcastStatusToFriends(data.callerId, 'in-call');
+
+    const callData = { ...data, initiatedAt: Date.now() };
+
+    // Emit to each member
+    for (const memberId of targetMembers) {
+      if (this.sessions.isUserInCall(memberId)) continue;
+
+      const memberSocket = this.sessions.getUserSocket(memberId);
+      if (memberSocket) {
+        memberSocket.emit('streamCallInitiated', {
+          ...callData,
+          recipientId: memberId,
+        });
+      } else {
+        // Store pending for offline users
+        this.pendingGroupCalls.set(memberId, callData);
+        setTimeout(() => {
+          const pending = this.pendingGroupCalls.get(memberId);
+          if (pending && pending.callId === data.callId) {
+            this.pendingGroupCalls.delete(memberId);
+            this.callHistoryService.updateParticipantStatus(data.callId, memberId, 'missed').catch(() => {});
+          }
+        }, 10_000);
+      }
     }
   }
+
+  @SubscribeMessage('streamGroupCallAccepted')
+  async handleStreamGroupCallAccepted(
+    @MessageBody() data: { callId: string; callerId: string; groupId: string },
+    @ConnectedSocket() socket: AuthenticatedSocket,
+  ) {
+    this.pendingGroupCalls.delete(socket.user.id);
+
+    // Update participant status
+    try {
+      await this.callHistoryService.updateParticipantStatus(data.callId, socket.user.id, 'accepted');
+    } catch {}
+
+    this.sessions.setUserInCall(socket.user.id, true);
+    this.userCallMap.set(socket.user.id, data.callId);
+
+    const participants = this.callParticipants.get(data.callId);
+    if (participants) {
+      participants.add(socket.user.id);
+    }
+
+    await this.broadcastStatusToFriends(socket.user.id, 'in-call');
+
+    // Notify the caller and other participants
+    this.server.to(`user-${data.callerId}`).emit('streamCallAccepted', data);
+    this.server.to(`group-${data.groupId}`).emit('streamGroupCallParticipantJoined', {
+      callId: data.callId,
+      userId: socket.user.id,
+    });
+  }
+
+  @SubscribeMessage('streamGroupCallRejected')
+  async handleStreamGroupCallRejected(
+    @MessageBody() data: { callId: string; callerId: string; groupId: string },
+    @ConnectedSocket() socket: AuthenticatedSocket,
+  ) {
+    this.pendingGroupCalls.delete(socket.user.id);
+
+    try {
+      await this.callHistoryService.updateParticipantStatus(data.callId, socket.user.id, 'rejected');
+    } catch {}
+
+    this.server.to(`user-${data.callerId}`).emit('streamCallRejected', data);
+  }
+
+  @SubscribeMessage('streamGroupCallCancelled')
+  async handleStreamGroupCallCancelled(
+    @MessageBody() data: { callId: string; groupId: string },
+    @ConnectedSocket() socket: AuthenticatedSocket,
+  ) {
+    // Get group members and cancel pending calls
+    let memberIds: string[] | null = await this.cache.getCached(`group:members:${data.groupId}`);
+    if (!memberIds) {
+      const group = await this.groupsService.findGroupById(data.groupId);
+      if (!group) return;
+      memberIds = group.users.map((u) => u.id);
+    }
+
+    for (const memberId of memberIds) {
+      this.pendingGroupCalls.delete(memberId);
+    }
+
+    // Notify group members
+    this.server.to(`group-${data.groupId}`).emit('streamCallCancelled', data);
+
+    // Clean up caller state
+    this.sessions.setUserInCall(socket.user.id, false);
+    this.userCallMap.delete(socket.user.id);
+    this.callParticipants.delete(data.callId);
+    await this.broadcastStatusToFriends(socket.user.id, 'online');
+  }
+
+  // --- Notification handler ---
 
   @OnEvent(ServerEvents.NOTIFICATION_CREATED)
   handleNotificationCreated(payload: { notification: any }) {
     const { notification } = payload;
-    const userSocket = this.sessions.getUserSocket(notification.userId);
-    if (userSocket) {
-      userSocket.emit('onNotification', notification);
-    }
+    this.server.to(`user-${notification.userId}`).emit('onNotification', notification);
   }
 }

@@ -64,7 +64,7 @@ if (process.env.ENVIRONMENT === 'PRODUCTION') envFilePath = ['.env.production', 
       retryAttempts: 5,
       retryDelay: 3000,
       extra: {
-        max: 10,
+        max: 25,
         idleTimeoutMillis: 60000,
         connectionTimeoutMillis: 10000,
       },

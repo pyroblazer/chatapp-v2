@@ -18,6 +18,7 @@ export const mockUser = {
 export const createMockRepository = () => ({
   find: jest.fn(),
   findOne: jest.fn(),
+  findAndCount: jest.fn(),
   create: jest.fn(),
   save: jest.fn(),
   update: jest.fn(),
@@ -41,6 +42,7 @@ export const createMockRepository = () => ({
     andWhere: jest.fn().mockReturnThis(),
     orWhere: jest.fn().mockReturnThis(),
     orderBy: jest.fn().mockReturnThis(),
+    take: jest.fn().mockReturnThis(),
     limit: jest.fn().mockReturnThis(),
     offset: jest.fn().mockReturnThis(),
     getMany: jest.fn(),

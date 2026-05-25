@@ -8,8 +8,9 @@ interface StreamCallPayload {
   callType: 'video' | 'audio';
   callerId: string;
   callerName: string;
-  recipientId: string;
-  conversationId: string;
+  recipientId?: string;
+  conversationId?: string;
+  groupId?: string;
   initiatedAt?: number;
 }
 
@@ -20,12 +21,11 @@ export const useStreamCallReceived = () => {
 
   useEffect(() => {
     const handleStreamCallInitiated = (payload: StreamCallPayload) => {
-      // Check if this call is for the current user
-      if (!user || payload.recipientId !== user.id) {
-        return;
-      }
+      // For group calls, groupId is present — always show dialog
+      // For 1-to-1 calls, recipientId must match current user
+      const isForMe = payload.groupId || payload.recipientId === user?.id;
+      if (!user || !isForMe) return;
 
-      // Show incoming call dialog (dialog handles ringtone)
       setIncomingCall(payload);
     };
 

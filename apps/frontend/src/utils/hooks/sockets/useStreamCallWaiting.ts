@@ -8,6 +8,7 @@ interface WaitingCallState {
   recipientName: string;
   callType: 'video' | 'audio';
   initiatedAt: number;
+  groupId?: string;
 }
 
 export const useStreamCallWaiting = () => {
@@ -70,10 +71,17 @@ export const useStreamCallWaiting = () => {
     if (!current) return;
     if (handledRef.current) return;
     handledRef.current = true;
-    socket.emit('streamCallCancelled', {
-      callId: current.callId,
-      recipientId: current.recipientId,
-    });
+    if (current.groupId) {
+      socket.emit('streamGroupCallCancelled', {
+        callId: current.callId,
+        groupId: current.groupId,
+      });
+    } else {
+      socket.emit('streamCallCancelled', {
+        callId: current.callId,
+        recipientId: current.recipientId,
+      });
+    }
     waitingCallRef.current = null;
     setWaitingCall(null);
   };

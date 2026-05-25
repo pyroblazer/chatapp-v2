@@ -77,6 +77,10 @@ axiosClient.interceptors.response.use(
         }
         const { data } = await refreshPromise;
         setAccessToken(data.accessToken);
+        // Update socket auth so reconnections use the new token
+        import('./context/SocketContext').then(({ updateSocketAuth }) => {
+          updateSocketAuth(data.accessToken);
+        });
         originalRequest.headers.Authorization = `Bearer ${data.accessToken}`;
         return axiosClient(originalRequest);
       } catch {
@@ -109,9 +113,9 @@ export const getConversations = () =>
 export const getConversationById = (id: string) =>
   axiosClient.get<Conversation>(`/conversations/${id}`, config);
 
-export const getConversationMessages = (conversationId: string) =>
+export const getConversationMessages = (conversationId: string, cursor?: string, limit = 50) =>
   axiosClient.get<FetchMessagePayload>(
-    `/conversations/${conversationId}/messages`,
+    `/conversations/${conversationId}/messages${cursor ? `?cursor=${cursor}&limit=${limit}` : `?limit=${limit}`}`,
     config
   );
 
@@ -161,8 +165,8 @@ export const fetchGroups = () => axiosClient.get<Group[]>(`/groups`, config);
 export const fetchGroupById = (id: string) =>
   axiosClient.get<Group>(`/groups/${id}`, config);
 
-export const fetchGroupMessages = (id: string) =>
-  axiosClient.get<FetchGroupMessagePayload>(`/groups/${id}/messages`, config);
+export const fetchGroupMessages = (id: string, cursor?: string, limit = 50) =>
+  axiosClient.get<FetchGroupMessagePayload>(`/groups/${id}/messages${cursor ? `?cursor=${cursor}&limit=${limit}` : `?limit=${limit}`}`, config);
 
 export const postGroupMessage = ({ id, content }: CreateMessageParams) =>
   axiosClient.post(`/groups/${id}/messages`, { content }, config);

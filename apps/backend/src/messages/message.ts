@@ -8,7 +8,7 @@ import type {
 
 export interface IMessageService {
   createMessage(params: CreateMessageParams): Promise<CreateMessageResponse>;
-  getMessages(id: string): Promise<Message[]>;
+  getMessages(id: string, cursor?: string, limit?: number): Promise<Message[]>;
   deleteMessage(params: DeleteMessageParams);
   editMessage(params: EditMessageParams): Promise<Message>;
   getThreadReplies(messageId: string): Promise<Message[]>;

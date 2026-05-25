@@ -3,6 +3,7 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 import { ConversationsController } from '../conversations.controller';
 import { Services } from '../../utils/constants';
 import { mockConversationsService, mockUserService } from '../../__mocks__';
+import { RedisCacheService } from '../../redis/redis.cache.service';
 
 describe('ConversationsController', () => {
   let controller: ConversationsController;
@@ -20,6 +21,7 @@ describe('ConversationsController', () => {
           provide: Services.USERS,
           useValue: mockUserService,
         },
+        { provide: RedisCacheService, useValue: { invalidatePattern: jest.fn(), invalidateCache: jest.fn() } },
       ],
     }).compile();
 

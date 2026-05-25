@@ -83,6 +83,11 @@ export enum WebsocketEvents {
   MESSAGE_READ = 'onMessageRead',
   THREAD_REPLY = 'onThreadReply',
   NOTIFICATION_CREATED = 'onNotification',
+  GROUP_CALL_INITIATED = 'streamGroupCallInitiated',
+  GROUP_CALL_ACCEPTED = 'streamGroupCallAccepted',
+  GROUP_CALL_REJECTED = 'streamGroupCallRejected',
+  GROUP_CALL_CANCELLED = 'streamGroupCallCancelled',
+  GROUP_CALL_PARTICIPANT_JOINED = 'streamGroupCallParticipantJoined',
 }
 
 export const UserProfileFileFields: MulterField[] = [

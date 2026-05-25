@@ -4,6 +4,8 @@ import {
   Column,
   CreateDateColumn,
   OneToOne,
+  OneToMany,
+  ManyToOne,
   JoinColumn,
 } from 'typeorm';
 
@@ -22,8 +24,8 @@ export class Call {
   @JoinColumn({ name: 'caller_id' })
   caller: any;
 
-  @Column({ name: 'recipient_id' })
-  recipientId: string;
+  @Column({ name: 'recipient_id', nullable: true })
+  recipientId: string | null;
 
   @OneToOne(() => require('./User').User, { createForeignKeyConstraints: false })
   @JoinColumn({ name: 'recipient_id' })
@@ -31,6 +33,20 @@ export class Call {
 
   @Column({ name: 'conversation_id', nullable: true })
   conversationId: string;
+
+  @Column({ name: 'group_id', nullable: true })
+  groupId: string;
+
+  @ManyToOne(() => require('./Group').Group, { createForeignKeyConstraints: false, nullable: true })
+  @JoinColumn({ name: 'group_id' })
+  group: any;
+
+  @OneToMany(
+    () => require('./CallParticipant').CallParticipant,
+    (participant: any) => participant.call,
+    { cascade: true },
+  )
+  participants: any[];
 
   @Column({ type: 'enum', enum: ['video', 'audio'], default: 'audio' })
   callType: CallType;

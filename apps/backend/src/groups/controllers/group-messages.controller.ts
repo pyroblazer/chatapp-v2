@@ -7,9 +7,11 @@ import {
   HttpStatus,
   Inject,
   Param,
+  ParseIntPipe,
   ParseUUIDPipe,
   Post,
   Patch,
+  Query,
   UseInterceptors,
   UploadedFiles,
 } from '@nestjs/common';
@@ -22,6 +24,7 @@ import {
   ApiConsumes,
   ApiOperation,
   ApiParam,
+  ApiQuery,
   ApiResponse,
   ApiTags,
 } from '@nestjs/swagger';
@@ -92,14 +95,18 @@ export class GroupMessageController {
 
   @ApiOperation({ summary: 'Get all messages in a group' })
   @ApiParam({ name: 'id', description: 'Group UUID' })
+  @ApiQuery({ name: 'cursor', required: false, type: String })
+  @ApiQuery({ name: 'limit', required: false, type: Number })
   @ApiResponse({ status: 200 })
   @Get()
   @SkipThrottle()
   async getGroupMessages(
     @AuthUser() user: User,
     @Param('id', ParseUUIDPipe) id: string,
+    @Query('cursor') cursor?: string,
+    @Query('limit', new ParseIntPipe({ optional: true })) limit?: number,
   ) {
-    const messages = await this.groupMessageService.getGroupMessages(id);
+    const messages = await this.groupMessageService.getGroupMessages(id, cursor, limit || 50);
     return { id, messages };
   }
 

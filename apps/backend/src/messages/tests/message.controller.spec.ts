@@ -3,6 +3,7 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 import { MessageController } from '../message.controller';
 import { Services } from '../../utils/constants';
 import { mockMessagesService } from '../../__mocks__';
+import { RedisCacheService } from '../../redis/redis.cache.service';
 
 describe('MessageController', () => {
   let controller: MessageController;
@@ -13,6 +14,7 @@ describe('MessageController', () => {
       providers: [
         { provide: Services.MESSAGES, useValue: mockMessagesService },
         { provide: EventEmitter2, useValue: { emit: jest.fn() } },
+        { provide: RedisCacheService, useValue: { invalidatePattern: jest.fn(), invalidateCache: jest.fn() } },
       ],
     }).compile();
 

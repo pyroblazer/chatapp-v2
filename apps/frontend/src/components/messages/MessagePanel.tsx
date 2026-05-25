@@ -1,5 +1,5 @@
 import { AxiosError } from 'axios';
-import React, { FC, useContext, useState, useEffect } from 'react';
+import React, { FC, useContext, useState, useEffect, useRef } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useParams } from 'react-router-dom';
 import { RootState } from '../../store';
@@ -65,10 +65,14 @@ export const MessagePanel: FC<Props> = ({
     };
   }, []);
 
+  const sendingRef = useRef(false);
+
   const sendMessage = async () => {
     const trimmedContent = content.trim();
     if (!routeId) return;
     if (!trimmedContent && !attachments.length) return;
+    if (sendingRef.current) return;
+    sendingRef.current = true;
 
     // Optimistic update: show message immediately
     const tempId = crypto.randomUUID();
@@ -138,6 +142,8 @@ export const MessagePanel: FC<Props> = ({
       } else {
         error('Failed to send message. Please try again.');
       }
+    } finally {
+      sendingRef.current = false;
     }
   };
 

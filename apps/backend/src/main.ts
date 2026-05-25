@@ -7,6 +7,7 @@ import { NestExpressApplication } from '@nestjs/platform-express';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import cookieParser from 'cookie-parser';
 import helmet from 'helmet';
+import compression from 'compression';
 import { HttpExceptionFilter } from './filters/http-exception.filter';
 import { SanitizePipe } from './pipes/sanitize.pipe';
 
@@ -38,6 +39,7 @@ async function bootstrap() {
     }),
   );
   app.useGlobalFilters(new HttpExceptionFilter());
+  app.use(compression());
   app.useGlobalPipes(
     new SanitizePipe(),
     new ValidationPipe({
