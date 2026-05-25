@@ -70,7 +70,7 @@ export class AuthController {
     res.cookie('refresh_token', tokens.refreshToken, {
       httpOnly: true,
       secure: process.env.ENVIRONMENT === 'PRODUCTION',
-      sameSite: 'strict',
+      sameSite: 'none',
       maxAge: 7 * 24 * 60 * 60 * 1000,
       path: '/api/auth',
     });
@@ -126,7 +126,7 @@ export class AuthController {
     res.cookie('refresh_token', tokens.refreshToken, {
       httpOnly: true,
       secure: process.env.ENVIRONMENT === 'PRODUCTION',
-      sameSite: 'strict',
+      sameSite: 'none',
       maxAge: 7 * 24 * 60 * 60 * 1000,
       path: '/api/auth',
     });
@@ -152,7 +152,7 @@ export class AuthController {
     res.cookie('refresh_token', tokens.refreshToken, {
       httpOnly: true,
       secure: process.env.ENVIRONMENT === 'PRODUCTION',
-      sameSite: 'strict',
+      sameSite: 'none',
       maxAge: 7 * 24 * 60 * 60 * 1000,
       path: '/api/auth',
     });
@@ -233,7 +233,7 @@ export class AuthController {
       { username: user.username },
       req.ip,
     );
-    res.clearCookie('refresh_token', { path: '/api/auth' });
+    res.clearCookie('refresh_token', { path: '/api/auth', sameSite: 'none', secure: process.env.ENVIRONMENT === 'PRODUCTION' });
     return res.status(HttpStatus.NO_CONTENT).send();
   }
 }
