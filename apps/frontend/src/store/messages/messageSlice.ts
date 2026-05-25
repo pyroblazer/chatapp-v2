@@ -25,7 +25,36 @@ export const messagesSlice = createSlice({
     addMessage: (state, action: PayloadAction<MessageEventPayload>) => {
       const { conversation, message } = action.payload;
       const conversationMessage = state.messages.find((cm) => cm.id === conversation.id);
-      conversationMessage?.messages.unshift(message);
+      if (!conversationMessage) return;
+      // Replace optimistic message if one exists from the same author
+      const pendingIndex = conversationMessage.messages.findIndex(
+        (m) => m._pending && m.author?.id === message.author?.id && m.content === message.content
+      );
+      if (pendingIndex !== -1) {
+        conversationMessage.messages[pendingIndex] = message;
+      } else {
+        conversationMessage.messages.unshift(message);
+      }
+    },
+    addOptimisticMessage: (state, action: PayloadAction<MessageType>) => {
+      const message = action.payload;
+      const conversationId = message.conversation?.id;
+      if (!conversationId) return;
+      let conversationMessage = state.messages.find((cm) => cm.id === conversationId);
+      if (!conversationMessage) {
+        conversationMessage = { id: conversationId, messages: [] };
+        state.messages.push(conversationMessage);
+      }
+      conversationMessage.messages.unshift(message);
+    },
+    removeOptimisticMessage: (state, action: PayloadAction<{ conversationId: string; tempId: string }>) => {
+      const { conversationId, tempId } = action.payload;
+      const conversationMessage = state.messages.find((cm) => cm.id === conversationId);
+      if (!conversationMessage) return;
+      const index = conversationMessage.messages.findIndex((m) => m.id === tempId);
+      if (index !== -1) {
+        conversationMessage.messages.splice(index, 1);
+      }
     },
     deleteMessage: (state, action: PayloadAction<DeleteMessageResponse>) => {
       const { payload } = action;
@@ -89,6 +118,6 @@ export const selectConversationMessage = createSelector(
   (conversationMessages, id) => conversationMessages.find((cm) => cm.id === id)
 );
 
-export const { addMessage, deleteMessage, editMessage } = messagesSlice.actions;
+export const { addMessage, addOptimisticMessage, removeOptimisticMessage, deleteMessage, editMessage } = messagesSlice.actions;
 
 export default messagesSlice.reducer;

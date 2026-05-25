@@ -4,7 +4,9 @@ import { useDispatch, useSelector } from 'react-redux';
 import { useParams } from 'react-router-dom';
 import { RootState } from '../../store';
 import { selectConversationById } from '../../store/conversationSlice';
+import { addOptimisticGroupMessage, removeOptimisticGroupMessage } from '../../store/groupMessageSlice';
 import { selectGroupById } from '../../store/groupSlice';
+import { addOptimisticMessage, removeOptimisticMessage } from '../../store/messages/messageSlice';
 import { removeAllAttachments } from '../../store/message-panel/messagePanelSlice';
 import {
   addSystemMessage,
@@ -67,6 +69,39 @@ export const MessagePanel: FC<Props> = ({
     const trimmedContent = content.trim();
     if (!routeId) return;
     if (!trimmedContent && !attachments.length) return;
+
+    // Optimistic update: show message immediately
+    const tempId = crypto.randomUUID();
+    const isGroup = selectedType === 'group';
+
+    if (isGroup) {
+      dispatch(
+        addOptimisticGroupMessage({
+          id: tempId,
+          content: trimmedContent,
+          createdAt: new Date().toISOString(),
+          author: user!,
+          group: { ...group!, messages: [], users: group?.users || [], creator: group?.creator!, owner: group?.owner!, createdAt: group?.createdAt || 0 },
+          _pending: true,
+        })
+      );
+    } else {
+      dispatch(
+        addOptimisticMessage({
+          id: tempId,
+          content: trimmedContent,
+          createdAt: new Date().toISOString(),
+          author: user!,
+          conversation: { ...conversation!, creator: conversation?.creator!, recipient: conversation?.recipient!, createdAt: conversation?.createdAt || '' },
+          _pending: true,
+        })
+      );
+    }
+
+    setContent('');
+    dispatch(removeAllAttachments());
+    dispatch(clearAllMessages());
+
     const formData = new FormData();
     trimmedContent && formData.append('content', trimmedContent);
     attachments.forEach((attachment) =>
@@ -74,10 +109,13 @@ export const MessagePanel: FC<Props> = ({
     );
     try {
       await createMessage(routeId, selectedType, formData);
-      setContent('');
-      dispatch(removeAllAttachments());
-      dispatch(clearAllMessages());
     } catch (err) {
+      // Remove optimistic message on failure
+      if (isGroup) {
+        dispatch(removeOptimisticGroupMessage({ groupId: routeId, tempId }));
+      } else {
+        dispatch(removeOptimisticMessage({ conversationId: routeId, tempId }));
+      }
       const axiosError = err as AxiosError;
       if (axiosError.response?.status === 429) {
         error('You are rate limited', { toastId });
@@ -119,7 +157,9 @@ export const MessagePanel: FC<Props> = ({
             sendTypingStatus={sendTypingStatus}
             placeholderName={
               selectedType === 'group'
-                ? group?.title || 'Group'
+                ? group?.title ||
+                  group?.users?.map((u) => u.firstName).filter(Boolean).join(', ') ||
+                  'Group'
                 : recipient?.firstName || 'user'
             }
           />

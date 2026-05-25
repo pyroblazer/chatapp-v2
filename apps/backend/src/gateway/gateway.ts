@@ -14,6 +14,7 @@ import type { IConversationsService } from '../conversations/conversations';
 import type { IFriendsService } from '../friends/friends';
 import type { IGroupService } from '../groups/interfaces/group';
 import { ServerEvents, Services, WebsocketEvents } from '../utils/constants';
+import type { CallHistoryService } from '../calls/call-history.service';
 import type { AuthenticatedSocket } from '../utils/interfaces';
 import type {
   Conversation,
@@ -54,6 +55,8 @@ export class MessagingGateway
     private readonly groupsService: IGroupService,
     @Inject(Services.FRIENDS_SERVICE)
     private readonly friendsService: IFriendsService,
+    @Inject(Services.CALL_HISTORY)
+    private readonly callHistoryService: CallHistoryService,
   ) {}
 
   @WebSocketServer()
@@ -630,18 +633,29 @@ export class MessagingGateway
       return;
     }
 
+    // Persist call record
+    try {
+      await this.callHistoryService.createCall({
+        callId: data.callId,
+        callerId: data.callerId,
+        recipientId: data.recipientId,
+        conversationId: data.conversationId,
+        callType: data.callType,
+      });
+    } catch {}
+
     const recipientSocket = this.sessions.getUserSocket(data.recipientId);
     const callData = { ...data, initiatedAt: Date.now() };
     if (recipientSocket) {
       recipientSocket.emit('streamCallInitiated', callData);
     } else {
-      // Store so it can be delivered when the recipient comes online
       this.pendingStreamCalls.set(data.recipientId, callData);
-      // Auto-expire after the call timeout so stale calls are never delivered
       setTimeout(() => {
         const pending = this.pendingStreamCalls.get(data.recipientId);
         if (pending && pending.callId === data.callId) {
           this.pendingStreamCalls.delete(data.recipientId);
+          // Mark as missed if never delivered
+          this.callHistoryService.updateStatus(data.callId, 'missed').catch(() => {});
         }
       }, 10_000);
     }
@@ -653,6 +667,11 @@ export class MessagingGateway
     @ConnectedSocket() socket: AuthenticatedSocket,
   ) {
     this.pendingStreamCalls.delete(socket.user.id);
+
+    // Update call status
+    try {
+      await this.callHistoryService.updateStatus(data.callId, 'accepted');
+    } catch {}
 
     this.sessions.setUserInCall(socket.user.id, true);
     this.sessions.setUserInCall(data.callerId, true);
@@ -680,6 +699,10 @@ export class MessagingGateway
 
     const callId = this.userCallMap.get(userId);
     if (callId) {
+      // Record call end
+      try {
+        await this.callHistoryService.endCall(callId);
+      } catch {}
       this.userCallMap.delete(userId);
       const participants = this.callParticipants.get(callId);
       if (participants) {
@@ -704,6 +727,11 @@ export class MessagingGateway
     @ConnectedSocket() socket: AuthenticatedSocket,
   ) {
     this.pendingStreamCalls.delete(socket.user.id);
+
+    // Record rejection
+    try {
+      await this.callHistoryService.updateStatus(data.callId, 'rejected');
+    } catch {}
 
     const callerSocket = this.sessions.getUserSocket(data.callerId);
     if (callerSocket) {

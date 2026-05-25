@@ -51,7 +51,36 @@ export const groupMessagesSlice = createSlice({
     ) => {
       const { group, message } = action.payload;
       const groupMessage = state.messages.find((gm) => gm.id === group.id);
-      groupMessage?.messages.unshift(message);
+      if (!groupMessage) return;
+      // Replace optimistic message if one exists from the same author
+      const pendingIndex = groupMessage.messages.findIndex(
+        (m) => m._pending && m.author?.id === message.author?.id && m.content === message.content
+      );
+      if (pendingIndex !== -1) {
+        groupMessage.messages[pendingIndex] = message;
+      } else {
+        groupMessage.messages.unshift(message);
+      }
+    },
+    addOptimisticGroupMessage: (state, action: PayloadAction<GroupMessageType>) => {
+      const message = action.payload;
+      const groupId = message.group?.id;
+      if (!groupId) return;
+      let groupMessage = state.messages.find((gm) => gm.id === groupId);
+      if (!groupMessage) {
+        groupMessage = { id: groupId, messages: [] };
+        state.messages.push(groupMessage);
+      }
+      groupMessage.messages.unshift(message);
+    },
+    removeOptimisticGroupMessage: (state, action: PayloadAction<{ groupId: string; tempId: string }>) => {
+      const { groupId, tempId } = action.payload;
+      const groupMessage = state.messages.find((gm) => gm.id === groupId);
+      if (!groupMessage) return;
+      const index = groupMessage.messages.findIndex((m) => m.id === tempId);
+      if (index !== -1) {
+        groupMessage.messages.splice(index, 1);
+      }
     },
     editGroupMessage: (state, action: PayloadAction<GroupMessageType>) => {
       const { payload } = action;
@@ -99,6 +128,6 @@ export const selectGroupMessage = createSelector(
   (groupMessages, id) => groupMessages.find((gm) => gm.id === id)
 );
 
-export const { addGroupMessage, editGroupMessage } = groupMessagesSlice.actions;
+export const { addGroupMessage, addOptimisticGroupMessage, removeOptimisticGroupMessage, editGroupMessage } = groupMessagesSlice.actions;
 
 export default groupMessagesSlice.reducer;

@@ -23,6 +23,7 @@ export enum Routes {
   ADMIN = 'admin',
   AUDIT_LOGS = 'admin/audit-logs',
   BLOCKED_USERS = 'users/blocked',
+  CALLS = 'calls',
 }
 
 export enum Services {
@@ -53,6 +54,7 @@ export enum Services {
   ADMIN = 'ADMIN_SERVICE',
   AUDIT = 'AUDIT_SERVICE',
   BLOCKED_USERS = 'BLOCKED_USERS_SERVICE',
+  CALL_HISTORY = 'CALL_HISTORY_SERVICE',
 }
 
 export enum ServerEvents {

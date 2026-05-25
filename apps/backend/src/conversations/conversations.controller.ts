@@ -19,6 +19,7 @@ import {
 } from '@nestjs/swagger';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { SkipThrottle } from '@nestjs/throttler';
+import { RedisCacheService } from '../redis/redis.cache.service';
 import { Routes, Services } from '../utils/constants';
 import { AuthUser } from '../utils/decorators';
 import type { User } from '../utils/typeorm';
@@ -38,6 +39,7 @@ export class ConversationsController {
     private readonly events: EventEmitter2,
     @Inject(Services.USERS)
     private readonly userService: IUserService,
+    private readonly cache: RedisCacheService,
   ) {}
 
   @ApiOperation({ summary: 'Create a new conversation' })
@@ -57,6 +59,10 @@ export class ConversationsController {
       fullUser,
       createConversationPayload,
     );
+    await Promise.all([
+      this.cache.invalidateConversations(fullUser.id),
+      this.cache.invalidateConversations(createConversationPayload.username),
+    ]);
     this.events.emit('conversation.create', conversation);
     return conversation;
   }
@@ -65,7 +71,11 @@ export class ConversationsController {
   @ApiResponse({ status: 200 })
   @Get()
   async getConversations(@AuthUser() { id }: User) {
-    return this.conversationsService.getConversations(id);
+    const cached = await this.cache.getCachedConversations(id);
+    if (cached) return cached;
+    const conversations = await this.conversationsService.getConversations(id);
+    await this.cache.setConversationsCache(id, conversations);
+    return conversations;
   }
 
   @ApiOperation({ summary: 'Get a conversation by ID' })

@@ -40,6 +40,10 @@ export class RedisService implements OnModuleDestroy {
     return this.connected;
   }
 
+  getClient(): Redis {
+    return this.client;
+  }
+
   async get(key: string): Promise<string | null> {
     try {
       return await this.client.get(key);

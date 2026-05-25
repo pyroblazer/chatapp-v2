@@ -26,6 +26,7 @@ import {
   ApiTags,
 } from '@nestjs/swagger';
 import { SkipThrottle, Throttle } from '@nestjs/throttler';
+import { RedisCacheService } from '../redis/redis.cache.service';
 import { Routes, ServerEvents, Services } from '../utils/constants';
 import { AuthUser } from '../utils/decorators';
 import type { Attachment } from '../utils/types';
@@ -42,6 +43,7 @@ export class MessageController {
   constructor(
     @Inject(Services.MESSAGES) private readonly messageService: IMessageService,
     private eventEmitter: EventEmitter2,
+    private readonly cache: RedisCacheService,
   ) {}
 
   @ApiOperation({ summary: 'Send a message in a conversation' })
@@ -73,6 +75,11 @@ export class MessageController {
     if (!attachments && !content) throw new EmptyMessageException();
     const params = { user, id, content, attachments, parentMessageId };
     const response = await this.messageService.createMessage(params);
+    const { creator, recipient } = response.conversation;
+    await Promise.all([
+      this.cache.invalidateConversations(creator.id),
+      this.cache.invalidateConversations(recipient.id),
+    ]);
     this.eventEmitter.emit('message.create', response);
     if (parentMessageId) {
       this.eventEmitter.emit(ServerEvents.THREAD_REPLY, {

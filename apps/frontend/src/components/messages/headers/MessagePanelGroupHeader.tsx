@@ -30,7 +30,14 @@ export const MessagePanelGroupHeader = () => {
       )}
       <MessagePanelHeaderStyle>
         <div>
-          <span>{group?.title || 'Group'}</span>
+          <span>
+            {group?.title ||
+              group?.users
+                ?.map((u) => u.firstName)
+                .filter(Boolean)
+                .join(', ') ||
+              'Group'}
+          </span>
         </div>
         <MessagePanelHeaderIcons>
           {user?.id === group?.owner?.id && (

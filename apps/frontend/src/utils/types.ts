@@ -63,6 +63,7 @@ export type MessageType = {
   author: User;
   conversation: Conversation;
   attachments?: MessageAttachment[];
+  _pending?: boolean;
 };
 
 export type GroupMessageType = {
@@ -72,6 +73,7 @@ export type GroupMessageType = {
   author: User;
   group: Group;
   attachments?: MessageAttachment[];
+  _pending?: boolean;
 };
 
 export type FetchMessagePayload = {

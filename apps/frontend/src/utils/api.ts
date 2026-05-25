@@ -267,3 +267,6 @@ export const updateGroupDetails = ({ id, data }: UpdateGroupDetailsPayload) =>
   axiosClient.patch<Group>(`/groups/${id}/details`, data, config);
 
 export const logoutUser = () => axiosClient.post('/auth/logout', {}, config);
+
+export const fetchCallHistory = (limit = 50, offset = 0) =>
+  axiosClient.get<{ data: any[]; total: number }>(`/calls/history?limit=${limit}&offset=${offset}`, config);

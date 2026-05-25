@@ -1,18 +1,13 @@
-import { useEffect } from 'react';
-import { useDispatch } from 'react-redux';
+import { useContext } from 'react';
 import { Outlet } from 'react-router-dom';
 import { CallsSidebar } from '../../components/sidebars/calls/CallsSidebar';
-import { AppDispatch } from '../../store';
-import { fetchFriendsThunk } from '../../store/friends/friendsThunk';
+import { AuthContext } from '../../utils/context/AuthContext';
 
 export const CallsPage = () => {
-  const dispatch = useDispatch<AppDispatch>();
-  useEffect(() => {
-    dispatch(fetchFriendsThunk());
-  }, []);
+  const { user } = useContext(AuthContext);
   return (
     <>
-      <CallsSidebar />
+      <CallsSidebar userId={user?.id} />
       <Outlet />
     </>
   );

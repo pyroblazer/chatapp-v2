@@ -1,6 +1,7 @@
 import { FC, useContext } from 'react';
 import { useSelector } from 'react-redux';
 import { AuthContext } from '../../utils/context/AuthContext';
+import { fullName } from '../../utils/helpers';
 import { FriendListItemContainer } from '../../utils/styles/friends';
 import { ContextMenuEvent, Friend } from '../../utils/types';
 import { UserAvatar } from '../users/UserAvatar';
@@ -32,7 +33,7 @@ export const FriendListItem: FC<Props> = ({
     >
       <UserAvatar user={friendUserInstance} status={status} />
       <div className="friendDetails">
-        <span className="username">{friendUserInstance.username}</span>
+        <span className="username">{fullName(friendUserInstance)}</span>
         {online && (
           <span className="status">
             {status === 'in-call' ? 'In a call' : friendUserInstance.presence?.statusMessage}

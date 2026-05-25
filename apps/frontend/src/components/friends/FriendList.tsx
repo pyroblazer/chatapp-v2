@@ -32,7 +32,7 @@ export const FriendList = () => {
 
   return (
     <FriendListContainer>
-      {onlineFriends.length > 0 && <span>Online ({onlineFriends.length})</span>}
+      {onlineFriends.length > 0 && <div>Online ({onlineFriends.length})</div>}
       {onlineFriends.map((friend) => (
         <FriendListItem
           key={friend.id}
@@ -41,7 +41,7 @@ export const FriendList = () => {
           online={true}
         />
       ))}
-      <span>Offline</span>
+      <div>Offline</div>
       {friends
         .filter(
           (friend) =>

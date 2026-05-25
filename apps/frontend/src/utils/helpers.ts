@@ -82,7 +82,7 @@ export const getSettingSidebarIcon = (id: SettingsSidebarRouteType) => {
   }
 };
 
-const fullName = (u?: User) =>
+export const fullName = (u?: User) =>
   u ? `${u.firstName ?? ''} ${u.lastName ?? ''}`.trim() || u.username || 'Unknown' : 'Unknown';
 
 export const getFriendRequestDetails = (

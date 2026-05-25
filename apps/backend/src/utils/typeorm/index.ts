@@ -14,6 +14,7 @@ import { RefreshToken } from './entities/RefreshToken';
 import { MessageReaction } from './entities/MessageReaction';
 import { GroupMessageReaction } from './entities/GroupMessageReaction';
 import { ReadReceipt } from './entities/ReadReceipt';
+import { Call } from './entities/Call';
 import { Notification } from '../../notifications/notification.entity';
 import { Report } from '../../admin/report.entity';
 import { AuditLog } from '../../audit/audit-log.entity';
@@ -38,6 +39,7 @@ const entities = [
   MessageReaction,
   GroupMessageReaction,
   ReadReceipt,
+  Call,
   Notification,
   Report,
   AuditLog,
@@ -65,6 +67,7 @@ export {
   MessageReaction,
   GroupMessageReaction,
   ReadReceipt,
+  Call,
   Notification,
   Report,
   AuditLog,

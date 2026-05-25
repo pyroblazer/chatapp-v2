@@ -75,13 +75,13 @@ export const GroupRecipientsSidebar = () => {
         <span>Participants</span>
       </GroupRecipientsSidebarHeader>
       <GroupRecipientSidebarItemContainer>
-        <span>Online Users</span>
+        <div>Online Users</div>
         <OnlineGroupRecipients
           users={onlineUsers}
           group={group}
           onUserContextMenu={onUserContextMenu}
         />
-        <span>Offline Users</span>
+        <div>Offline Users</div>
         <OfflineGroupRecipients
           onlineUsers={onlineUsers}
           group={group}

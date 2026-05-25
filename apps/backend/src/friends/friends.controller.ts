@@ -15,6 +15,7 @@ import {
   ApiTags,
 } from '@nestjs/swagger';
 import { SkipThrottle } from '@nestjs/throttler';
+import { RedisCacheService } from '../redis/redis.cache.service';
 import { Routes, ServerEvents, Services } from '../utils/constants';
 import { AuthUser } from '../utils/decorators';
 import type { User } from '../utils/typeorm';
@@ -29,13 +30,18 @@ export class FriendsController {
     @Inject(Services.FRIENDS_SERVICE)
     private readonly friendsService: IFriendsService,
     private readonly event: EventEmitter2,
+    private readonly cache: RedisCacheService,
   ) {}
 
   @ApiOperation({ summary: 'Get all friends' })
   @ApiResponse({ status: 200 })
   @Get()
-  getFriends(@AuthUser() user: User) {
-    return this.friendsService.getFriends(user.id);
+  async getFriends(@AuthUser() user: User) {
+    const cached = await this.cache.getCached(`friends:${user.id}`);
+    if (cached) return cached;
+    const friends = await this.friendsService.getFriends(user.id);
+    await this.cache.setCache(`friends:${user.id}`, friends);
+    return friends;
   }
 
   @ApiOperation({ summary: 'Remove a friend' })
@@ -47,6 +53,7 @@ export class FriendsController {
     @Param('id', ParseUUIDPipe) id: string,
   ) {
     const friend = await this.friendsService.deleteFriend({ id, userId });
+    await this.cache.invalidatePattern(`friends:*`);
     this.event.emit(ServerEvents.FRIEND_REMOVED, { friend, userId });
     return friend;
   }

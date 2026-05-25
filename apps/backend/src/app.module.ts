@@ -38,6 +38,7 @@ import { BlockedUsersModule } from './blocked-users/blocked-users.module';
 import { FirebaseModule } from './firebase/firebase.module';
 import { KafkaModule } from './kafka/kafka.module';
 import { StreamModule } from './stream/stream.module';
+import { CallHistoryModule } from './calls/call-history.module';
 import { ScheduleModule } from '@nestjs/schedule';
 
 let envFilePath = ['.env.development', '.env'];
@@ -101,6 +102,7 @@ if (process.env.ENVIRONMENT === 'PRODUCTION') envFilePath = ['.env.production', 
     FirebaseModule,
     KafkaModule,
     StreamModule,
+    CallHistoryModule,
   ],
   controllers: [],
   providers: [

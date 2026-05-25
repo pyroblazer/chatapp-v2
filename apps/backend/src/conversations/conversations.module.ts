@@ -3,6 +3,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const passport = require('passport');
 import { FriendsModule } from '../friends/friends.module';
+import { RedisModule } from '../redis/redis.module';
 import { UsersModule } from '../users/users.module';
 import { Services } from '../utils/constants';
 import { Conversation, Message } from '../utils/typeorm';
@@ -15,6 +16,7 @@ import { ConversationMiddleware } from './middlewares/conversation.middleware';
     TypeOrmModule.forFeature([Conversation, Message]),
     UsersModule,
     FriendsModule,
+    RedisModule,
   ],
   controllers: [ConversationsController],
   providers: [
