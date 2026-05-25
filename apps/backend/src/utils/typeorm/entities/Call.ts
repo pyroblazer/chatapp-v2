@@ -60,6 +60,6 @@ export class Call {
   @Column({ name: 'ended_at', type: 'timestamp', nullable: true })
   endedAt: Date | null;
 
-  @Column({ name: 'duration_seconds', nullable: true })
+  @Column({ name: 'duration_seconds', type: 'integer', nullable: true })
   durationSeconds: number | null;
 }
