@@ -132,14 +132,13 @@ export class MessagingGateway
 
   async handleDisconnect(socket: AuthenticatedSocket) {
     this.rateLimiter.cleanup(socket.id);
-    this.sessions.setUserInCall(socket.user.id, false);
     this.sessions.removeUserSocket(socket.user.id);
     await this.broadcastStatusToFriends(socket.user.id, 'offline');
   }
 
   private async broadcastStatusToFriends(
     userId: string,
-    status: 'online' | 'offline' | 'in-call',
+    status: 'online' | 'offline',
   ) {
     try {
       // Try cached friends list first
@@ -465,7 +464,6 @@ export class MessagingGateway
       return;
     }
 
-    this.sessions.setUserInCall(caller.id, true);
     receiverSocket.emit('onVideoCall', { ...data, caller });
   }
 
@@ -474,8 +472,6 @@ export class MessagingGateway
     @MessageBody() data: CallAcceptedPayload,
     @ConnectedSocket() socket: AuthenticatedSocket,
   ) {
-    this.sessions.setUserInCall(data.caller.id, true);
-    this.sessions.setUserInCall(socket.user.id, true);
 
     const callerSocket = this.sessions.getUserSocket(data.caller.id);
     const conversation = await this.conversationService.isCreated(
@@ -511,8 +507,6 @@ export class MessagingGateway
     @MessageBody() { caller, receiver }: CallHangUpPayload,
     @ConnectedSocket() socket: AuthenticatedSocket,
   ) {
-    this.sessions.setUserInCall(caller.id, false);
-    this.sessions.setUserInCall(receiver.id, false);
 
     if (socket.user.id === caller.id) {
       const receiverSocket = this.sessions.getUserSocket(receiver.id);
@@ -542,7 +536,6 @@ export class MessagingGateway
       return;
     }
 
-    this.sessions.setUserInCall(caller.id, true);
     receiverSocket.emit('onVoiceCall', { ...payload, caller });
   }
 
@@ -551,8 +544,6 @@ export class MessagingGateway
     @MessageBody() payload: CallAcceptedPayload,
     @ConnectedSocket() socket: AuthenticatedSocket,
   ) {
-    this.sessions.setUserInCall(payload.caller.id, true);
-    this.sessions.setUserInCall(socket.user.id, true);
 
     const callerSocket = this.sessions.getUserSocket(payload.caller.id);
     const conversation = await this.conversationService.isCreated(
@@ -577,8 +568,6 @@ export class MessagingGateway
     @MessageBody() { caller, receiver }: CallHangUpPayload,
     @ConnectedSocket() socket: AuthenticatedSocket,
   ) {
-    this.sessions.setUserInCall(caller.id, false);
-    this.sessions.setUserInCall(receiver.id, false);
 
     if (socket.user.id === caller.id) {
       const receiverSocket = this.sessions.getUserSocket(receiver.id);
@@ -657,10 +646,8 @@ export class MessagingGateway
       await this.callHistoryService.updateStatus(data.callId, 'accepted');
     } catch {}
 
-    this.sessions.setUserInCall(socket.user.id, true);
-    this.sessions.setUserInCall(data.callerId, true);
-    await this.broadcastStatusToFriends(socket.user.id, 'in-call');
-    await this.broadcastStatusToFriends(data.callerId, 'in-call');
+    await this.broadcastStatusToFriends(socket.user.id, 'online');
+    await this.broadcastStatusToFriends(data.callerId, 'online');
 
     const participants = new Set([socket.user.id, data.callerId]);
     this.callParticipants.set(data.callId, participants);
@@ -675,7 +662,6 @@ export class MessagingGateway
     @ConnectedSocket() socket: AuthenticatedSocket,
   ) {
     const userId = socket.user.id;
-    this.sessions.setUserInCall(userId, false);
     await this.broadcastStatusToFriends(userId, 'online');
 
     const callId = this.userCallMap.get(userId);
@@ -714,7 +700,6 @@ export class MessagingGateway
         participants.delete(userId);
         for (const participantId of participants) {
           this.server.to(`user-${participantId}`).emit('onCallForceEnded');
-          this.sessions.setUserInCall(participantId, false);
           this.userCallMap.delete(participantId);
           await this.broadcastStatusToFriends(participantId, 'online');
         }
@@ -782,11 +767,9 @@ export class MessagingGateway
       });
     } catch {}
 
-    // Mark caller as in-call
-    this.sessions.setUserInCall(data.callerId, true);
     this.userCallMap.set(data.callerId, data.callId);
     this.callParticipants.set(data.callId, new Set([data.callerId]));
-    await this.broadcastStatusToFriends(data.callerId, 'in-call');
+    await this.broadcastStatusToFriends(data.callerId, 'online');
 
     const callData = { ...data, initiatedAt: Date.now() };
 
@@ -826,7 +809,6 @@ export class MessagingGateway
       await this.callHistoryService.updateParticipantStatus(data.callId, socket.user.id, 'accepted');
     } catch {}
 
-    this.sessions.setUserInCall(socket.user.id, true);
     this.userCallMap.set(socket.user.id, data.callId);
 
     const participants = this.callParticipants.get(data.callId);
@@ -834,7 +816,7 @@ export class MessagingGateway
       participants.add(socket.user.id);
     }
 
-    await this.broadcastStatusToFriends(socket.user.id, 'in-call');
+    await this.broadcastStatusToFriends(socket.user.id, 'online');
 
     // Notify the caller and other participants
     this.server.to(`user-${data.callerId}`).emit('streamCallAccepted', data);
@@ -879,7 +861,6 @@ export class MessagingGateway
     this.server.to(`group-${data.groupId}`).emit('streamCallCancelled', data);
 
     // Clean up caller state
-    this.sessions.setUserInCall(socket.user.id, false);
     this.userCallMap.delete(socket.user.id);
     this.callParticipants.delete(data.callId);
     await this.broadcastStatusToFriends(socket.user.id, 'online');

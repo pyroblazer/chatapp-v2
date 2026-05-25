@@ -10,7 +10,7 @@ import {
   removeFriendThunk,
 } from './friendsThunk';
 
-export type UserStatus = 'online' | 'offline' | 'in-call';
+export type UserStatus = 'online' | 'offline';
 
 export interface FriendsState {
   friends: Friend[];
@@ -53,11 +53,8 @@ export const friendsSlice = createSlice({
     },
     setOnlineFriends: (state, action: PayloadAction<Friend[]>) => {
       state.onlineFriends = action.payload;
-      // Seed statuses from the bulk online list (don't override 'in-call')
       action.payload.forEach((friend) => {
-        if (state.userStatuses[friend.id] !== 'in-call') {
-          state.userStatuses[friend.id] = 'online';
-        }
+        state.userStatuses[friend.id] = 'online';
       });
     },
     setOfflineFriends: (state) => {

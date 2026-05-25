@@ -36,7 +36,7 @@ export const FriendListItem: FC<Props> = ({
         <span className="username">{fullName(friendUserInstance)}</span>
         {online && (
           <span className="status">
-            {status === 'in-call' ? 'In a call' : friendUserInstance.presence?.statusMessage}
+            {friendUserInstance.presence?.statusMessage}
           </span>
         )}
       </div>

@@ -4,18 +4,16 @@ import { UserAvatarContainer } from '../../utils/styles';
 import { User } from '../../utils/types';
 import defaultAvatar from '../../__assets__/default_avatar.jpg';
 
-type UserStatus = 'online' | 'offline' | 'in-call';
+type UserStatus = 'online' | 'offline';
 
 const STATUS_COLORS: Record<UserStatus, string> = {
   online: '#22c55e',
   offline: '#6b7280',
-  'in-call': '#ef4444',
 };
 
 const STATUS_LABELS: Record<UserStatus, string> = {
   online: 'Online',
   offline: 'Offline',
-  'in-call': 'In a call',
 };
 
 type Props = {
