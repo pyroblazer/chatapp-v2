@@ -171,14 +171,20 @@ export const CallPage = () => {
       leaveCall();
     };
 
+    const handleBeforeUnload = () => {
+      socket.emit('streamCallEnded');
+    };
+
     joinCall();
     socket.on('streamCallRejected', handleCallRejected);
     socket.on('onCallForceEnded', handleForceEnded);
+    window.addEventListener('beforeunload', handleBeforeUnload);
 
     return () => {
       mounted = false;
       socket.off('streamCallRejected', handleCallRejected);
       socket.off('onCallForceEnded', handleForceEnded);
+      window.removeEventListener('beforeunload', handleBeforeUnload);
       if (call && hasJoinedRef.current && !isLeavingRef.current) {
         call.leave().catch((err) => {
           console.log('Cleanup: error leaving call', err.message);
@@ -190,6 +196,9 @@ export const CallPage = () => {
   const leaveCall = async () => {
     if (isLeavingRef.current) return;
     isLeavingRef.current = true;
+
+    // Notify server immediately so in-call status is cleared
+    socket.emit('streamCallEnded');
 
     try {
       if (call) {
