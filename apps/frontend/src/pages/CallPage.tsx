@@ -220,7 +220,8 @@ export const CallPage = () => {
     return (
       <div
         style={{
-          height: '100vh',
+          position: 'fixed',
+          inset: 0,
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
@@ -228,6 +229,7 @@ export const CallPage = () => {
           color: 'white',
           flexDirection: 'column',
           gap: '20px',
+          zIndex: 99999,
         }}
       >
         <h2>{error}</h2>
@@ -253,7 +255,8 @@ export const CallPage = () => {
     return (
       <div
         style={{
-          height: '100vh',
+          position: 'fixed',
+          inset: 0,
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
@@ -261,6 +264,7 @@ export const CallPage = () => {
           color: 'white',
           flexDirection: 'column',
           gap: '20px',
+          zIndex: 99999,
         }}
       >
         <div style={{ fontSize: '24px' }}>Joining call...</div>
@@ -283,7 +287,7 @@ export const CallPage = () => {
   }
 
   return (
-    <div style={{ height: '100vh', width: '100vw' }}>
+    <div style={{ position: 'fixed', inset: 0, zIndex: 99999 }}>
       <StreamTheme>
         <StreamCall call={call!}>
           <CallPageInner onLeave={leaveCall} onLeft={() => { if (!forcedEndRef.current) socket.emit('streamCallEnded'); }} />
