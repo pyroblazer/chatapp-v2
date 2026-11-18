@@ -54,7 +54,10 @@ export const friendsSlice = createSlice({
     setOnlineFriends: (state, action: PayloadAction<Friend[]>) => {
       state.onlineFriends = action.payload;
       action.payload.forEach((friend) => {
-        state.userStatuses[friend.id] = 'online';
+        // Seeding the online list must not downgrade a friend who is currently in a call
+        if (state.userStatuses[friend.id] !== 'in-call') {
+          state.userStatuses[friend.id] = 'online';
+        }
       });
     },
     setOfflineFriends: (state) => {

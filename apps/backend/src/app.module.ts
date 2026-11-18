@@ -42,7 +42,9 @@ import { CallHistoryModule } from './calls/call-history.module';
 import { ScheduleModule } from '@nestjs/schedule';
 
 let envFilePath = ['.env.development', '.env'];
-if (process.env.ENVIRONMENT === 'PRODUCTION') envFilePath = ['.env.production', '.env'];
+const isProduction =
+  process.env.ENVIRONMENT === 'PRODUCTION' || process.env.NODE_ENV === 'production';
+if (isProduction) envFilePath = ['.env.production', '.env'];
 
 @Module({
   imports: [
@@ -57,9 +59,10 @@ if (process.env.ENVIRONMENT === 'PRODUCTION') envFilePath = ['.env.production', 
       username: process.env.DATABASE_USERNAME,
       password: process.env.DATABASE_PASSWORD,
       database: process.env.DATABASE_NAME,
-      synchronize: process.env.ENVIRONMENT !== 'PRODUCTION',
+      // Never auto-sync the schema in production (use migrations)
+      synchronize: !isProduction,
       entities,
-      logging: process.env.ENVIRONMENT !== 'PRODUCTION' ? ['error'] : false,
+      logging: !isProduction ? ['error'] : false,
       ssl: process.env.DATABASE_SSL === 'true' ? { rejectUnauthorized: false } : false,
       retryAttempts: 5,
       retryDelay: 3000,

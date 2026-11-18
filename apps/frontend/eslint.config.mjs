@@ -1,5 +1,6 @@
 import tsPlugin from '@typescript-eslint/eslint-plugin';
 import tsParser from '@typescript-eslint/parser';
+import reactHooks from 'eslint-plugin-react-hooks';
 
 export default [
   {
@@ -13,8 +14,11 @@ export default [
     },
     plugins: {
       '@typescript-eslint': tsPlugin,
+      'react-hooks': reactHooks,
     },
     rules: {
+      'react-hooks/rules-of-hooks': 'error',
+      'react-hooks/exhaustive-deps': 'warn',
       '@typescript-eslint/interface-name-prefix': 'off',
       '@typescript-eslint/explicit-function-return-type': 'off',
       '@typescript-eslint/explicit-module-boundary-types': 'off',
