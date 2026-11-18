@@ -19,6 +19,9 @@ import { CannotCreateMessageException } from './exceptions/CannotCreateMessage';
 import { CannotDeleteMessage } from './exceptions/CannotDeleteMessage';
 import type { IMessageService } from './message';
 
+export const MAX_PINNED_MESSAGES = 10;
+export const MAX_SEARCH_LENGTH = 100;
+
 @Injectable()
 export class MessageService implements IMessageService {
   constructor(
@@ -73,7 +76,8 @@ export class MessageService implements IMessageService {
     return { message: savedMessage, conversation: updated };
   }
 
-  async getMessages(conversationId: string, cursor?: string, limit = 50): Promise<Message[]> {
+  async getMessages(conversationId: string, cursor?: string, limit = 50, userId?: string): Promise<Message[]> {
+    if (userId) await this.assertParticipant(userId, conversationId);
     const qb = this.messageRepository.createQueryBuilder('message')
       .leftJoinAndSelect('message.author', 'author')
       .leftJoinAndSelect('author.profile', 'profile')
@@ -148,11 +152,98 @@ export class MessageService implements IMessageService {
     return this.messageRepository.save(messageDB);
   }
 
-  async getThreadReplies(messageId: string): Promise<Message[]> {
+  async getThreadReplies(messageId: string, userId?: string, conversationId?: string): Promise<Message[]> {
+    if (userId && conversationId) {
+      await this.assertParticipant(userId, conversationId);
+      // The parent must belong to the conversation the caller is allowed to read
+      const parent = await this.messageRepository.findOne({
+        where: { id: messageId, conversation: { id: conversationId } },
+      });
+      if (!parent) throw new HttpException('Message not found', HttpStatus.NOT_FOUND);
+    }
     return this.messageRepository.find({
       where: { parentMessageId: messageId },
       relations: ['author', 'author.profile', 'attachments'],
       order: { createdAt: 'ASC' },
     });
+  }
+
+  /** Throws 403 unless the user is one of the two people in the conversation. */
+  async assertParticipant(userId: string, conversationId: string): Promise<void> {
+    const conversation = await this.conversationService.findById(conversationId);
+    if (!conversation) throw new ConversationNotFoundException();
+    if (conversation.creator.id !== userId && conversation.recipient.id !== userId) {
+      throw new HttpException('Not a participant of this conversation', HttpStatus.FORBIDDEN);
+    }
+  }
+
+  private async findInConversation(conversationId: string, messageId: string): Promise<Message> {
+    const message = await this.messageRepository.findOne({
+      where: { id: messageId, conversation: { id: conversationId } },
+      relations: ['author', 'author.profile'],
+    });
+    if (!message) throw new HttpException('Message not found', HttpStatus.NOT_FOUND);
+    return message;
+  }
+
+  async pinMessage(userId: string, conversationId: string, messageId: string): Promise<Message> {
+    await this.assertParticipant(userId, conversationId);
+    const message = await this.findInConversation(conversationId, messageId);
+    if (message.pinnedAt) return message; // already pinned: idempotent
+
+    const pinned = await this.messageRepository
+      .createQueryBuilder('message')
+      .where('message.conversationId = :conversationId', { conversationId })
+      .andWhere('message.pinnedAt IS NOT NULL')
+      .getCount();
+    if (pinned >= MAX_PINNED_MESSAGES) {
+      throw new HttpException(
+        `A conversation can have at most ${MAX_PINNED_MESSAGES} pinned messages`,
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+
+    message.pinnedAt = new Date();
+    return this.messageRepository.save(message);
+  }
+
+  async unpinMessage(userId: string, conversationId: string, messageId: string): Promise<Message> {
+    await this.assertParticipant(userId, conversationId);
+    const message = await this.findInConversation(conversationId, messageId);
+    message.pinnedAt = null;
+    return this.messageRepository.save(message);
+  }
+
+  async getPinnedMessages(userId: string, conversationId: string): Promise<Message[]> {
+    await this.assertParticipant(userId, conversationId);
+    return this.messageRepository
+      .createQueryBuilder('message')
+      .leftJoinAndSelect('message.author', 'author')
+      .leftJoinAndSelect('author.profile', 'profile')
+      .where('message.conversationId = :conversationId', { conversationId })
+      .andWhere('message.pinnedAt IS NOT NULL')
+      .orderBy('message.pinnedAt', 'DESC')
+      .getMany();
+  }
+
+  /**
+   * Full-text search (Postgres tsvector) within one conversation. The query is
+   * passed through plainto_tsquery, so user input is never interpreted as
+   * tsquery syntax, and is bound as a parameter.
+   */
+  async searchMessages(userId: string, conversationId: string, query: string): Promise<Message[]> {
+    await this.assertParticipant(userId, conversationId);
+    const q = (query ?? '').trim().slice(0, MAX_SEARCH_LENGTH);
+    if (!q) return [];
+
+    return this.messageRepository
+      .createQueryBuilder('message')
+      .leftJoinAndSelect('message.author', 'author')
+      .leftJoinAndSelect('author.profile', 'profile')
+      .where('message.conversationId = :conversationId', { conversationId })
+      .andWhere("to_tsvector('simple', message.content) @@ plainto_tsquery('simple', :q)", { q })
+      .orderBy('message.createdAt', 'DESC')
+      .take(50)
+      .getMany();
   }
 }

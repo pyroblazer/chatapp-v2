@@ -107,8 +107,62 @@ export class MessageController {
     @Query('cursor') cursor?: string,
     @Query('limit', new ParseIntPipe({ optional: true })) limit?: number,
   ) {
-    const messages = await this.messageService.getMessages(id, cursor, limit || 50);
+    const messages = await this.messageService.getMessages(id, cursor, limit || 50, user.id);
     return { id, messages };
+  }
+
+  @ApiOperation({ summary: 'List pinned messages in a conversation' })
+  @ApiParam({ name: 'id', description: 'Conversation UUID' })
+  @Get('pinned')
+  @SkipThrottle()
+  async getPinned(
+    @AuthUser() user: User,
+    @Param('id', ParseUUIDPipe) conversationId: string,
+  ) {
+    const messages = await this.messageService.getPinnedMessages(user.id, conversationId);
+    return { conversationId, messages };
+  }
+
+  @ApiOperation({ summary: 'Search messages in a conversation (full text)' })
+  @ApiParam({ name: 'id', description: 'Conversation UUID' })
+  @ApiQuery({ name: 'q', required: true, type: String })
+  @Get('search')
+  async search(
+    @AuthUser() user: User,
+    @Param('id', ParseUUIDPipe) conversationId: string,
+    @Query('q') q: string,
+  ) {
+    const messages = await this.messageService.searchMessages(user.id, conversationId, q);
+    return { conversationId, messages };
+  }
+
+  @ApiOperation({ summary: 'Pin a message' })
+  @ApiParam({ name: 'id', description: 'Conversation UUID' })
+  @ApiParam({ name: 'messageId', description: 'Message UUID' })
+  @Post(':messageId/pin')
+  @HttpCode(HttpStatus.OK)
+  async pin(
+    @AuthUser() user: User,
+    @Param('id', ParseUUIDPipe) conversationId: string,
+    @Param('messageId', ParseUUIDPipe) messageId: string,
+  ) {
+    const message = await this.messageService.pinMessage(user.id, conversationId, messageId);
+    this.eventEmitter.emit('message.update', message);
+    return message;
+  }
+
+  @ApiOperation({ summary: 'Unpin a message' })
+  @ApiParam({ name: 'id', description: 'Conversation UUID' })
+  @ApiParam({ name: 'messageId', description: 'Message UUID' })
+  @Delete(':messageId/pin')
+  async unpin(
+    @AuthUser() user: User,
+    @Param('id', ParseUUIDPipe) conversationId: string,
+    @Param('messageId', ParseUUIDPipe) messageId: string,
+  ) {
+    const message = await this.messageService.unpinMessage(user.id, conversationId, messageId);
+    this.eventEmitter.emit('message.update', message);
+    return message;
   }
 
   @ApiOperation({ summary: 'Delete a message' })
@@ -157,7 +211,7 @@ export class MessageController {
     @Param('id', ParseUUIDPipe) conversationId: string,
     @Param('messageId', ParseUUIDPipe) messageId: string,
   ) {
-    const replies = await this.messageService.getThreadReplies(messageId);
+    const replies = await this.messageService.getThreadReplies(messageId, user.id, conversationId);
     return { messageId, replies };
   }
 }

@@ -31,6 +31,10 @@ export class Message extends BaseMessage {
   @Column({ name: 'thread_reply_count', default: 0 })
   threadReplyCount: number;
 
+  // Set when a participant pins the message; null when not pinned
+  @Column({ name: 'pinned_at', type: 'timestamp', nullable: true })
+  pinnedAt: Date | null;
+
   @OneToMany(
     () => require('./MessageReaction').MessageReaction,
     (reaction: any) => reaction.message,
