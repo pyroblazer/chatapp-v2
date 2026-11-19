@@ -82,10 +82,12 @@ if (isProduction) envFilePath = ['.env.production', '.env'];
     FriendsModule,
     EventsModule,
     ExistsModule,
-    ThrottlerModule.forRoot({
-      ttl: parseInt(process.env.THROTTLE_TTL || '10', 10),
+    ThrottlerModule.forRoot([
+      {
+      ttl: parseInt(process.env.THROTTLE_TTL || '10', 10) * 1000,
       limit: parseInt(process.env.THROTTLE_LIMIT || '10', 10),
-    }),
+      },
+    ]),
     MessageAttachmentsModule,
     BaseModule,
     RedisModule,
