@@ -9,7 +9,7 @@ on:
 jobs:
   backend-lint:
     name: Backend Lint
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     defaults:
       run:
         working-directory: apps/backend
@@ -21,7 +21,7 @@ jobs:
 
   backend-test:
     name: Backend Tests (${{ matrix.test-group }})
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     needs: backend-lint
     strategy:
       matrix:
@@ -71,7 +71,7 @@ jobs:
 
   backend-build:
     name: Backend Build
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     needs: backend-test
     defaults:
       run:
@@ -84,7 +84,7 @@ jobs:
 
   frontend-lint:
     name: Frontend Lint
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     defaults:
       run:
         working-directory: apps/frontend
@@ -96,7 +96,7 @@ jobs:
 
   frontend-test:
     name: Frontend Tests
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     needs: frontend-lint
     defaults:
       run:
@@ -109,7 +109,7 @@ jobs:
 
   frontend-build:
     name: Frontend Build
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     needs: [frontend-lint, frontend-test]
     defaults:
       run:
@@ -122,7 +122,7 @@ jobs:
 
   e2e-tests:
     name: E2E Tests (${{ matrix.group }})
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     needs: [backend-build, frontend-build]
     strategy:
       fail-fast: false
@@ -173,7 +173,7 @@ jobs:
 
   docker-build:
     name: Docker Build Check
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     needs: [backend-build, frontend-build]
     steps:
       - uses: actions/checkout@v4
